@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-draco = { git = "https://github.com/utkarshkukreti/draco.git", rev = "32419ec" }
+meow = { path = "crates/meow" }
 wasm-bindgen = "0.2"
 
 [dependencies.web-sys]
@@ -19,4 +19,10 @@ features = [
     "HtmlElement",
     "Node",
     "Window",
+]
+
+[workspace]
+members = [
+    ".",
+    "crates/*",
 ]

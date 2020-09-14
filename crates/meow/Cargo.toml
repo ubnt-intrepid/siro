@@ -1,0 +1,8 @@
+[package]
+name = "meow"
+version = "0.0.0"
+publish = false
+authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+edition = "2018"
+
+[dependencies]
