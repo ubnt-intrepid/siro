@@ -24,6 +24,10 @@ module.exports = (env, argv) => {
                 crateDirectory: __dirname,
                 outName: 'index',
                 extraArgs: '--no-typescript',
+                watchDirectories: [
+                    path.resolve(__dirname, 'crates/meow/src'),
+                    path.resolve(__dirname, 'crates/meow/Cargo.toml'),
+                ],
             }),
             new HtmlWebpackPlugin({
                 filename: 'index.html',

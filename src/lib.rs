@@ -1,17 +1,25 @@
+use meow::{vdom, Meow};
 use wasm_bindgen::prelude::*;
+
+type Model = ();
+
+fn view(_: &Model) -> impl Into<vdom::Node> {
+    "Hello from Rust!"
+}
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    let window = web_sys::window().ok_or("no global `window` exists")?;
-    let document = window
-        .document()
-        .ok_or("should have a document on window")?;
+    console_error_panic_hook::set_once();
 
-    let app = document
-        .get_element_by_id("app")
-        .ok_or("missing `app` in document")?;
+    let meow = Meow::init()?;
 
-    app.set_inner_html("Hello from Rust!");
+    let mut app = meow.mount(
+        "#app", //
+        Model::default(),
+        view,
+    )?;
+
+    app.render(&meow);
 
     Ok(())
 }
