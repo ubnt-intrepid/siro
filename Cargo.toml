@@ -1,0 +1,22 @@
+[package]
+name = "app"
+version = "0.0.0"
+publish = false
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+draco = { git = "https://github.com/utkarshkukreti/draco.git", rev = "32419ec" }
+wasm-bindgen = "0.2"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Node",
+    "Window",
+]
