@@ -5,22 +5,6 @@ pub mod vdom;
 use wasm_bindgen::prelude::*;
 use web_sys as web;
 
-// ==== View ====
-
-pub trait View<Model>: 'static {
-    fn render(&self, model: &Model) -> vdom::Node;
-}
-
-impl<F, Model, R> View<Model> for F
-where
-    F: Fn(&Model) -> R + 'static,
-    R: Into<vdom::Node>,
-{
-    fn render(&self, model: &Model) -> vdom::Node {
-        (*self)(model).into()
-    }
-}
-
 // ==== Mountpoint ====
 
 pub trait Mountpoint {
@@ -55,53 +39,36 @@ impl Meow {
         })
     }
 
-    pub fn mount<TModel, TView>(
+    pub fn scene(
         &self,
         mountpoint: impl Mountpoint,
-        model: TModel,
-        view: TView,
-    ) -> Result<App<TModel, TView>, JsValue>
-    where
-        TView: View<TModel>,
-    {
+        initial_view: impl Into<vdom::Node>,
+    ) -> Result<Scene, JsValue> {
         let mountpoint = mountpoint
             .get_node(self)
             .ok_or("cannot get mountpoint node")?;
 
-        while let Some(child) = mountpoint.first_child() {
-            mountpoint.remove_child(&child)?;
-        }
+        let mut view = initial_view.into();
+        let dom_node = view.render(&*self);
 
-        let mut vnode = vdom::Text::new("Now rendering...");
-        let node = vnode.create_node(&*self);
+        mountpoint.append_child(&dom_node)?;
 
-        mountpoint.append_child(&node)?;
-
-        Ok(App {
-            node,
-            vnode: vnode.into(),
-            model,
-            view,
-        })
+        Ok(Scene { dom_node, view })
     }
 }
 
 // ==== App ====
 
-pub struct App<TModel, TView> {
-    node: web::Node,
-    vnode: vdom::Node,
-    model: TModel,
-    view: TView,
+pub struct Scene {
+    dom_node: web::Node,
+    view: vdom::Node,
 }
 
-impl<TModel, TView> App<TModel, TView>
-where
-    TView: View<TModel>,
-{
-    pub fn render(&mut self, meow: &Meow) {
-        let new_vnode = self.view.render(&self.model);
-        let new_node = self.vnode.apply_patch(meow, new_vnode);
-        self.node = new_node;
+impl Scene {
+    pub fn set_view(&mut self, meow: &Meow, view: impl Into<vdom::Node>) -> Result<(), JsValue> {
+        let view = view.into();
+        let dom_node = self.view.diff(meow, view);
+        self.dom_node = dom_node;
+        Ok(())
     }
 }
