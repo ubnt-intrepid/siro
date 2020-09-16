@@ -1,41 +1,30 @@
 use crate::Meow;
 use itertools::{EitherOrBoth, Itertools as _};
-use std::{borrow::Cow, cell::Cell, collections::HashMap};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    hash::{Hash, Hasher},
+    rc::{Rc, Weak},
+};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
 use web_sys as web;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 #[repr(transparent)]
-pub struct NodeId(u32);
+pub struct NodeId(Weak<()>);
 
-#[derive(Debug, Default)]
-pub struct NodeFactory(Cell<u32>);
-
-impl NodeFactory {
-    fn new_id(&self) -> NodeId {
-        let new_id = self.0.get();
-        self.0.set(new_id + 1);
-        NodeId(new_id)
+impl PartialEq for NodeId {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.ptr_eq(&other.0)
     }
+}
 
-    pub fn element(&self, tag_name: &'static str) -> Element {
-        Element {
-            id: self.new_id(),
-            tag_name,
-            attrs: HashMap::new(),
-            children: vec![],
-        }
-    }
+impl Eq for NodeId {}
 
-    pub fn text<S>(&self, value: S) -> Text
-    where
-        S: Into<Cow<'static, str>>,
-    {
-        Text {
-            id: self.new_id(),
-            value: value.into(),
-        }
+impl Hash for NodeId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.as_ptr().hash(state);
     }
 }
 
@@ -79,8 +68,8 @@ impl From<Text> for Node {
 impl Node {
     fn id(&self) -> NodeId {
         match self {
-            Node::Element(e) => e.id,
-            Node::Text(t) => t.id,
+            Node::Element(e) => e.id(),
+            Node::Text(t) => t.id(),
         }
     }
 
@@ -102,13 +91,13 @@ impl Node {
                 }
 
                 let node: web::Node = element.into();
-                caches.set(e.id, node.clone());
+                caches.set(e.id(), node.clone());
                 node
             }
 
             Node::Text(t) => {
                 let node: web::Node = meow.document.create_text_node(&*t.value).into();
-                caches.set(t.id, node.clone());
+                caches.set(t.id(), node.clone());
                 node
             }
         }
@@ -177,14 +166,27 @@ impl Node {
 
 // ==== Element ====
 
+pub fn element(tag_name: &'static str) -> Element {
+    Element {
+        rc: Rc::new(()),
+        tag_name,
+        attrs: HashMap::new(),
+        children: vec![],
+    }
+}
+
 pub struct Element {
-    id: NodeId,
+    rc: Rc<()>,
     tag_name: &'static str,
     attrs: HashMap<String, String>,
     children: Vec<Node>,
 }
 
 impl Element {
+    fn id(&self) -> NodeId {
+        NodeId(Rc::downgrade(&self.rc))
+    }
+
     pub fn attr(mut self, name: &str, value: &str) -> Self {
         self.attrs.insert(name.into(), value.into());
         self
@@ -198,9 +200,25 @@ impl Element {
 
 // ==== Text ====
 
+pub fn text<S>(value: S) -> Text
+where
+    S: Into<Cow<'static, str>>,
+{
+    Text {
+        rc: Rc::new(()),
+        value: value.into(),
+    }
+}
+
 pub struct Text {
+    rc: Rc<()>,
     value: Cow<'static, str>,
-    id: NodeId,
+}
+
+impl Text {
+    fn id(&self) -> NodeId {
+        NodeId(Rc::downgrade(&self.rc))
+    }
 }
 
 #[inline]
