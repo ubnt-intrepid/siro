@@ -14,16 +14,20 @@ pub async fn main() -> Result<(), JsValue> {
         .ok_or("cannot find `#app` in document")?;
 
     let n = NodeFactory::default();
-    let initial_view = n.text("Hello");
 
-    let mut scene = meow.scene(&app, initial_view)?;
+    let mut scene = meow.scene(
+        &app,
+        n.element("div") //
+            .child(n.text("Hello")),
+    )?;
 
     Delay::new(Duration::from_secs(3)).await.unwrap_throw();
 
-    let view = n.text("Hello, from Rust!");
     scene.set_view(
         &meow, //
-        view,
+        n.element("div") //
+            .child(n.text("Hello, from "))
+            .child(n.element("strong").child(n.text("Rust!"))),
     )?;
 
     Ok(())
