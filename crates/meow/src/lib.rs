@@ -5,18 +5,6 @@ pub mod vdom;
 use wasm_bindgen::prelude::*;
 use web_sys as web;
 
-// ==== Mountpoint ====
-
-pub trait Mountpoint {
-    fn get_node(&self, meow: &Meow) -> Option<web::Node>;
-}
-
-impl Mountpoint for &str {
-    fn get_node(&self, meow: &Meow) -> Option<web::Node> {
-        meow.document.query_selector(self).ok()?.map(Into::into)
-    }
-}
-
 // ==== Meow ====
 
 pub struct Meow {
@@ -39,36 +27,36 @@ impl Meow {
         })
     }
 
+    pub fn select(&self, selector: &str) -> Option<web::Node> {
+        self.document.query_selector(selector).ok()?.map(Into::into)
+    }
+
     pub fn scene(
         &self,
-        mountpoint: impl Mountpoint,
+        mountpoint: &web::Node,
         initial_view: impl Into<vdom::Node>,
     ) -> Result<Scene, JsValue> {
-        let mountpoint = mountpoint
-            .get_node(self)
-            .ok_or("cannot get mountpoint node")?;
+        let mut caches = vdom::NodeCaches::default();
+        let view = initial_view.into();
+        let node = view.render(&*self, &mut caches);
+        mountpoint.append_child(&node)?;
 
-        let mut view = initial_view.into();
-        let dom_node = view.render(&*self);
-
-        mountpoint.append_child(&dom_node)?;
-
-        Ok(Scene { dom_node, view })
+        Ok(Scene { view, caches })
     }
 }
 
 // ==== App ====
 
 pub struct Scene {
-    dom_node: web::Node,
     view: vdom::Node,
+    caches: vdom::NodeCaches,
 }
 
 impl Scene {
     pub fn set_view(&mut self, meow: &Meow, view: impl Into<vdom::Node>) -> Result<(), JsValue> {
         let view = view.into();
-        let dom_node = self.view.diff(meow, view);
-        self.dom_node = dom_node;
+        self.view.diff(&view, meow, &mut self.caches);
+        self.view = view;
         Ok(())
     }
 }

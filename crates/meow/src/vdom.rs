@@ -1,7 +1,49 @@
 use crate::Meow;
-use std::borrow::Cow;
+use std::{borrow::Cow, cell::Cell, collections::HashMap};
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast as _;
 use web_sys as web;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NodeId(u32);
+
+#[derive(Debug, Default)]
+pub struct NodeFactory(Cell<u32>);
+
+impl NodeFactory {
+    fn new_id(&self) -> NodeId {
+        let new_id = self.0.get();
+        self.0.set(new_id + 1);
+        NodeId(new_id)
+    }
+
+    pub fn text<S>(&self, value: S) -> Text
+    where
+        S: Into<Cow<'static, str>>,
+    {
+        Text {
+            id: self.new_id(),
+            value: value.into(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct NodeCaches(HashMap<NodeId, web::Node>);
+
+impl NodeCaches {
+    pub fn set(&mut self, id: NodeId, node: web::Node) {
+        self.0.insert(id, node);
+    }
+
+    #[must_use]
+    pub fn replace(&mut self, old: NodeId, new: NodeId) -> web::Node {
+        let value = self.0.remove(&old).unwrap_throw();
+        self.0.insert(new, value.clone());
+        value
+    }
+}
 
 pub enum Node {
     Text(Text),
@@ -13,34 +55,38 @@ impl From<Text> for Node {
     }
 }
 
-impl From<&'static str> for Node {
-    fn from(text: &'static str) -> Self {
-        Self::from(Text::new(text))
-    }
-}
-
-impl From<String> for Node {
-    fn from(text: String) -> Self {
-        Self::from(Text::new(text))
-    }
-}
-
-impl From<Cow<'static, str>> for Node {
-    fn from(text: Cow<'static, str>) -> Self {
-        Self::from(Text::new(text))
-    }
-}
-
 impl Node {
-    pub fn render(&mut self, meow: &Meow) -> web::Node {
+    fn id(&self) -> NodeId {
         match self {
-            Node::Text(t) => t.render(meow),
+            Node::Text(t) => t.id,
         }
     }
 
-    pub fn diff(&mut self, meow: &Meow, new: Node) -> web::Node {
+    pub fn render(&self, meow: &Meow, caches: &mut NodeCaches) -> web::Node {
+        match self {
+            Node::Text(t) => {
+                let node: web::Node = meow.document.create_text_node(&*t.value).into();
+                caches.set(t.id, node.clone());
+                node
+            }
+        }
+    }
+
+    pub fn diff(&self, new: &Node, _meow: &Meow, caches: &mut NodeCaches) {
+        // Same nodes.
+        if self.id() == new.id() {
+            return;
+        }
+
+        let node = caches.replace(self.id(), new.id());
+
         match (self, new) {
-            (Node::Text(current), Node::Text(new)) => current.diff(meow, new),
+            (Node::Text(current), Node::Text(new)) => {
+                let node = node.dyn_ref::<web::Text>().unwrap_throw();
+                if current.value != new.value {
+                    node.set_data(&*new.value);
+                }
+            }
         }
     }
 }
@@ -49,29 +95,5 @@ impl Node {
 
 pub struct Text {
     value: Cow<'static, str>,
-    text_node: Option<web::Text>,
-}
-
-impl Text {
-    pub fn new(value: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            value: value.into(),
-            text_node: None,
-        }
-    }
-
-    pub(crate) fn render(&mut self, meow: &Meow) -> web::Node {
-        let text_node = meow.document.create_text_node(&*self.value);
-        self.text_node.replace(text_node.clone());
-        text_node.into()
-    }
-
-    pub(crate) fn diff(&mut self, _meow: &Meow, new: Text) -> web::Node {
-        let text_node = self.text_node.as_ref().unwrap_throw();
-        if self.value != new.value {
-            let _ = std::mem::replace(&mut self.value, new.value);
-            text_node.set_data(&self.value);
-        }
-        text_node.clone().into()
-    }
+    id: NodeId,
 }
