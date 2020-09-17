@@ -1,3 +1,4 @@
+mod cache;
 mod element;
 mod node;
 mod render;
@@ -9,4 +10,7 @@ pub use self::{
     text::{text, Text},
 };
 
-pub(crate) use self::render::{diff, render, NodeCaches};
+pub(crate) use self::{
+    cache::CachedNodes,
+    render::{diff, render},
+};

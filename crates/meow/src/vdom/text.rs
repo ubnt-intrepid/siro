@@ -1,4 +1,4 @@
-use super::node::NodeId;
+use super::cache::Key;
 use std::{borrow::Cow, rc::Rc};
 
 pub fn text<S>(value: S) -> Text
@@ -29,7 +29,7 @@ macro_rules! impl_from_strs {
 impl_from_strs!(&'static str, String, std::borrow::Cow<'static, str>);
 
 impl Text {
-    pub(super) fn id(&self) -> NodeId {
-        NodeId(Rc::downgrade(&self.rc))
+    pub(super) fn key(&self) -> Key {
+        Key::new(&self.rc)
     }
 }

@@ -1,4 +1,4 @@
-use super::node::{Node, NodeId};
+use super::{cache::Key, node::Node};
 use std::{collections::HashMap, rc::Rc};
 
 pub fn element(tag_name: &'static str) -> Element {
@@ -18,8 +18,8 @@ pub struct Element {
 }
 
 impl Element {
-    pub(super) fn id(&self) -> NodeId {
-        NodeId(Rc::downgrade(&self.rc))
+    pub(super) fn key(&self) -> Key {
+        Key::new(&self.rc)
     }
 
     pub fn attr(mut self, name: &str, value: &str) -> Self {

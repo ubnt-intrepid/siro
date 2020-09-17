@@ -1,26 +1,4 @@
-use super::{element::Element, text::Text};
-use std::{
-    hash::{Hash, Hasher},
-    rc::Weak,
-};
-
-#[derive(Clone, Debug)]
-#[repr(transparent)]
-pub struct NodeId(pub(crate) Weak<()>);
-
-impl PartialEq for NodeId {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.ptr_eq(&other.0)
-    }
-}
-
-impl Eq for NodeId {}
-
-impl Hash for NodeId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.as_ptr().hash(state);
-    }
-}
+use super::{cache::Key, element::Element, text::Text};
 
 pub enum Node {
     Element(Element),
@@ -52,10 +30,10 @@ macro_rules! impl_from_strs {
 impl_from_strs!(&'static str, String, std::borrow::Cow<'static, str>);
 
 impl Node {
-    pub(super) fn id(&self) -> NodeId {
+    pub(super) fn key(&self) -> Key {
         match self {
-            Node::Element(e) => e.id(),
-            Node::Text(t) => t.id(),
+            Node::Element(e) => e.key(),
+            Node::Text(t) => t.key(),
         }
     }
 }

@@ -1,12 +1,12 @@
 use crate::{
     meow::Meow,
-    vdom::{self, Node, NodeCaches},
+    vdom::{self, CachedNodes, Node},
 };
 use wasm_bindgen::prelude::*;
 
 pub struct App {
     pub(crate) view: Node,
-    pub(crate) caches: NodeCaches,
+    pub(crate) caches: CachedNodes,
 }
 
 impl App {
