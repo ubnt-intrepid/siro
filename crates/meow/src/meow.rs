@@ -1,6 +1,6 @@
 use crate::{
     app::App,
-    vdom::{self, Node, NodeCaches},
+    vdom::{self, NodeCaches},
 };
 use wasm_bindgen::prelude::*;
 use web_sys as web;
@@ -35,13 +35,9 @@ impl Meow {
         &self.document
     }
 
-    pub fn mount(
-        &self,
-        mountpoint: &web::Node,
-        initial_view: impl Into<Node>,
-    ) -> Result<App, JsValue> {
+    pub fn mount(&self, mountpoint: &web::Node) -> Result<App, JsValue> {
         let mut caches = NodeCaches::default();
-        let view = initial_view.into();
+        let view = vdom::text("Now rendering...").into();
         let node = vdom::render(&view, &self.document, &mut caches)?;
         mountpoint.append_child(&node)?;
 
