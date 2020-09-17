@@ -1,7 +1,10 @@
-use meow::{vdom, Meow};
-use std::time::Duration;
+use gloo_events::EventListener;
+use meow::{
+    vdom::{self, Listener},
+    Meow,
+};
+use std::rc::Rc;
 use wasm_bindgen::{prelude::*, JsCast as _};
-use wasm_timer::Delay;
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
@@ -26,25 +29,50 @@ pub async fn main() -> Result<(), JsValue> {
 
     let mut app = meow.mount(&node)?;
 
-    Delay::new(Duration::from_secs(3)).await.unwrap_throw();
+    app.draw(&meow, {
+        vdom::element("button") //
+            .listener(on_click(|_| {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    web_sys::console::log_1(&"foo".into());
+                }
+            }))
+            .child("foo")
+    })?;
 
-    loop {
-        app.draw(&meow, {
-            vdom::element("div") //
-                .child("Hello")
-        })?;
+    app.draw(&meow, {
+        vdom::element("button") //
+            .listener(on_click(|_| {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    web_sys::console::log_1(&"bar".into());
+                }
+            }))
+            .child("bar")
+    })?;
 
-        Delay::new(Duration::from_secs(3)).await.unwrap_throw();
+    std::mem::forget(app);
 
-        app.draw(&meow, {
-            vdom::element("div") //
-                .child("Hello, from ")
-                .child(
-                    vdom::element("strong") //
-                        .child("Rust!"),
-                )
-        })?;
+    Ok(())
+}
 
-        Delay::new(Duration::from_secs(3)).await.unwrap_throw();
+fn on_click(f: impl Fn(&web_sys::Event) + 'static) -> Rc<dyn Listener> {
+    struct OnClick<F>(F);
+
+    impl<F> Listener for OnClick<F>
+    where
+        F: Fn(&web_sys::Event) + 'static,
+    {
+        fn event_type(&self) -> &str {
+            "click"
+        }
+
+        fn attach(self: Rc<Self>, target: &web_sys::EventTarget) -> EventListener {
+            EventListener::new(target, "click", move |e| {
+                (self.0)(e);
+            })
+        }
     }
+
+    Rc::new(OnClick(f))
 }

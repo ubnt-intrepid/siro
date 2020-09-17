@@ -1,4 +1,5 @@
 use super::{cache::CachedNodes, node::Node};
+use gloo_events::EventListener;
 use itertools::{EitherOrBoth, Itertools as _};
 use wasm_bindgen::{prelude::*, JsCast as _};
 use web_sys as web;
@@ -7,6 +8,7 @@ pub fn render(
     node: &Node,
     document: &web::Document,
     caches: &mut CachedNodes,
+    event_listeners: &mut Vec<EventListener>,
 ) -> Result<web::Node, JsValue> {
     match node {
         Node::Element(e) => {
@@ -17,8 +19,12 @@ pub fn render(
             }
 
             for child in &e.children {
-                let child_element = render(child, document, caches)?;
+                let child_element = render(child, document, caches, event_listeners)?;
                 element.append_child(&child_element)?;
+            }
+
+            for listener in &e.listeners {
+                event_listeners.push(listener.clone().attach(element.as_ref()));
             }
 
             let node: web::Node = element.into();
@@ -39,6 +45,7 @@ pub fn diff(
     new: &Node,
     document: &web::Document,
     caches: &mut CachedNodes,
+    event_listeners: &mut Vec<EventListener>,
 ) -> Result<(), JsValue> {
     if old.key() == new.key() {
         // Same nodes.
@@ -71,6 +78,11 @@ pub fn diff(
                 }
             }
 
+            // FIXME: more efficient
+            for listener in &new.listeners {
+                event_listeners.push(listener.clone().attach(node.as_ref()));
+            }
+
             for e in zip_longest(&old.children, &new.children) {
                 match e {
                     EitherOrBoth::Left(old) => {
@@ -80,11 +92,11 @@ pub fn diff(
                         node.remove_child(&current)?;
                     }
                     EitherOrBoth::Right(new) => {
-                        let to_append = render(new, document, caches)?;
+                        let to_append = render(new, document, caches, event_listeners)?;
                         node.append_child(&to_append)?;
                     }
                     EitherOrBoth::Both(old, new) => {
-                        diff(old, new, document, caches)?;
+                        diff(old, new, document, caches, event_listeners)?;
                     }
                 }
             }
@@ -101,7 +113,7 @@ pub fn diff(
 
         (_, new) => {
             if let Some(parent) = node.parent_node() {
-                let replacement = render(new, document, caches)?;
+                let replacement = render(new, document, caches, event_listeners)?;
                 parent.replace_child(&replacement, &node)?;
             }
         }

@@ -36,11 +36,18 @@ impl Meow {
     }
 
     pub fn mount(&self, mountpoint: &web::Node) -> Result<App, JsValue> {
-        let mut caches = CachedNodes::default();
         let view = vdom::text("Now rendering...").into();
-        let node = vdom::render(&view, &self.document, &mut caches)?;
+
+        let mut caches = CachedNodes::default();
+        let mut event_listeners = vec![];
+
+        let node = vdom::render(&view, &self.document, &mut caches, &mut event_listeners)?;
         mountpoint.append_child(&node)?;
 
-        Ok(App { view, caches })
+        Ok(App {
+            view,
+            caches,
+            event_listeners,
+        })
     }
 }
