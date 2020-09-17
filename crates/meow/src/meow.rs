@@ -50,7 +50,7 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn set_view(&mut self, meow: &Meow, view: impl Into<Node>) -> Result<(), JsValue> {
+    pub fn draw(&mut self, meow: &Meow, view: impl Into<Node>) -> Result<(), JsValue> {
         let view = view.into();
         vdom::diff(&self.view, &view, &meow.document, &mut self.caches)?;
         self.view = view;

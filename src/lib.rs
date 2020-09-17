@@ -21,7 +21,7 @@ pub async fn main() -> Result<(), JsValue> {
 
     Delay::new(Duration::from_secs(3)).await.unwrap_throw();
 
-    scene.set_view(
+    scene.draw(
         &meow, //
         vdom::element("div") //
             .child(vdom::text("Hello, from "))
