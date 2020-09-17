@@ -2,6 +2,10 @@ use meow::{vdom, Meow};
 use std::time::Duration;
 use wasm_bindgen::{prelude::*, JsCast as _};
 use wasm_timer::Delay;
+use wee_alloc::WeeAlloc;
+
+#[global_allocator]
+static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
