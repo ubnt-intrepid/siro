@@ -39,13 +39,6 @@ impl NodeCaches {
     pub fn remove(&mut self, id: NodeId) -> Option<web::Node> {
         self.0.remove(&id)
     }
-
-    #[must_use]
-    pub fn replace(&mut self, old: NodeId, new: NodeId) -> web::Node {
-        let value = self.0.remove(&old).unwrap_throw();
-        self.0.insert(new, value.clone());
-        value
-    }
 }
 
 pub enum Node {
@@ -73,94 +66,104 @@ impl Node {
         }
     }
 
-    pub fn render(&self, meow: &Meow, caches: &mut NodeCaches) -> web::Node {
+    pub fn render(&self, meow: &Meow, caches: &mut NodeCaches) -> Result<web::Node, JsValue> {
         match self {
             Node::Element(e) => {
                 let element = meow
                     .document
-                    .create_element(wasm_bindgen::intern(&*e.tag_name))
-                    .unwrap_throw();
+                    .create_element(wasm_bindgen::intern(&*e.tag_name))?;
 
                 for (name, value) in &e.attrs {
-                    element.set_attribute(name, value).unwrap_throw();
+                    element.set_attribute(name, value)?;
                 }
 
                 for child in &e.children {
-                    let child_element = child.render(meow, caches);
-                    element.append_child(&child_element).unwrap_throw();
+                    let child_element = child.render(meow, caches)?;
+                    element.append_child(&child_element)?;
                 }
 
                 let node: web::Node = element.into();
                 caches.set(e.id(), node.clone());
-                node
+                Ok(node)
             }
 
             Node::Text(t) => {
                 let node: web::Node = meow.document.create_text_node(&*t.value).into();
                 caches.set(t.id(), node.clone());
-                node
+                Ok(node)
             }
         }
     }
 
-    pub fn diff(&self, new: &Node, meow: &Meow, caches: &mut NodeCaches) {
-        // Same nodes.
+    pub fn diff(&self, new: &Node, meow: &Meow, caches: &mut NodeCaches) -> Result<(), JsValue> {
         if self.id() == new.id() {
-            return;
+            // Same nodes.
+            return Ok(());
         }
 
-        let node = caches.replace(self.id(), new.id());
+        let node = caches
+            .remove(self.id())
+            .expect_throw("cache does not exist");
+        caches.set(new.id(), node.clone());
 
         match (self, new) {
             (Node::Element(current), Node::Element(new)) if current.tag_name == new.tag_name => {
-                let node = node.dyn_ref::<web::Element>().unwrap_throw();
+                let node = node
+                    .dyn_ref::<web::Element>()
+                    .expect_throw("cached node is not Element");
 
                 for (name, new_value) in &new.attrs {
                     match current.attrs.get(name) {
                         Some(current) if current == new_value => (),
                         _ => {
-                            node.set_attribute(name, new_value).unwrap_throw();
+                            node.set_attribute(name, new_value)?;
                         }
                     }
                 }
 
                 for name in current.attrs.keys() {
                     if !new.attrs.contains_key(name) {
-                        node.remove_attribute(name).unwrap_throw();
+                        node.remove_attribute(name)?;
                     }
                 }
 
                 for e in zip_longest(&current.children, &new.children) {
                     match e {
                         EitherOrBoth::Left(current) => {
-                            let current = caches.remove(current.id()).unwrap_throw();
-                            node.remove_child(&current).unwrap_throw();
+                            let current = caches
+                                .remove(current.id())
+                                .expect_throw("cache does not exist");
+                            node.remove_child(&current)?;
                         }
                         EitherOrBoth::Right(new) => {
-                            let to_append = new.render(meow, caches);
-                            node.append_child(&to_append).unwrap_throw();
+                            let to_append = new.render(meow, caches)?;
+                            node.append_child(&to_append)?;
                         }
                         EitherOrBoth::Both(current, new) => {
-                            current.diff(new, meow, caches);
+                            current.diff(new, meow, caches)?;
                         }
                     }
                 }
             }
 
             (Node::Text(current), Node::Text(new)) => {
-                let node = node.dyn_ref::<web::Text>().unwrap_throw();
+                let node = node
+                    .dyn_ref::<web::Text>()
+                    .expect_throw("cache is not Text");
                 if current.value != new.value {
                     node.set_data(&*new.value);
                 }
             }
 
             (_, new) => {
-                let replacement = new.render(meow, caches);
                 if let Some(parent) = node.parent_node() {
-                    parent.replace_child(&replacement, &node).unwrap_throw();
+                    let replacement = new.render(meow, caches)?;
+                    parent.replace_child(&replacement, &node)?;
                 }
             }
         }
+
+        Ok(())
     }
 }
 

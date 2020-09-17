@@ -38,7 +38,7 @@ impl Meow {
     ) -> Result<Scene, JsValue> {
         let mut caches = vdom::NodeCaches::default();
         let view = initial_view.into();
-        let node = view.render(&*self, &mut caches);
+        let node = view.render(&*self, &mut caches)?;
         mountpoint.append_child(&node)?;
 
         Ok(Scene { view, caches })
@@ -55,7 +55,7 @@ pub struct Scene {
 impl Scene {
     pub fn set_view(&mut self, meow: &Meow, view: impl Into<vdom::Node>) -> Result<(), JsValue> {
         let view = view.into();
-        self.view.diff(&view, meow, &mut self.caches);
+        self.view.diff(&view, meow, &mut self.caches)?;
         self.view = view;
         Ok(())
     }
