@@ -9,25 +9,25 @@ pub async fn main() -> Result<(), JsValue> {
 
     let meow = Meow::init()?;
 
-    let app = meow
+    let node = meow
         .select("#app")
         .ok_or("cannot find `#app` in document")?;
 
-    let mut scene = meow.scene(
-        &app,
+    let mut app = meow.mount(
+        &node,
         vdom::element("div") //
-            .child(vdom::text("Hello")),
+            .child("Hello"),
     )?;
 
     Delay::new(Duration::from_secs(3)).await.unwrap_throw();
 
-    scene.draw(
+    app.draw(
         &meow, //
         vdom::element("div") //
-            .child(vdom::text("Hello, from "))
+            .child("Hello, from ")
             .child(
                 vdom::element("strong") //
-                    .child(vdom::text("Rust!")),
+                    .child("Rust!"),
             ),
     )?;
 

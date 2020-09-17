@@ -1,4 +1,7 @@
-use crate::vdom::{self, Node, NodeCaches};
+use crate::{
+    app::App,
+    vdom::{self, Node, NodeCaches},
+};
 use wasm_bindgen::prelude::*;
 use web_sys as web;
 
@@ -28,32 +31,20 @@ impl Meow {
         self.document.query_selector(selector).ok()?.map(Into::into)
     }
 
-    pub fn scene(
+    pub(crate) fn document(&self) -> &web::Document {
+        &self.document
+    }
+
+    pub fn mount(
         &self,
         mountpoint: &web::Node,
         initial_view: impl Into<Node>,
-    ) -> Result<Scene, JsValue> {
+    ) -> Result<App, JsValue> {
         let mut caches = NodeCaches::default();
         let view = initial_view.into();
         let node = vdom::render(&view, &self.document, &mut caches)?;
         mountpoint.append_child(&node)?;
 
-        Ok(Scene { view, caches })
-    }
-}
-
-// ==== App ====
-
-pub struct Scene {
-    view: vdom::Node,
-    caches: vdom::NodeCaches,
-}
-
-impl Scene {
-    pub fn draw(&mut self, meow: &Meow, view: impl Into<Node>) -> Result<(), JsValue> {
-        let view = view.into();
-        vdom::diff(&self.view, &view, &meow.document, &mut self.caches)?;
-        self.view = view;
-        Ok(())
+        Ok(App { view, caches })
     }
 }
