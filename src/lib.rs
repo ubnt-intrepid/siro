@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use meow::{vdom, Mailbox};
+use siro::{vdom, Mailbox};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -31,10 +31,10 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let ctx = meow::global_context().ok_or("cannot create global context")?;
+    let ctx = siro::global_context().ok_or("cannot create global context")?;
 
     let mountpoint = ctx.select("#app").ok_or("cannot find `#app` in document")?;
-    meow::util::remove_children(&mountpoint)?;
+    siro::util::remove_children(&mountpoint)?;
 
     let mut app = ctx.mount(mountpoint.as_ref())?;
     let (mailbox, mut incomings) = Mailbox::pair();

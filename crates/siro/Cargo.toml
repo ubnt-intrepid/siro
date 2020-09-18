@@ -1,5 +1,5 @@
 [package]
-name = "meow"
+name = "siro"
 version = "0.0.0"
 publish = false
 authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
