@@ -1,14 +1,31 @@
-use gloo_events::EventListener;
-use meow::{
-    vdom::{self, Listener},
-    Meow,
-};
-use std::rc::Rc;
+use futures::prelude::*;
+use meow::{vdom, Mailbox, Meow};
 use wasm_bindgen::{prelude::*, JsCast as _};
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
+
+#[derive(Default)]
+struct Model {
+    count: i32,
+}
+
+enum Msg {
+    Increment,
+}
+
+fn update(model: &mut Model, msg: Msg) {
+    match msg {
+        Msg::Increment => model.count += 1,
+    }
+}
+
+fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
+    vdom::element("button") //
+        .listener(mailbox.on_click(|_| Msg::Increment))
+        .child(format!("{}", model.count))
+}
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
@@ -29,50 +46,17 @@ pub async fn main() -> Result<(), JsValue> {
 
     let mut app = meow.mount(&node)?;
 
-    app.draw(&meow, {
-        vdom::element("button") //
-            .listener(on_click(|_| {
-                #[allow(unused_unsafe)]
-                unsafe {
-                    web_sys::console::log_1(&"foo".into());
-                }
-            }))
-            .child("foo")
-    })?;
+    let mut model = Model { count: 0 };
 
-    app.draw(&meow, {
-        vdom::element("button") //
-            .listener(on_click(|_| {
-                #[allow(unused_unsafe)]
-                unsafe {
-                    web_sys::console::log_1(&"bar".into());
-                }
-            }))
-            .child("bar")
-    })?;
+    let (mailbox, mut rx) = Mailbox::<Msg>::pair();
 
-    std::mem::forget(app);
+    app.draw(&meow, view(&model, &mailbox))?;
 
-    Ok(())
-}
+    while let Some(msg) = rx.next().await {
+        update(&mut model, msg);
 
-fn on_click(f: impl Fn(&web_sys::Event) + 'static) -> Rc<dyn Listener> {
-    struct OnClick<F>(F);
-
-    impl<F> Listener for OnClick<F>
-    where
-        F: Fn(&web_sys::Event) + 'static,
-    {
-        fn event_type(&self) -> &str {
-            "click"
-        }
-
-        fn attach(self: Rc<Self>, target: &web_sys::EventTarget) -> EventListener {
-            EventListener::new(target, "click", move |e| {
-                (self.0)(e);
-            })
-        }
+        app.draw(&meow, view(&model, &mailbox))?;
     }
 
-    Rc::new(OnClick(f))
+    Ok(())
 }
