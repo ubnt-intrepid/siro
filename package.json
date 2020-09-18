@@ -1,0 +1,13 @@
+{
+  "name": "siro-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@wasm-tool/rollup-plugin-rust": "^1.0.5",
+    "glob": "^7.1.6",
+    "rollup": "^2.27.1"
+  }
+}
