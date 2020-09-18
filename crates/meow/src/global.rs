@@ -7,28 +7,24 @@ use web_sys as web;
 
 // ==== Meow ====
 
-pub struct Meow {
+/// Initialize a new instance of global context.
+pub fn global_context() -> Option<GlobalContext> {
+    let window = web::window()?;
+    let document = window.document()?;
+    Some(GlobalContext {
+        _window: window,
+        document,
+    })
+}
+
+pub struct GlobalContext {
     _window: web::Window,
     document: web::Document,
 }
 
-impl Meow {
-    /// Create a new instance of `Meow`.
-    pub fn init() -> Result<Self, JsValue> {
-        let window = web::window().ok_or("no global `window` exists")?;
-
-        let document = window
-            .document()
-            .ok_or("should have a document on window")?;
-
-        Ok(Self {
-            _window: window,
-            document,
-        })
-    }
-
-    pub fn select(&self, selector: &str) -> Option<web::Node> {
-        self.document.query_selector(selector).ok()?.map(Into::into)
+impl GlobalContext {
+    pub fn select(&self, selector: &str) -> Option<web::Element> {
+        self.document.query_selector(selector).ok()?
     }
 
     pub(crate) fn document(&self) -> &web::Document {

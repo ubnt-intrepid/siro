@@ -1,6 +1,6 @@
 use futures::prelude::*;
-use meow::{vdom, Mailbox, Meow};
-use wasm_bindgen::{prelude::*, JsCast as _};
+use meow::{vdom, Mailbox};
+use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
@@ -31,31 +31,20 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let meow = Meow::init()?;
+    let ctx = meow::global_context().ok_or("cannot create global context")?;
 
-    let node = meow
-        .select("#app")
-        .ok_or("cannot find `#app` in document")?;
+    let mountpoint = ctx.select("#app").ok_or("cannot find `#app` in document")?;
+    meow::util::remove_children(&mountpoint)?;
 
-    {
-        let node = node.dyn_ref::<web_sys::Element>().unwrap_throw();
-        while let Some(child) = node.first_element_child() {
-            node.remove_child(&*child)?;
-        }
-    }
-
-    let mut app = meow.mount(&node)?;
+    let mut app = ctx.mount(mountpoint.as_ref())?;
+    let (mailbox, mut incomings) = Mailbox::pair();
 
     let mut model = Model { count: 0 };
+    app.render(&ctx, view(&model, &mailbox))?;
 
-    let (mailbox, mut rx) = Mailbox::<Msg>::pair();
-
-    app.draw(&meow, view(&model, &mailbox))?;
-
-    while let Some(msg) = rx.next().await {
+    while let Some(msg) = incomings.next().await {
         update(&mut model, msg);
-
-        app.draw(&meow, view(&model, &mailbox))?;
+        app.render(&ctx, view(&model, &mailbox))?;
     }
 
     Ok(())

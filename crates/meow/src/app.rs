@@ -1,5 +1,5 @@
 use crate::{
-    meow::Meow,
+    global::GlobalContext,
     vdom::{self, CachedNodes, Node},
 };
 use gloo_events::EventListener;
@@ -12,7 +12,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn draw(&mut self, meow: &Meow, view: impl Into<Node>) -> Result<(), JsValue> {
+    pub fn render(&mut self, meow: &GlobalContext, view: impl Into<Node>) -> Result<(), JsValue> {
         let view = view.into();
 
         // FIXME: more efficient
