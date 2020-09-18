@@ -1,5 +1,5 @@
 [package]
-name = "example-counter"
+name = "example-hello"
 version = "0.0.0"
 publish = false
 edition = "2018"
@@ -11,7 +11,5 @@ crate-type = ["cdylib"]
 siro = { path = "../.." }
 
 console_error_panic_hook = "0.1"
-futures = "0.3"
 wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
 wee_alloc = "0.4"

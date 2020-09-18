@@ -8,38 +8,62 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 #[derive(Default)]
 struct Model {
-    count: i32,
+    value: i32,
 }
 
 enum Msg {
     Increment,
+    Decrement,
+    Reset,
 }
 
 fn update(model: &mut Model, msg: Msg) {
     match msg {
-        Msg::Increment => model.count += 1,
+        Msg::Increment => model.value += 1,
+        Msg::Decrement => model.value -= 1,
+        Msg::Reset => model.value = 0,
     }
 }
 
 fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
-    vdom::element("button") //
-        .listener(mailbox.on_click(|_| Msg::Increment))
-        .child(format!("{}", model.count))
+    vdom::element("div")
+        .child(
+            vdom::element("button") //
+                .listener(mailbox.on_click(|_| Msg::Decrement))
+                .child("-"),
+        )
+        .child(" ")
+        .child(model.value.to_string())
+        .child(" ")
+        .child(
+            vdom::element("button") //
+                .listener(mailbox.on_click(|_| Msg::Increment))
+                .child("+"),
+        )
+        .child(" ")
+        .child(
+            vdom::element("button") //
+                .listener(mailbox.on_click(|_| Msg::Reset))
+                .child("Reset"),
+        )
 }
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let ctx = siro::global_context().ok_or("cannot create global context")?;
+    let ctx = siro::global_context() //
+        .ok_or("cannot create global context")?;
 
-    let mountpoint = ctx.select("#app").ok_or("cannot find `#app` in document")?;
+    let mountpoint = ctx
+        .select("#app") //
+        .ok_or("cannot find `#app` in document")?;
     siro::util::remove_children(&mountpoint)?;
 
     let mut app = ctx.mount(mountpoint.as_ref())?;
     let (mailbox, mut incomings) = Mailbox::pair();
 
-    let mut model = Model { count: 0 };
+    let mut model = Model { value: 0 };
     app.render(&ctx, view(&model, &mailbox))?;
 
     while let Some(msg) = incomings.next().await {
