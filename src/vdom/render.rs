@@ -18,6 +18,11 @@ pub fn render(
                 element.set_attribute(name, value)?;
             }
 
+            for (name, value) in &e.properties {
+                let value = JsValue::from(value.clone());
+                js_sys::Reflect::set(element.as_ref(), &name.into(), &value)?;
+            }
+
             for child in &e.children {
                 let child_element = render(child, document, caches, event_listeners)?;
                 element.append_child(&child_element)?;
@@ -75,6 +80,22 @@ pub fn diff(
             for name in old.attrs.keys() {
                 if !new.attrs.contains_key(name) {
                     node.remove_attribute(name)?;
+                }
+            }
+
+            for (name, new_value) in &new.properties {
+                match old.properties.get(name) {
+                    Some(old) if old == new_value => (),
+                    _ => {
+                        let new_value = JsValue::from(new_value.clone());
+                        js_sys::Reflect::set(node.as_ref(), &name.into(), &new_value)?;
+                    }
+                }
+            }
+
+            for name in old.properties.keys() {
+                if !new.properties.contains_key(name) {
+                    js_sys::Reflect::set(node.as_ref(), &name.into(), &JsValue::UNDEFINED)?;
                 }
             }
 
