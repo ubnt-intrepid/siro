@@ -10,5 +10,5 @@ pub mod vdom;
 pub use crate::{
     app::App, //
     global::{global_context, GlobalContext},
-    mailbox::Mailbox,
+    mailbox::{mailbox, Mailbox, Mails},
 };

@@ -1,4 +1,3 @@
-use futures::prelude::*;
 use siro::{vdom, Mailbox};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -29,7 +28,7 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
     vdom::element("div")
         .child(
             vdom::element("button") //
-                .listener(mailbox.on_click(|_| Msg::Decrement))
+                .listener(mailbox.on("click", |_| Msg::Decrement))
                 .child("-"),
         )
         .child(" ")
@@ -37,13 +36,13 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
         .child(" ")
         .child(
             vdom::element("button") //
-                .listener(mailbox.on_click(|_| Msg::Increment))
+                .listener(mailbox.on("click", |_| Msg::Increment))
                 .child("+"),
         )
         .child(" ")
         .child(
             vdom::element("button") //
-                .listener(mailbox.on_click(|_| Msg::Reset))
+                .listener(mailbox.on("click", |_| Msg::Reset))
                 .child("Reset"),
         )
 }
@@ -61,12 +60,12 @@ pub async fn main() -> Result<(), JsValue> {
     siro::util::remove_children(&mountpoint)?;
 
     let mut app = ctx.mount(mountpoint.as_ref())?;
-    let (mailbox, mut incomings) = Mailbox::pair();
+    let (mailbox, mut mails) = siro::mailbox();
 
     let mut model = Model { value: 0 };
     app.render(&ctx, view(&model, &mailbox))?;
 
-    while let Some(msg) = incomings.next().await {
+    while let Some(msg) = mails.recv().await {
         update(&mut model, msg);
         app.render(&ctx, view(&model, &mailbox))?;
     }
