@@ -1,13 +1,11 @@
 mod cache;
 mod element;
-mod listener;
 mod node;
 mod render;
 mod text;
 
 pub use self::{
-    element::{element, Element},
-    listener::Listener,
+    element::{element, Attribute, Element, Listener, Property},
     node::Node,
     text::{text, Text},
 };

@@ -1,15 +1,19 @@
-use super::{cache::Key, listener::Listener, node::Node};
+use super::{cache::Key, node::Node};
+use gloo_events::EventListener;
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
     rc::Rc,
 };
 use wasm_bindgen::JsValue;
+use web_sys as web;
 
 pub fn element(tag_name: &'static str) -> Element {
     Element {
         rc: Rc::new(()),
         tag_name,
-        attrs: HashMap::new(),
+        attributes: HashMap::new(),
         properties: HashMap::new(),
         listeners: HashSet::new(),
         children: vec![],
@@ -19,8 +23,8 @@ pub fn element(tag_name: &'static str) -> Element {
 pub struct Element {
     rc: Rc<()>,
     pub(super) tag_name: &'static str,
-    pub(super) attrs: HashMap<String, String>,
-    pub(super) properties: HashMap<String, Property>,
+    pub(super) attributes: HashMap<Cow<'static, str>, Attribute>,
+    pub(super) properties: HashMap<Cow<'static, str>, Property>,
     pub(super) listeners: HashSet<Rc<dyn Listener>>,
     pub(super) children: Vec<Node>,
 }
@@ -30,12 +34,20 @@ impl Element {
         Key::new(&self.rc)
     }
 
-    pub fn attr(mut self, name: &str, value: &str) -> Self {
-        self.attrs.insert(name.into(), value.into());
+    pub fn attribute(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Attribute>,
+    ) -> Self {
+        self.attributes.insert(name.into(), value.into());
         self
     }
 
-    pub fn property(mut self, name: &str, value: impl Into<Property>) -> Self {
+    pub fn property(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Property>,
+    ) -> Self {
         self.properties.insert(name.into(), value.into());
         self
     }
@@ -48,6 +60,36 @@ impl Element {
     pub fn child(mut self, child: impl Into<Node>) -> Self {
         self.children.push(child.into());
         self
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Attribute {
+    String(Cow<'static, str>),
+    Bool(bool),
+}
+
+impl From<&'static str> for Attribute {
+    fn from(s: &'static str) -> Self {
+        Attribute::String(s.into())
+    }
+}
+
+impl From<String> for Attribute {
+    fn from(s: String) -> Self {
+        Attribute::String(s.into())
+    }
+}
+
+impl From<Cow<'static, str>> for Attribute {
+    fn from(s: Cow<'static, str>) -> Self {
+        Attribute::String(s)
+    }
+}
+
+impl From<bool> for Attribute {
+    fn from(b: bool) -> Self {
+        Attribute::Bool(b)
     }
 }
 
@@ -75,5 +117,25 @@ impl From<Property> for JsValue {
             Property::String(s) => s.into(),
             Property::Bool(b) => b.into(),
         }
+    }
+}
+
+pub trait Listener {
+    fn event_type(&self) -> &str;
+
+    fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener;
+}
+
+impl PartialEq for dyn Listener + '_ {
+    fn eq(&self, other: &Self) -> bool {
+        self.event_type() == other.event_type()
+    }
+}
+
+impl Eq for dyn Listener + '_ {}
+
+impl Hash for dyn Listener + '_ {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.event_type().hash(state)
     }
 }

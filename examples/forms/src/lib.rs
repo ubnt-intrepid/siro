@@ -37,15 +37,15 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
     vdom::element("div")
         .child(
             vdom::element("input")
-                .attr("type", "text")
-                .attr("placeholder", "Name")
+                .attribute("type", "text")
+                .attribute("placeholder", "Name")
                 .property("value", model.name.clone())
                 .listener(mailbox.on("input", |e| Msg::Name(target_value(e).unwrap_or_default()))),
         )
         .child(
             vdom::element("input")
-                .attr("type", "password")
-                .attr("placeholder", "Password")
+                .attribute("type", "password")
+                .attribute("placeholder", "Password")
                 .property("value", model.password.clone())
                 .listener(mailbox.on("input", |e| {
                     Msg::Password(target_value(e).unwrap_or_default())
@@ -53,8 +53,8 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
         )
         .child(
             vdom::element("input")
-                .attr("type", "password")
-                .attr("placeholder", "Re-enter Password")
+                .attribute("type", "password")
+                .attribute("placeholder", "Re-enter Password")
                 .property("value", model.password_again.clone())
                 .listener(mailbox.on("input", |e| {
                     Msg::PasswordAgain(target_value(e).unwrap_or_default())
@@ -62,11 +62,11 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
         )
         .child(if model.password == model.password_again {
             vdom::element("div")
-                .attr("style", "color:green;")
+                .attribute("style", "color:green;")
                 .child("Ok")
         } else {
             vdom::element("div")
-                .attr("style", "color:red;")
+                .attribute("style", "color:red;")
                 .child("Password does not match!")
         })
 }

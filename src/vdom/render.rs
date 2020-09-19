@@ -1,8 +1,33 @@
-use super::{cache::CachedNodes, node::Node};
+use super::{
+    cache::CachedNodes,
+    element::{Attribute, Property},
+    node::Node,
+};
 use gloo_events::EventListener;
 use itertools::{EitherOrBoth, Itertools as _};
 use wasm_bindgen::{prelude::*, JsCast as _};
 use web_sys as web;
+
+fn set_attribute(element: &web::Element, name: &str, value: &Attribute) -> Result<(), JsValue> {
+    match value {
+        Attribute::String(value) => element.set_attribute(name, value)?,
+        Attribute::Bool(true) => element.set_attribute(name, "")?,
+        Attribute::Bool(false) => element.remove_attribute(name)?,
+    }
+    Ok(())
+}
+
+fn set_property(
+    element: &web::Element,
+    name: &str,
+    value: Option<Property>,
+) -> Result<(), JsValue> {
+    #[allow(unused_unsafe)] // workaround(rust-analyzer)
+    unsafe {
+        js_sys::Reflect::set(element, &JsValue::from_str(name), &value.into())?;
+    }
+    Ok(())
+}
 
 pub fn render(
     node: &Node,
@@ -14,13 +39,12 @@ pub fn render(
         Node::Element(e) => {
             let element = document.create_element(wasm_bindgen::intern(&*e.tag_name))?;
 
-            for (name, value) in &e.attrs {
-                element.set_attribute(name, value)?;
+            for (name, value) in &e.attributes {
+                set_attribute(&element, name, value)?;
             }
 
             for (name, value) in &e.properties {
-                let value = JsValue::from(value.clone());
-                js_sys::Reflect::set(element.as_ref(), &name.into(), &value)?;
+                set_property(element.as_ref(), &*name, Some(value.clone()))?;
             }
 
             for child in &e.children {
@@ -68,17 +92,15 @@ pub fn diff(
                 .dyn_ref::<web::Element>()
                 .expect_throw("cached node is not Element");
 
-            for (name, new_value) in &new.attrs {
-                match old.attrs.get(name) {
+            for (name, new_value) in &new.attributes {
+                match old.attributes.get(name) {
                     Some(old) if old == new_value => (),
-                    _ => {
-                        node.set_attribute(name, new_value)?;
-                    }
+                    _ => set_attribute(&node, name, new_value)?,
                 }
             }
 
-            for name in old.attrs.keys() {
-                if !new.attrs.contains_key(name) {
+            for name in old.attributes.keys() {
+                if !new.attributes.contains_key(name) {
                     node.remove_attribute(name)?;
                 }
             }
@@ -87,15 +109,14 @@ pub fn diff(
                 match old.properties.get(name) {
                     Some(old) if old == new_value => (),
                     _ => {
-                        let new_value = JsValue::from(new_value.clone());
-                        js_sys::Reflect::set(node.as_ref(), &name.into(), &new_value)?;
+                        set_property(node.as_ref(), &*name, Some(new_value.clone()))?;
                     }
                 }
             }
 
             for name in old.properties.keys() {
                 if !new.properties.contains_key(name) {
-                    js_sys::Reflect::set(node.as_ref(), &name.into(), &JsValue::UNDEFINED)?;
+                    set_property(node.as_ref(), &*name, None)?;
                 }
             }
 
