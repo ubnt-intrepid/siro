@@ -1,8 +1,9 @@
 import glob from 'glob';
 import path from 'path';
 import rust from '@wasm-tool/rollup-plugin-rust';
+import postcss from 'rollup-plugin-postcss';
 
-export default glob.sync('./examples/**/Cargo.toml')
+export default glob.sync('./examples/**/index.js')
     .map(manifest => {
         const manifestDir = path.dirname(manifest);
         return {
@@ -10,14 +11,13 @@ export default glob.sync('./examples/**/Cargo.toml')
                 app: manifest,
             },
             output: {
-                dir: path.resolve(manifestDir, 'dist/js'),
+                dir: path.resolve(manifestDir, 'dist'),
                 format: 'iife',
                 sourcemap: true,
             },
             plugins: [
-                rust({
-                    serverPath: 'js/',
-                }),
+                rust(),
+                postcss(),
             ]
         };
     });
