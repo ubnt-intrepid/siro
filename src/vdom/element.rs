@@ -9,10 +9,11 @@ use std::{
 use wasm_bindgen::JsValue;
 use web_sys as web;
 
-pub fn element(tag_name: &'static str) -> Element {
+pub fn element(tag_name: &'static str, namespace: Option<&'static str>) -> Element {
     Element {
         rc: Rc::new(()),
         tag_name,
+        namespace_uri: namespace,
         attributes: HashMap::new(),
         properties: HashMap::new(),
         listeners: HashSet::new(),
@@ -20,9 +21,18 @@ pub fn element(tag_name: &'static str) -> Element {
     }
 }
 
+pub fn html(name: &'static str) -> Element {
+    element(name, None)
+}
+
+pub fn svg(name: &'static str) -> Element {
+    element(name, Some("http://www.w3.org/2000/svg"))
+}
+
 pub struct Element {
     rc: Rc<()>,
     pub(super) tag_name: &'static str,
+    pub(super) namespace_uri: Option<&'static str>,
     pub(super) attributes: HashMap<Cow<'static, str>, Attribute>,
     pub(super) properties: HashMap<Cow<'static, str>, Property>,
     pub(super) listeners: HashSet<Rc<dyn Listener>>,

@@ -37,7 +37,11 @@ pub fn render(
 ) -> Result<web::Node, JsValue> {
     match node {
         Node::Element(e) => {
-            let element = document.create_element(wasm_bindgen::intern(&*e.tag_name))?;
+            let name = wasm_bindgen::intern(e.tag_name);
+            let element = match e.namespace_uri {
+                Some(uri) => document.create_element_ns(Some(uri), name)?,
+                None => document.create_element(name)?,
+            };
 
             for (name, value) in &e.attributes {
                 set_attribute(&element, name, value)?;

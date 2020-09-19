@@ -34,16 +34,16 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
             .as_string()
     }
 
-    vdom::element("div")
+    vdom::html("div")
         .child(
-            vdom::element("input")
+            vdom::html("input")
                 .attribute("type", "text")
                 .attribute("placeholder", "Name")
                 .property("value", model.name.clone())
                 .listener(mailbox.on("input", |e| Msg::Name(target_value(e).unwrap_or_default()))),
         )
         .child(
-            vdom::element("input")
+            vdom::html("input")
                 .attribute("type", "password")
                 .attribute("placeholder", "Password")
                 .property("value", model.password.clone())
@@ -52,7 +52,7 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
                 })),
         )
         .child(
-            vdom::element("input")
+            vdom::html("input")
                 .attribute("type", "password")
                 .attribute("placeholder", "Re-enter Password")
                 .property("value", model.password_again.clone())
@@ -61,11 +61,11 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
                 })),
         )
         .child(if model.password == model.password_again {
-            vdom::element("div")
+            vdom::html("div")
                 .attribute("class", "text-green")
                 .child("Ok")
         } else {
-            vdom::element("div")
+            vdom::html("div")
                 .attribute("class", "text-red")
                 .child("Password does not match!")
         })

@@ -26,7 +26,7 @@ pub fn main() -> Result<(), JsValue> {
 
     // Draw the virtual DOM.
     app.render(&ctx, {
-        vdom::element("h1") //
+        vdom::html("h1") //
             .child("Hello from Rust!")
     })?;
 

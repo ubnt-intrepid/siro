@@ -25,9 +25,9 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
-    vdom::element("div")
+    vdom::html("div")
         .child(
-            vdom::element("button") //
+            vdom::html("button") //
                 .listener(mailbox.on("click", |_| Msg::Decrement))
                 .child("-"),
         )
@@ -35,13 +35,13 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
         .child(model.value.to_string())
         .child(" ")
         .child(
-            vdom::element("button") //
+            vdom::html("button") //
                 .listener(mailbox.on("click", |_| Msg::Increment))
                 .child("+"),
         )
         .child(" ")
         .child(
-            vdom::element("button") //
+            vdom::html("button") //
                 .listener(mailbox.on("click", |_| Msg::Reset))
                 .child("Reset"),
         )
