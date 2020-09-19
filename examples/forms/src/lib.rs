@@ -62,11 +62,11 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
         )
         .child(if model.password == model.password_again {
             vdom::element("div")
-                .attribute("style", "color:green;")
+                .attribute("class", "text-green")
                 .child("Ok")
         } else {
             vdom::element("div")
-                .attribute("style", "color:red;")
+                .attribute("class", "text-red")
                 .child("Password does not match!")
         })
 }

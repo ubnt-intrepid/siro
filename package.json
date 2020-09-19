@@ -6,9 +6,6 @@
     "build": "rollup -c rollup.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "dependencies": {
-    "tailwindcss": "^1.8.10"
-  },
   "devDependencies": {
     "@wasm-tool/rollup-plugin-rust": "^1.0.5",
     "glob": "^7.1.6",
