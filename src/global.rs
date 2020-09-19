@@ -1,5 +1,4 @@
 use wasm_bindgen::prelude::*;
-use web_sys as web;
 
 thread_local!(
     static GLOBAL: Global = init_global().expect_throw("cannot initialize global context")

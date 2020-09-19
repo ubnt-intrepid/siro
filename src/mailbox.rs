@@ -2,7 +2,6 @@ use crate::vdom::Listener;
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use std::rc::Rc;
-use web_sys as web;
 
 pub fn mailbox<TMsg>() -> (Mailbox<TMsg>, Mails<TMsg>) {
     let (tx, rx) = mpsc::unbounded();
@@ -39,7 +38,7 @@ impl<TMsg> Mailbox<TMsg> {
 
         impl<TMsg: 'static, F> Listener for On<TMsg, F>
         where
-            F: Fn(&web_sys::Event) -> TMsg + 'static,
+            F: Fn(&web::Event) -> TMsg + 'static,
         {
             fn event_type(&self) -> &str {
                 self.event_type

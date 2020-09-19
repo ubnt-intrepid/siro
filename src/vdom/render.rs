@@ -6,7 +6,6 @@ use super::{
 use gloo_events::EventListener;
 use itertools::{EitherOrBoth, Itertools as _};
 use wasm_bindgen::{prelude::*, JsCast as _};
-use web_sys as web;
 
 fn set_attribute(element: &web::Element, name: &str, value: &Attribute) -> Result<(), JsValue> {
     match value {

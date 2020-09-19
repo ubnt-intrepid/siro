@@ -4,7 +4,6 @@ use crate::{
 };
 use gloo_events::EventListener;
 use wasm_bindgen::prelude::*;
-use web_sys as web;
 
 pub struct App {
     view: Node,

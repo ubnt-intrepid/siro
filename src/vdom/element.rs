@@ -1,22 +1,21 @@
 use super::{cache::Key, node::Node};
+use crate::util::{FxIndexMap, FxIndexSet};
 use gloo_events::EventListener;
 use std::{
     borrow::Cow,
-    collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     rc::Rc,
 };
 use wasm_bindgen::JsValue;
-use web_sys as web;
 
 pub fn element(tag_name: &'static str, namespace: Option<&'static str>) -> Element {
     Element {
         rc: Rc::new(()),
         tag_name,
         namespace_uri: namespace,
-        attributes: HashMap::new(),
-        properties: HashMap::new(),
-        listeners: HashSet::new(),
+        attributes: FxIndexMap::default(),
+        properties: FxIndexMap::default(),
+        listeners: FxIndexSet::default(),
         children: vec![],
     }
 }
@@ -33,9 +32,9 @@ pub struct Element {
     rc: Rc<()>,
     pub(super) tag_name: &'static str,
     pub(super) namespace_uri: Option<&'static str>,
-    pub(super) attributes: HashMap<Cow<'static, str>, Attribute>,
-    pub(super) properties: HashMap<Cow<'static, str>, Property>,
-    pub(super) listeners: HashSet<Rc<dyn Listener>>,
+    pub(super) attributes: FxIndexMap<Cow<'static, str>, Attribute>,
+    pub(super) properties: FxIndexMap<Cow<'static, str>, Property>,
+    pub(super) listeners: FxIndexSet<Rc<dyn Listener>>,
     pub(super) children: Vec<Node>,
 }
 

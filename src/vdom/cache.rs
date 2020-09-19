@@ -1,9 +1,8 @@
+use rustc_hash::FxHashMap;
 use std::{
-    collections::HashMap,
     hash::{Hash, Hasher},
     rc::{Rc, Weak},
 };
-use web_sys as web;
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
@@ -30,7 +29,7 @@ impl Hash for Key {
 }
 
 #[derive(Default)]
-pub struct CachedNodes(HashMap<Key, web::Node>);
+pub struct CachedNodes(FxHashMap<Key, web::Node>);
 
 impl CachedNodes {
     pub fn set(&mut self, key: Key, node: web::Node) {
