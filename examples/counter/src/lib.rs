@@ -25,26 +25,21 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
-    vdom::html("div")
-        .child(
-            vdom::html("button") //
-                .listener(mailbox.on("click", |_| Msg::Decrement))
-                .child("-"),
-        )
-        .child(" ")
-        .child(model.value.to_string())
-        .child(" ")
-        .child(
-            vdom::html("button") //
-                .listener(mailbox.on("click", |_| Msg::Increment))
-                .child("+"),
-        )
-        .child(" ")
-        .child(
-            vdom::html("button") //
-                .listener(mailbox.on("click", |_| Msg::Reset))
-                .child("Reset"),
-        )
+    vdom::html("div").children((
+        vdom::html("button") //
+            .listener(mailbox.on("click", |_| Msg::Decrement))
+            .child("-"),
+        " ",
+        model.value.to_string(),
+        " ",
+        vdom::html("button") //
+            .listener(mailbox.on("click", |_| Msg::Increment))
+            .child("+"),
+        " ",
+        vdom::html("button") //
+            .listener(mailbox.on("click", |_| Msg::Reset))
+            .child("Reset"),
+    ))
 }
 
 #[wasm_bindgen(start)]

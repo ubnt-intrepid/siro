@@ -19,7 +19,7 @@ pub fn main() -> Result<(), JsValue> {
             .attribute("viewbox", "0 0 400 400")
             .attribute("width", "400")
             .attribute("height", "400")
-            .child(
+            .children((
                 svg("circle")
                     .attribute("cx", "50")
                     .attribute("cy", "50")
@@ -27,8 +27,6 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("fill", "red")
                     .attribute("stroke", "black")
                     .attribute("stroke-width", "3"),
-            )
-            .child(
                 svg("rect")
                     .attribute("x", "100")
                     .attribute("y", "10")
@@ -37,8 +35,6 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("fill", "green")
                     .attribute("stroke", "black")
                     .attribute("stroke-width", "2"),
-            )
-            .child(
                 svg("line")
                     .attribute("x1", "20")
                     .attribute("y1", "200")
@@ -47,8 +43,6 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("stroke", "blue")
                     .attribute("stroke-width", "10")
                     .attribute("stroke-linecap", "round"),
-            )
-            .child(
                 svg("polyline")
                     .attribute(
                         "points",
@@ -58,8 +52,6 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("stroke", "red")
                     .attribute("stroke-width", "4")
                     .attribute("stroke-dasharray", "20,2"),
-            )
-            .child(
                 svg("text")
                     .attribute("x", "130")
                     .attribute("y", "130")
@@ -68,7 +60,7 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("dominant-baseline", "central")
                     .attribute("transform", "rotate(-45 130,130)")
                     .child("Welcome to Shape Club"),
-            )
+            ))
     })?;
 
     Ok(())

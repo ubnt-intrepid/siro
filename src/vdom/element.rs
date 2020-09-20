@@ -70,6 +70,11 @@ impl Element {
         self.children.push(child.into());
         self
     }
+
+    pub fn children(mut self, children: impl Children) -> Self {
+        children.assign(&mut self.children);
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -148,3 +153,45 @@ impl Hash for dyn Listener + '_ {
         self.event_type().hash(state)
     }
 }
+
+pub trait Children {
+    fn assign(self, children: &mut Vec<Node>)
+    where
+        Self: Sized;
+}
+
+macro_rules! impl_children_for_tuples {
+    ( $H:ident, $($T:ident),+ ) => {
+        impl< $H, $($T),+ > Children for ( $H, $($T),+ )
+        where
+            $H: Into<Node>,
+            $( $T: Into<Node>, )+
+        {
+            fn assign(self, children: &mut Vec<Node>) {
+                #[allow(non_snake_case)]
+                let ( $H, $($T),+ ) = self;
+
+                children.push($H.into());
+                $( children.push($T.into()); )+
+            }
+        }
+
+        impl_children_for_tuples!( $($T),+ );
+    };
+
+    ( $C:ident ) => {
+        impl< $C > Children for ( $C, )
+        where
+            $C: Into<Node>,
+        {
+            fn assign(self, children: &mut Vec<Node>) {
+                children.push(self.0.into());
+            }
+        }
+    };
+}
+
+impl_children_for_tuples!(
+    C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, //
+    C11, C12, C13, C14, C15, C16, C17, C18, C19, C20
+);

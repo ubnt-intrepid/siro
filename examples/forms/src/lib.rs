@@ -34,33 +34,27 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
             .as_string()
     }
 
-    vdom::html("div")
-        .child(
-            vdom::html("input")
-                .attribute("type", "text")
-                .attribute("placeholder", "Name")
-                .property("value", model.name.clone())
-                .listener(mailbox.on("input", |e| Msg::Name(target_value(e).unwrap_or_default()))),
-        )
-        .child(
-            vdom::html("input")
-                .attribute("type", "password")
-                .attribute("placeholder", "Password")
-                .property("value", model.password.clone())
-                .listener(mailbox.on("input", |e| {
-                    Msg::Password(target_value(e).unwrap_or_default())
-                })),
-        )
-        .child(
-            vdom::html("input")
-                .attribute("type", "password")
-                .attribute("placeholder", "Re-enter Password")
-                .property("value", model.password_again.clone())
-                .listener(mailbox.on("input", |e| {
-                    Msg::PasswordAgain(target_value(e).unwrap_or_default())
-                })),
-        )
-        .child(if model.password == model.password_again {
+    vdom::html("div").children((
+        vdom::html("input")
+            .attribute("type", "text")
+            .attribute("placeholder", "Name")
+            .property("value", model.name.clone())
+            .listener(mailbox.on("input", |e| Msg::Name(target_value(e).unwrap_or_default()))),
+        vdom::html("input")
+            .attribute("type", "password")
+            .attribute("placeholder", "Password")
+            .property("value", model.password.clone())
+            .listener(mailbox.on("input", |e| {
+                Msg::Password(target_value(e).unwrap_or_default())
+            })),
+        vdom::html("input")
+            .attribute("type", "password")
+            .attribute("placeholder", "Re-enter Password")
+            .property("value", model.password_again.clone())
+            .listener(mailbox.on("input", |e| {
+                Msg::PasswordAgain(target_value(e).unwrap_or_default())
+            })),
+        if model.password == model.password_again {
             vdom::html("div")
                 .attribute("class", "text-green")
                 .child("Ok")
@@ -68,7 +62,8 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
             vdom::html("div")
                 .attribute("class", "text-red")
                 .child("Password does not match!")
-        })
+        },
+    ))
 }
 
 #[wasm_bindgen(start)]

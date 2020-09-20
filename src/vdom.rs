@@ -5,7 +5,7 @@ mod render;
 mod text;
 
 pub use self::{
-    element::{element, html, svg, Attribute, Element, Listener, Property},
+    element::{element, html, svg, Attribute, Children, Element, Listener, Property},
     node::Node,
     text::{text, Text},
 };
