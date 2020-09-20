@@ -1,35 +1,36 @@
-use super::cache::Key;
+use super::node::Key;
 use std::{borrow::Cow, rc::Rc};
 
-pub fn text<S>(value: S) -> Text
-where
-    S: Into<Cow<'static, str>>,
-{
-    Text {
-        rc: Rc::new(()),
-        value: value.into(),
-    }
-}
-
+#[non_exhaustive]
 pub struct Text {
     rc: Rc<()>,
-    pub(super) value: Cow<'static, str>,
+    pub value: Cow<'static, str>,
+}
+
+impl Text {
+    pub fn new<S>(value: S) -> Text
+    where
+        S: Into<Cow<'static, str>>,
+    {
+        Text {
+            rc: Rc::new(()),
+            value: value.into(),
+        }
+    }
+
+    pub(super) fn key(&self) -> Key {
+        Key::new(&self.rc)
+    }
 }
 
 macro_rules! impl_from_strs {
     ($( $t:ty ),*) => {$(
         impl From<$t> for Text {
             fn from(value: $t) -> Self {
-                text(value)
+                Self::new(value)
             }
         }
     )*};
 }
 
-impl_from_strs!(&'static str, String, std::borrow::Cow<'static, str>);
-
-impl Text {
-    pub(super) fn key(&self) -> Key {
-        Key::new(&self.rc)
-    }
-}
+impl_from_strs!(&'static str, String, Cow<'static, str>);

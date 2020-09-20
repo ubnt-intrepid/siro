@@ -1,16 +1,20 @@
-mod cache;
 mod element;
 mod node;
 mod render;
 mod text;
 
 pub use self::{
-    element::{element, html, svg, Attribute, Children, Element, Listener, Property},
+    element::{Attribute, Element, Listener, Property},
     node::Node,
-    text::{text, Text},
+    text::Text,
 };
 
-pub(crate) use self::{
-    cache::CachedNodes,
-    render::{diff, render},
-};
+pub(crate) use self::render::Renderer;
+
+type BuildFxHasher = std::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+
+/// A type alias of associate map used within this library.
+pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, BuildFxHasher>;
+
+/// A type alias of associate set used within this library.
+pub type FxIndexSet<T> = indexmap::IndexSet<T, BuildFxHasher>;

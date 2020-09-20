@@ -1,4 +1,32 @@
-use super::{cache::Key, element::Element, text::Text};
+use super::{element::Element, text::Text};
+use std::{
+    hash::{Hash, Hasher},
+    rc::{Rc, Weak},
+};
+
+#[derive(Clone, Debug)]
+#[repr(transparent)]
+pub(super) struct Key(Weak<()>);
+
+impl Key {
+    pub(super) fn new(rc: &Rc<()>) -> Self {
+        Self(Rc::downgrade(rc))
+    }
+}
+
+impl PartialEq for Key {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.ptr_eq(&other.0)
+    }
+}
+
+impl Eq for Key {}
+
+impl Hash for Key {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.as_ptr().hash(state);
+    }
+}
 
 pub enum Node {
     Element(Element),

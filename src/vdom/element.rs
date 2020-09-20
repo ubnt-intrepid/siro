@@ -1,5 +1,7 @@
-use super::{cache::Key, node::Node};
-use crate::util::{FxIndexMap, FxIndexSet};
+use super::{
+    node::{Key, Node},
+    FxIndexMap, FxIndexSet,
+};
 use gloo_events::EventListener;
 use std::{
     borrow::Cow,
@@ -8,72 +10,32 @@ use std::{
 };
 use wasm_bindgen::JsValue;
 
-pub fn element(tag_name: &'static str, namespace: Option<&'static str>) -> Element {
-    Element {
-        rc: Rc::new(()),
-        tag_name,
-        namespace_uri: namespace,
-        attributes: FxIndexMap::default(),
-        properties: FxIndexMap::default(),
-        listeners: FxIndexSet::default(),
-        children: vec![],
-    }
-}
-
-pub fn html(name: &'static str) -> Element {
-    element(name, None)
-}
-
-pub fn svg(name: &'static str) -> Element {
-    element(name, Some("http://www.w3.org/2000/svg"))
-}
-
+#[non_exhaustive]
 pub struct Element {
     rc: Rc<()>,
-    pub(super) tag_name: &'static str,
-    pub(super) namespace_uri: Option<&'static str>,
-    pub(super) attributes: FxIndexMap<Cow<'static, str>, Attribute>,
-    pub(super) properties: FxIndexMap<Cow<'static, str>, Property>,
-    pub(super) listeners: FxIndexSet<Rc<dyn Listener>>,
-    pub(super) children: Vec<Node>,
+    pub tag_name: &'static str,
+    pub namespace_uri: Option<&'static str>,
+    pub attributes: FxIndexMap<Cow<'static, str>, Attribute>,
+    pub properties: FxIndexMap<Cow<'static, str>, Property>,
+    pub listeners: FxIndexSet<Rc<dyn Listener>>,
+    pub children: Vec<Node>,
 }
 
 impl Element {
+    pub fn new(tag_name: &'static str, namespace_uri: Option<&'static str>) -> Self {
+        Self {
+            rc: Rc::new(()),
+            tag_name,
+            namespace_uri,
+            attributes: FxIndexMap::default(),
+            properties: FxIndexMap::default(),
+            listeners: FxIndexSet::default(),
+            children: vec![],
+        }
+    }
+
     pub(super) fn key(&self) -> Key {
         Key::new(&self.rc)
-    }
-
-    pub fn attribute(
-        mut self,
-        name: impl Into<Cow<'static, str>>,
-        value: impl Into<Attribute>,
-    ) -> Self {
-        self.attributes.insert(name.into(), value.into());
-        self
-    }
-
-    pub fn property(
-        mut self,
-        name: impl Into<Cow<'static, str>>,
-        value: impl Into<Property>,
-    ) -> Self {
-        self.properties.insert(name.into(), value.into());
-        self
-    }
-
-    pub fn listener(mut self, listener: Rc<dyn Listener>) -> Self {
-        self.listeners.replace(listener);
-        self
-    }
-
-    pub fn child(mut self, child: impl Into<Node>) -> Self {
-        self.children.push(child.into());
-        self
-    }
-
-    pub fn children(mut self, children: impl Children) -> Self {
-        children.assign(&mut self.children);
-        self
     }
 }
 
@@ -153,45 +115,3 @@ impl Hash for dyn Listener + '_ {
         self.event_type().hash(state)
     }
 }
-
-pub trait Children {
-    fn assign(self, children: &mut Vec<Node>)
-    where
-        Self: Sized;
-}
-
-macro_rules! impl_children_for_tuples {
-    ( $H:ident, $($T:ident),+ ) => {
-        impl< $H, $($T),+ > Children for ( $H, $($T),+ )
-        where
-            $H: Into<Node>,
-            $( $T: Into<Node>, )+
-        {
-            fn assign(self, children: &mut Vec<Node>) {
-                #[allow(non_snake_case)]
-                let ( $H, $($T),+ ) = self;
-
-                children.push($H.into());
-                $( children.push($T.into()); )+
-            }
-        }
-
-        impl_children_for_tuples!( $($T),+ );
-    };
-
-    ( $C:ident ) => {
-        impl< $C > Children for ( $C, )
-        where
-            $C: Into<Node>,
-        {
-            fn assign(self, children: &mut Vec<Node>) {
-                children.push(self.0.into());
-            }
-        }
-    };
-}
-
-impl_children_for_tuples!(
-    C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, //
-    C11, C12, C13, C14, C15, C16, C17, C18, C19, C20
-);

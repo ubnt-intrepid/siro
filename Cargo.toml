@@ -29,5 +29,5 @@ features = [
 [workspace]
 members = [
     ".",
-    "examples/*",
+    #"examples/*",
 ]
