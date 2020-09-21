@@ -32,30 +32,26 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
-    fn target_value(e: &web_sys::Event) -> Option<String> {
-        js_sys::Reflect::get(&&e.target()?, &"value".into())
-            .ok()?
-            .as_string()
-    }
-
-    html::div().children((
-        html::input::text()
-            .placeholder("Name")
-            .value(model.name.clone())
-            .listener(mailbox.on("input", |e| Msg::Name(target_value(e).unwrap_or_default()))),
-        html::input::password()
-            .placeholder("Password")
-            .value(model.password.clone())
-            .listener(mailbox.on("input", |e| {
-                Msg::Password(target_value(e).unwrap_or_default())
-            })),
-        html::input::password()
-            .placeholder("Re-enter Password")
-            .value(model.password_again.clone())
-            .listener(mailbox.on("input", |e| {
-                Msg::PasswordAgain(target_value(e).unwrap_or_default())
-            })),
-        if model.password == model.password_again {
+    html::div()
+        .child(
+            html::input::text()
+                .placeholder("Name")
+                .value(model.name.clone())
+                .on_input(mailbox.sender(Msg::Name)),
+        )
+        .child(
+            html::input::password()
+                .placeholder("Password")
+                .value(model.password.clone())
+                .on_input(mailbox.sender(Msg::Password)),
+        )
+        .child(
+            html::input::password()
+                .placeholder("Re-enter Password")
+                .value(model.password_again.clone())
+                .on_input(mailbox.sender(Msg::PasswordAgain)),
+        )
+        .child(if model.password == model.password_again {
             html::div() //
                 .class("text-green")
                 .child("Ok")
@@ -63,8 +59,7 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
             html::div() //
                 .class("text-red")
                 .child("Password does not match!")
-        },
-    ))
+        })
 }
 
 #[wasm_bindgen(start)]

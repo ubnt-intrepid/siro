@@ -2,6 +2,7 @@ pub mod html;
 pub mod svg;
 
 use crate::vdom::{Attribute, Element, Listener, Node, Property};
+use gloo_events::EventListener;
 use std::{borrow::Cow, rc::Rc};
 
 pub trait ElementBuilder: Into<Node> {
@@ -51,6 +52,30 @@ pub trait ElementBuilder: Into<Node> {
 
     fn id(self, value: impl Into<Cow<'static, str>>) -> Self {
         self.attribute("id", value.into())
+    }
+
+    fn on(self, event_type: &'static str, f: impl Fn(web::Event) + 'static) -> Self {
+        struct On<F> {
+            event_type: &'static str,
+            f: F,
+        }
+
+        impl<F> Listener for On<F>
+        where
+            F: Fn(web::Event) + 'static,
+        {
+            fn event_type(&self) -> &str {
+                self.event_type
+            }
+
+            fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
+                EventListener::new(target, self.event_type, move |e| {
+                    (self.f)(e.clone());
+                })
+            }
+        }
+
+        self.listener(Rc::new(On { event_type, f }))
     }
 }
 

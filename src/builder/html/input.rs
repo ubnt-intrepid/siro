@@ -50,6 +50,19 @@ impl<Type: InputType> Input<Type> {
     pub fn value(self, value: impl Into<Property>) -> Self {
         self.property("value", value.into())
     }
+
+    pub fn on_input(self, f: impl Fn(String) + 'static) -> Self {
+        fn target_value(e: &web::Event) -> Option<String> {
+            js_sys::Reflect::get(&&e.target()?, &"value".into())
+                .ok()?
+                .as_string()
+        }
+
+        self.on("input", move |e| {
+            let value = target_value(&e).unwrap_or_default();
+            f(value);
+        })
+    }
 }
 
 pub trait InputType {

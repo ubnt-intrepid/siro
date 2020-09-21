@@ -1,7 +1,4 @@
-use crate::vdom::Listener;
 use futures::{channel::mpsc, prelude::*};
-use gloo_events::EventListener;
-use std::rc::Rc;
 
 pub fn mailbox<TMsg>() -> (Mailbox<TMsg>, Mails<TMsg>) {
     let (tx, rx) = mpsc::unbounded();
@@ -25,37 +22,14 @@ impl<TMsg> Mailbox<TMsg> {
         let _ = self.tx.unbounded_send(msg);
     }
 
-    pub fn on<F>(&self, event_type: &'static str, f: F) -> Rc<dyn Listener>
+    pub fn sender<T>(&self, f: impl Fn(T) -> TMsg + 'static) -> impl Fn(T) + 'static
     where
         TMsg: 'static,
-        F: Fn(&web::Event) -> TMsg + 'static,
     {
-        struct On<TMsg, F> {
-            mailbox: Mailbox<TMsg>,
-            event_type: &'static str,
-            f: F,
+        let mailbox = self.clone();
+        move |arg| {
+            mailbox.send(f(arg));
         }
-
-        impl<TMsg: 'static, F> Listener for On<TMsg, F>
-        where
-            F: Fn(&web::Event) -> TMsg + 'static,
-        {
-            fn event_type(&self) -> &str {
-                self.event_type
-            }
-
-            fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
-                EventListener::new(target, self.event_type, move |e| {
-                    self.mailbox.send((self.f)(e));
-                })
-            }
-        }
-
-        Rc::new(On {
-            mailbox: self.clone(),
-            event_type,
-            f,
-        })
     }
 }
 
