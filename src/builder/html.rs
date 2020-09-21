@@ -1,7 +1,7 @@
+pub mod input;
+
 use super::ElementBuilder;
 use crate::vdom::{Element, Node};
-
-pub trait HtmlElementBuilder: ElementBuilder {}
 
 pub struct HtmlElement(Element);
 
@@ -17,8 +17,6 @@ impl ElementBuilder for HtmlElement {
     }
 }
 
-impl HtmlElementBuilder for HtmlElement {}
-
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
         pub fn $tag_name() -> HtmlElement {
@@ -27,4 +25,4 @@ macro_rules! html_elements {
     )*};
 }
 
-html_elements!(button, div, h1, h2, h3, h4, h5, h6, input, span);
+html_elements!(button, div, h1, h2, h3, h4, h5, h6, span);

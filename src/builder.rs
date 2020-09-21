@@ -44,6 +44,14 @@ pub trait ElementBuilder: Into<Node> {
         children.assign(&mut self.as_element_mut().children);
         self
     }
+
+    fn class(self, value: impl Into<Cow<'static, str>>) -> Self {
+        self.attribute("class", value.into())
+    }
+
+    fn id(self, value: impl Into<Cow<'static, str>>) -> Self {
+        self.attribute("id", value.into())
+    }
 }
 
 impl ElementBuilder for Element {
