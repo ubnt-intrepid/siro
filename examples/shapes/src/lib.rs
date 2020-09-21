@@ -1,5 +1,5 @@
 use siro::{
-    builder::{svg, ElementBuilder as _},
+    builder::svg::{self, prelude::*},
     App,
 };
 use wasm_bindgen::prelude::*;
@@ -17,51 +17,57 @@ pub fn main() -> Result<(), JsValue> {
     siro::util::remove_children(&mountpoint)?;
 
     let mut app = App::mount(mountpoint.as_ref())?;
+
     app.render({
-        svg::root() //
-            .attribute("viewbox", "0 0 400 400")
-            .attribute("width", "400")
-            .attribute("height", "400")
+        svg::svg()
+            .viewbox(0, 0, 400, 400)
+            .width(400)
+            .height(400)
             .children((
                 svg::circle()
-                    .attribute("cx", "50")
-                    .attribute("cy", "50")
-                    .attribute("r", "40")
-                    .attribute("fill", "red")
-                    .attribute("stroke", "black")
-                    .attribute("stroke-width", "3"),
+                    .cx(50)
+                    .cy(50)
+                    .r(40)
+                    .fill("red")
+                    .stroke("black")
+                    .stroke_width(3),
                 svg::rect()
-                    .attribute("x", "100")
-                    .attribute("y", "10")
-                    .attribute("width", "40")
-                    .attribute("height", "40")
-                    .attribute("fill", "green")
-                    .attribute("stroke", "black")
-                    .attribute("stroke-width", "2"),
+                    .x(100)
+                    .y(10)
+                    .width(40)
+                    .height(40)
+                    .fill("green")
+                    .stroke("black")
+                    .stroke_width(2),
                 svg::line()
-                    .attribute("x1", "20")
-                    .attribute("y1", "200")
-                    .attribute("x2", "200")
-                    .attribute("y2", "20")
-                    .attribute("stroke", "blue")
-                    .attribute("stroke-width", "10")
-                    .attribute("stroke-linecap", "round"),
+                    .x1(20)
+                    .y1(200)
+                    .x2(200)
+                    .y2(20)
+                    .stroke("blue")
+                    .stroke_width(10)
+                    .stroke_linecap("round"),
                 svg::polyline()
-                    .attribute(
-                        "points",
-                        "200,40 240,40 240,80 280,80 280,120 320,120 320,160",
-                    )
-                    .attribute("fill", "none")
-                    .attribute("stroke", "red")
-                    .attribute("stroke-width", "4")
-                    .attribute("stroke-dasharray", "20,2"),
+                    .points(vec![
+                        (200, 40),
+                        (240, 40),
+                        (240, 80),
+                        (280, 80),
+                        (280, 120),
+                        (320, 120),
+                        (320, 160),
+                    ])
+                    .fill("none")
+                    .stroke("red")
+                    .stroke_width(4)
+                    .stroke_dasharray(vec![20, 2]),
                 svg::text()
-                    .attribute("x", "130")
-                    .attribute("y", "130")
-                    .attribute("fill", "black")
-                    .attribute("text-anchor", "middle")
-                    .attribute("dominant-baseline", "central")
-                    .attribute("transform", "rotate(-45 130,130)")
+                    .x(130)
+                    .y(130)
+                    .fill("black")
+                    .text_anchor("middle")
+                    .dominant_baseline("central")
+                    .transform("rotate(-45 130,130)")
                     .child("Welcome to Shape Club"),
             ))
     })?;
