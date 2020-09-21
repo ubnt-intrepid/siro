@@ -1,4 +1,8 @@
-use siro::{vdom, App, Mailbox};
+use siro::{
+    builder::{html, ElementBuilder as _},
+    vdom::Node,
+    App, Mailbox,
+};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -27,27 +31,27 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
+fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
     fn target_value(e: &web_sys::Event) -> Option<String> {
         js_sys::Reflect::get(&&e.target()?, &"value".into())
             .ok()?
             .as_string()
     }
 
-    vdom::html("div").children((
-        vdom::html("input")
+    html::div().children((
+        html::input()
             .attribute("type", "text")
             .attribute("placeholder", "Name")
             .property("value", model.name.clone())
             .listener(mailbox.on("input", |e| Msg::Name(target_value(e).unwrap_or_default()))),
-        vdom::html("input")
+        html::input()
             .attribute("type", "password")
             .attribute("placeholder", "Password")
             .property("value", model.password.clone())
             .listener(mailbox.on("input", |e| {
                 Msg::Password(target_value(e).unwrap_or_default())
             })),
-        vdom::html("input")
+        html::input()
             .attribute("type", "password")
             .attribute("placeholder", "Re-enter Password")
             .property("value", model.password_again.clone())
@@ -55,11 +59,9 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
                 Msg::PasswordAgain(target_value(e).unwrap_or_default())
             })),
         if model.password == model.password_again {
-            vdom::html("div")
-                .attribute("class", "text-green")
-                .child("Ok")
+            html::div().attribute("class", "text-green").child("Ok")
         } else {
-            vdom::html("div")
+            html::div()
                 .attribute("class", "text-red")
                 .child("Password does not match!")
         },

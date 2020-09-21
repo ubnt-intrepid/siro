@@ -4,6 +4,7 @@ mod app;
 mod global;
 mod mailbox;
 
+pub mod builder;
 pub mod util;
 pub mod vdom;
 

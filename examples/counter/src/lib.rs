@@ -1,4 +1,8 @@
-use siro::{vdom, App, Mailbox};
+use siro::{
+    builder::{html, ElementBuilder as _},
+    vdom::Node,
+    App, Mailbox,
+};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -24,19 +28,19 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<vdom::Node> {
-    vdom::html("div").children((
-        vdom::html("button") //
+fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
+    html::div().children((
+        html::button() //
             .listener(mailbox.on("click", |_| Msg::Decrement))
             .child("-"),
         " ",
         model.value.to_string(),
         " ",
-        vdom::html("button") //
+        html::button() //
             .listener(mailbox.on("click", |_| Msg::Increment))
             .child("+"),
         " ",
-        vdom::html("button") //
+        html::button() //
             .listener(mailbox.on("click", |_| Msg::Reset))
             .child("Reset"),
     ))

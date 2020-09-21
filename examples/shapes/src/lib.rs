@@ -1,4 +1,7 @@
-use siro::{vdom::svg, App};
+use siro::{
+    builder::{svg, ElementBuilder as _},
+    App,
+};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -15,19 +18,19 @@ pub fn main() -> Result<(), JsValue> {
 
     let mut app = App::mount(mountpoint.as_ref())?;
     app.render({
-        svg("svg") //
+        svg::root() //
             .attribute("viewbox", "0 0 400 400")
             .attribute("width", "400")
             .attribute("height", "400")
             .children((
-                svg("circle")
+                svg::circle()
                     .attribute("cx", "50")
                     .attribute("cy", "50")
                     .attribute("r", "40")
                     .attribute("fill", "red")
                     .attribute("stroke", "black")
                     .attribute("stroke-width", "3"),
-                svg("rect")
+                svg::rect()
                     .attribute("x", "100")
                     .attribute("y", "10")
                     .attribute("width", "40")
@@ -35,7 +38,7 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("fill", "green")
                     .attribute("stroke", "black")
                     .attribute("stroke-width", "2"),
-                svg("line")
+                svg::line()
                     .attribute("x1", "20")
                     .attribute("y1", "200")
                     .attribute("x2", "200")
@@ -43,7 +46,7 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("stroke", "blue")
                     .attribute("stroke-width", "10")
                     .attribute("stroke-linecap", "round"),
-                svg("polyline")
+                svg::polyline()
                     .attribute(
                         "points",
                         "200,40 240,40 240,80 280,80 280,120 320,120 320,160",
@@ -52,7 +55,7 @@ pub fn main() -> Result<(), JsValue> {
                     .attribute("stroke", "red")
                     .attribute("stroke-width", "4")
                     .attribute("stroke-dasharray", "20,2"),
-                svg("text")
+                svg::text()
                     .attribute("x", "130")
                     .attribute("y", "130")
                     .attribute("fill", "black")

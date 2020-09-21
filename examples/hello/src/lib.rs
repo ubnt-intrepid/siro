@@ -1,4 +1,7 @@
-use siro::{vdom, App};
+use siro::{
+    builder::{html, ElementBuilder as _},
+    App,
+};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -21,7 +24,7 @@ pub fn main() -> Result<(), JsValue> {
 
     // Draw the virtual DOM.
     app.render({
-        vdom::html("h1") //
+        html::h1() //
             .child("Hello from Rust!")
     })?;
 
