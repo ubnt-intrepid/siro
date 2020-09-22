@@ -18,6 +18,7 @@ pub struct Element {
     pub attributes: FxIndexMap<Cow<'static, str>, Attribute>,
     pub properties: FxIndexMap<Cow<'static, str>, Property>,
     pub listeners: FxIndexSet<Rc<dyn Listener>>,
+    pub class_names: FxIndexSet<Cow<'static, str>>,
     pub children: Vec<Node>,
 }
 
@@ -30,6 +31,7 @@ impl Element {
             attributes: FxIndexMap::default(),
             properties: FxIndexMap::default(),
             listeners: FxIndexSet::default(),
+            class_names: FxIndexSet::default(),
             children: vec![],
         }
     }

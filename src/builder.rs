@@ -46,8 +46,9 @@ pub trait ElementBuilder: Into<Node> {
         self
     }
 
-    fn class(self, value: impl Into<Cow<'static, str>>) -> Self {
-        self.attribute("class", value.into())
+    fn class(mut self, value: impl Into<Cow<'static, str>>) -> Self {
+        self.as_element_mut().class_names.insert(value.into());
+        self
     }
 
     fn id(self, value: impl Into<Cow<'static, str>>) -> Self {

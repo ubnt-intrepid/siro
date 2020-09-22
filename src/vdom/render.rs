@@ -72,6 +72,14 @@ impl Renderer {
             self.cached_listeners.push(listener);
         }
 
+        if !e.class_names.is_empty() {
+            let class_list = element.class_list();
+
+            for class_name in &e.class_names {
+                class_list.add_1(&*class_name)?;
+            }
+        }
+
         for child in &e.children {
             let child_element = self.render(child, document)?;
             element.append_child(&child_element)?;
@@ -177,6 +185,18 @@ impl Renderer {
         for listener in &new.listeners {
             self.cached_listeners
                 .push(listener.clone().attach(node.as_ref()));
+        }
+
+        {
+            let class_list = node.class_list();
+
+            for added in new.class_names.difference(&old.class_names) {
+                class_list.add_1(&*added)?
+            }
+
+            for removed in old.class_names.difference(&new.class_names) {
+                class_list.remove_1(&*removed)?;
+            }
         }
 
         for e in zip_longest(&old.children, &new.children) {
