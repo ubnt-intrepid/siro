@@ -31,17 +31,17 @@ fn update(model: &mut Model, msg: Msg) {
 fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
     html::div().children((
         html::button() //
-            .on("click", mailbox.sender(|_| Msg::Decrement))
+            .on("click", mailbox.callback(|_| Msg::Decrement))
             .child("-"),
         " ",
         model.value.to_string(),
         " ",
         html::button() //
-            .on("click", mailbox.sender(|_| Msg::Increment))
+            .on("click", mailbox.callback(|_| Msg::Increment))
             .child("+"),
         " ",
         html::button() //
-            .on("click", mailbox.sender(|_| Msg::Reset))
+            .on("click", mailbox.callback(|_| Msg::Reset))
             .child("Reset"),
     ))
 }

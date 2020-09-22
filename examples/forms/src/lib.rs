@@ -37,19 +37,19 @@ fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
             html::input::text()
                 .placeholder("Name")
                 .value(model.name.clone())
-                .on_input(mailbox.sender(Msg::Name)),
+                .on_input(mailbox.callback(Msg::Name)),
         )
         .child(
             html::input::password()
                 .placeholder("Password")
                 .value(model.password.clone())
-                .on_input(mailbox.sender(Msg::Password)),
+                .on_input(mailbox.callback(Msg::Password)),
         )
         .child(
             html::input::password()
                 .placeholder("Re-enter Password")
                 .value(model.password_again.clone())
-                .on_input(mailbox.sender(Msg::PasswordAgain)),
+                .on_input(mailbox.callback(Msg::PasswordAgain)),
         )
         .child(if model.password == model.password_again {
             html::div() //

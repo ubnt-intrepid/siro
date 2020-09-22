@@ -1,7 +1,10 @@
 pub mod html;
 pub mod svg;
 
-use crate::vdom::{Attribute, Element, Listener, Node, Property};
+use crate::{
+    callback::Callback,
+    vdom::{Attribute, Element, Listener, Node, Property},
+};
 use gloo_events::EventListener;
 use std::{borrow::Cow, rc::Rc};
 
@@ -55,28 +58,28 @@ pub trait ElementBuilder: Into<Node> {
         self.attribute("id", value.into())
     }
 
-    fn on(self, event_type: &'static str, f: impl Fn(web::Event) + 'static) -> Self {
-        struct On<F> {
+    fn on(self, event_type: &'static str, callback: Callback<web::Event>) -> Self {
+        struct CallbackListener {
             event_type: &'static str,
-            f: F,
+            callback: Callback<web::Event>,
         }
 
-        impl<F> Listener for On<F>
-        where
-            F: Fn(web::Event) + 'static,
-        {
+        impl Listener for CallbackListener {
             fn event_type(&self) -> &str {
                 self.event_type
             }
 
             fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
                 EventListener::new(target, self.event_type, move |e| {
-                    (self.f)(e.clone());
+                    self.callback.invoke(e.clone());
                 })
             }
         }
 
-        self.listener(Rc::new(On { event_type, f }))
+        self.listener(Rc::new(CallbackListener {
+            event_type,
+            callback,
+        }))
     }
 }
 

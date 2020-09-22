@@ -1,5 +1,8 @@
 use super::ElementBuilder;
-use crate::vdom::{Element, Node, Property};
+use crate::{
+    callback::Callback,
+    vdom::{Element, Node, Property},
+};
 use std::{borrow::Cow, marker::PhantomData};
 
 macro_rules! input_elements {
@@ -51,17 +54,21 @@ impl<Type: InputType> Input<Type> {
         self.property("value", value.into())
     }
 
-    pub fn on_input(self, f: impl Fn(String) + 'static) -> Self {
+    pub fn on_input(self, callback: impl Into<Callback<String>>) -> Self {
         fn target_value(e: &web::Event) -> Option<String> {
             js_sys::Reflect::get(&&e.target()?, &"value".into())
                 .ok()?
                 .as_string()
         }
 
-        self.on("input", move |e| {
-            let value = target_value(&e).unwrap_or_default();
-            f(value);
-        })
+        let callback = callback.into();
+        self.on(
+            "input",
+            Callback::from(move |e| {
+                let value = target_value(&e).unwrap_or_default();
+                callback.invoke(value);
+            }),
+        )
     }
 }
 

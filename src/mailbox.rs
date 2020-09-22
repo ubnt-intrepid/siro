@@ -1,3 +1,4 @@
+use crate::callback::Callback;
 use futures::{channel::mpsc, prelude::*};
 
 pub fn mailbox<TMsg>() -> (Mailbox<TMsg>, Mails<TMsg>) {
@@ -18,18 +19,18 @@ impl<TMsg> Clone for Mailbox<TMsg> {
 }
 
 impl<TMsg> Mailbox<TMsg> {
-    pub fn send(&self, msg: TMsg) {
+    pub fn send_message(&self, msg: TMsg) {
         let _ = self.tx.unbounded_send(msg);
     }
 
-    pub fn sender<T>(&self, f: impl Fn(T) -> TMsg + 'static) -> impl Fn(T) + 'static
+    pub fn callback<T>(&self, f: impl Fn(T) -> TMsg + 'static) -> Callback<T>
     where
         TMsg: 'static,
     {
         let mailbox = self.clone();
-        move |arg| {
-            mailbox.send(f(arg));
-        }
+        Callback::from(move |arg| {
+            mailbox.send_message(f(arg));
+        })
     }
 }
 
