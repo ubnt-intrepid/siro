@@ -16,7 +16,7 @@ pub fn main() -> Result<(), JsValue> {
         .ok_or("cannot find `#app` in document")?;
     siro::util::remove_children(&mountpoint)?;
 
-    let mut app = App::mount(mountpoint.as_ref())?;
+    let mut app = App::<()>::mount(mountpoint.as_ref())?;
 
     app.render({
         svg::svg()

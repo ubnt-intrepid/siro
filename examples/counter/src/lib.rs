@@ -28,20 +28,20 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
+fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<Node> {
     html::div().children((
         html::button() //
-            .on("click", mailbox.callback(|_| Msg::Decrement))
+            .on("click", mailbox, |_| Msg::Decrement)
             .child("-"),
         " ",
         model.value.to_string(),
         " ",
         html::button() //
-            .on("click", mailbox.callback(|_| Msg::Increment))
+            .on("click", mailbox, |_| Msg::Increment)
             .child("+"),
         " ",
         html::button() //
-            .on("click", mailbox.callback(|_| Msg::Reset))
+            .on("click", mailbox, |_| Msg::Reset)
             .child("Reset"),
     ))
 }
@@ -55,12 +55,12 @@ pub async fn main() -> Result<(), JsValue> {
     siro::util::remove_children(&mountpoint)?;
 
     let mut app = App::mount(mountpoint.as_ref())?;
-    let (mailbox, mut mails) = siro::mailbox();
+    let mailbox = app.mailbox();
 
     let mut model = Model { value: 0 };
     app.render(view(&model, &mailbox))?;
 
-    while let Some(msg) = mails.recv().await {
+    while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
         app.render(view(&model, &mailbox))?;
     }

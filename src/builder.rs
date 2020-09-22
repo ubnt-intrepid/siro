@@ -2,7 +2,7 @@ pub mod html;
 pub mod svg;
 
 use crate::{
-    callback::Callback,
+    mailbox::Mailbox,
     vdom::{Attribute, Element, Listener, Node, Property},
 };
 use gloo_events::EventListener;
@@ -11,30 +11,25 @@ use std::{borrow::Cow, rc::Rc};
 pub trait ElementBuilder: Into<Node> {
     fn as_element_mut(&mut self) -> &mut Element;
 
-    fn attribute(mut self, name: impl Into<Cow<'static, str>>, value: impl Into<Attribute>) -> Self
-    where
-        Self: Sized,
-    {
+    fn attribute(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Attribute>,
+    ) -> Self {
         self.as_element_mut()
             .attributes
             .insert(name.into(), value.into());
         self
     }
 
-    fn property(mut self, name: impl Into<Cow<'static, str>>, value: impl Into<Property>) -> Self
-    where
-        Self: Sized,
-    {
+    fn property(mut self, name: impl Into<Cow<'static, str>>, value: impl Into<Property>) -> Self {
         self.as_element_mut()
             .properties
             .insert(name.into(), value.into());
         self
     }
 
-    fn listener(mut self, listener: Rc<dyn Listener>) -> Self
-    where
-        Self: Sized,
-    {
+    fn listener(mut self, listener: Rc<dyn Listener>) -> Self {
         self.as_element_mut().listeners.replace(listener);
         self
     }
@@ -58,26 +53,46 @@ pub trait ElementBuilder: Into<Node> {
         self.attribute("id", value.into())
     }
 
-    fn on(self, event_type: &'static str, callback: Callback<web::Event>) -> Self {
-        struct CallbackListener {
+    fn on<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
+    where
+        M: Mailbox<TMsg>,
+        F: Fn(&web::Event) -> TMsg + 'static,
+    {
+        self.on_(event_type, mailbox, move |e| Some(callback(e)))
+    }
+
+    fn on_<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
+    where
+        M: Mailbox<TMsg>,
+        F: Fn(&web::Event) -> Option<TMsg> + 'static,
+    {
+        struct CallbackListener<M, F> {
             event_type: &'static str,
-            callback: Callback<web::Event>,
+            mailbox: M,
+            callback: F,
         }
 
-        impl Listener for CallbackListener {
+        impl<M, F, TMsg> Listener for CallbackListener<M, F>
+        where
+            M: Mailbox<TMsg> + 'static,
+            F: Fn(&web::Event) -> Option<TMsg> + 'static,
+        {
             fn event_type(&self) -> &str {
                 self.event_type
             }
 
             fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
                 EventListener::new(target, self.event_type, move |e| {
-                    self.callback.invoke(e.clone());
+                    if let Some(msg) = (self.callback)(e) {
+                        self.mailbox.send_message(msg);
+                    }
                 })
             }
         }
 
         self.listener(Rc::new(CallbackListener {
             event_type,
+            mailbox: mailbox.clone(),
             callback,
         }))
     }

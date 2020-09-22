@@ -1,15 +1,19 @@
 use crate::{
     global::Global,
+    mailbox::Mailbox,
     vdom::{Node, Renderer},
 };
+use futures::{channel::mpsc, prelude::*};
 use wasm_bindgen::prelude::*;
 
-pub struct App {
+pub struct App<TMsg: 'static> {
     view: Node,
     renderer: Renderer,
+    tx: mpsc::UnboundedSender<TMsg>,
+    rx: mpsc::UnboundedReceiver<TMsg>,
 }
 
-impl App {
+impl<TMsg: 'static> App<TMsg> {
     pub fn mount(mountpoint: &web::Node) -> Result<Self, JsValue> {
         Global::with(|g| {
             let view: Node = "Now rendering...".into();
@@ -19,8 +23,23 @@ impl App {
             let node = renderer.render(&view, &g.document)?;
             mountpoint.append_child(&node)?;
 
-            Ok(App { view, renderer })
+            let (tx, rx) = mpsc::unbounded();
+
+            Ok(App {
+                view,
+                renderer,
+                tx,
+                rx,
+            })
         })
+    }
+
+    pub fn mailbox(&self) -> impl Mailbox<TMsg> {
+        self.tx.clone()
+    }
+
+    pub async fn next_message(&mut self) -> Option<TMsg> {
+        self.rx.next().await
     }
 
     pub fn render(&mut self, view: impl Into<Node>) -> Result<(), JsValue> {

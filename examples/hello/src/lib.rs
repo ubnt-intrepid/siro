@@ -20,7 +20,7 @@ pub fn main() -> Result<(), JsValue> {
     siro::util::remove_children(&mountpoint)?;
 
     // Mount a Siro application on the specified mountpoint.
-    let mut app = App::mount(mountpoint.as_ref())?;
+    let mut app = App::<()>::mount(mountpoint.as_ref())?;
 
     // Draw the virtual DOM.
     app.render({

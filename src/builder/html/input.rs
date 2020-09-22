@@ -1,6 +1,6 @@
 use super::ElementBuilder;
 use crate::{
-    callback::Callback,
+    mailbox::Mailbox,
     vdom::{Element, Node, Property},
 };
 use std::{borrow::Cow, marker::PhantomData};
@@ -54,21 +54,21 @@ impl<Type: InputType> Input<Type> {
         self.property("value", value.into())
     }
 
-    pub fn on_input(self, callback: impl Into<Callback<String>>) -> Self {
-        fn target_value(e: &web::Event) -> Option<String> {
-            js_sys::Reflect::get(&&e.target()?, &"value".into())
-                .ok()?
-                .as_string()
-        }
-
-        let callback = callback.into();
-        self.on(
-            "input",
-            Callback::from(move |e| {
-                let value = target_value(&e).unwrap_or_default();
-                callback.invoke(value);
-            }),
-        )
+    pub fn on_input<M, F, TMsg>(self, mailbox: &M, callback: F) -> Self
+    where
+        M: Mailbox<TMsg>,
+        F: Fn(String) -> TMsg + 'static,
+    {
+        self.on_("input", mailbox, move |e| {
+            Some(callback(
+                #[allow(unused_unsafe)]
+                unsafe {
+                    js_sys::Reflect::get(&&e.target()?, &"value".into())
+                        .ok()?
+                        .as_string()?
+                },
+            ))
+        })
     }
 }
 

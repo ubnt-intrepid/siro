@@ -31,25 +31,25 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &Mailbox<Msg>) -> impl Into<Node> {
+fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<Node> {
     html::div()
         .child(
             html::input::text()
                 .placeholder("Name")
                 .value(model.name.clone())
-                .on_input(mailbox.callback(Msg::Name)),
+                .on_input(mailbox, Msg::Name),
         )
         .child(
             html::input::password()
                 .placeholder("Password")
                 .value(model.password.clone())
-                .on_input(mailbox.callback(Msg::Password)),
+                .on_input(mailbox, Msg::Password),
         )
         .child(
             html::input::password()
                 .placeholder("Re-enter Password")
                 .value(model.password_again.clone())
-                .on_input(mailbox.callback(Msg::PasswordAgain)),
+                .on_input(mailbox, Msg::PasswordAgain),
         )
         .child(if model.password == model.password_again {
             html::div() //
@@ -71,12 +71,12 @@ pub async fn main() -> Result<(), JsValue> {
     siro::util::remove_children(&mountpoint)?;
 
     let mut app = App::mount(mountpoint.as_ref())?;
-    let (mailbox, mut mails) = siro::mailbox();
+    let mailbox = app.mailbox();
 
     let mut model = Model::default();
     app.render(view(&model, &mailbox))?;
 
-    while let Some(msg) = mails.recv().await {
+    while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
         app.render(view(&model, &mailbox))?;
     }
