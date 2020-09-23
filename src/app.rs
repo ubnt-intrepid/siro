@@ -31,6 +31,7 @@ impl Mountpoint for web::Element {
 }
 
 pub struct App<TMsg: 'static> {
+    window: web::Window,
     document: web::Document,
     mountpoint: web::Node,
     view: Node,
@@ -41,7 +42,8 @@ pub struct App<TMsg: 'static> {
 
 impl<TMsg: 'static> App<TMsg> {
     pub fn mount(mountpoint: &(impl Mountpoint + ?Sized)) -> Result<Self, JsValue> {
-        let document = crate::util::document().ok_or("no Document exists")?;
+        let window = web::window().ok_or("no global Window exists")?;
+        let document = window.document().ok_or("no Document exists in Window")?;
         let mountpoint = mountpoint.get_node(&document)?;
 
         let mut renderer = Renderer::default();
@@ -53,6 +55,7 @@ impl<TMsg: 'static> App<TMsg> {
         let (tx, rx) = mpsc::unbounded();
 
         Ok(App {
+            window,
             document,
             mountpoint,
             view,
@@ -68,6 +71,10 @@ impl<TMsg: 'static> App<TMsg> {
 
     pub fn mailbox(&self) -> impl Mailbox<TMsg> {
         self.tx.clone()
+    }
+
+    pub fn window(&self) -> &web::Window {
+        &self.window
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {
