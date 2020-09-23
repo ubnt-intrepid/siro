@@ -31,7 +31,7 @@ fn set_property(
 #[derive(Default)]
 pub(crate) struct Renderer {
     cached_nodes: FxHashMap<Key, web::Node>,
-    cached_listeners: Vec<EventListener>,
+    cached_listeners: FxHashMap<Key, FxHashMap<String, EventListener>>,
 }
 
 impl Renderer {
@@ -67,9 +67,13 @@ impl Renderer {
             set_property(element.as_ref(), &*name, Some(value.clone()))?;
         }
 
-        for listener in &e.listeners {
-            let listener = listener.clone().attach(element.as_ref());
-            self.cached_listeners.push(listener);
+        if !e.listeners.is_empty() {
+            let caches = self.cached_listeners.entry(e.key()).or_default();
+
+            for listener in &e.listeners {
+                let listener = listener.clone().attach(element.as_ref());
+                caches.insert(listener.event_type().to_owned(), listener);
+            }
         }
 
         if !e.class_names.is_empty() {
@@ -94,14 +98,6 @@ impl Renderer {
         new: &Node,
         document: &web::Document,
     ) -> Result<(), JsValue> {
-        // FIXME: more efficient
-        for listener in self.cached_listeners.drain(..) {
-            drop(listener);
-        }
-        self.do_diff(old, new, document)
-    }
-
-    fn do_diff(&mut self, old: &Node, new: &Node, document: &web::Document) -> Result<(), JsValue> {
         let old_key = old.key();
         let new_key = new.key();
 
@@ -110,7 +106,7 @@ impl Renderer {
             return Ok(());
         }
 
-        let node = self.replant_cache_node(&old_key, &new_key);
+        let node = self.replant_caches(&old_key, &new_key);
 
         match (old, new) {
             (Node::Element(old), Node::Element(new)) if old.tag_name == new.tag_name => {
@@ -140,12 +136,17 @@ impl Renderer {
         Ok(())
     }
 
-    fn replant_cache_node(&mut self, old: &Key, new: &Key) -> web::Node {
+    fn replant_caches(&mut self, old: &Key, new: &Key) -> web::Node {
         let node = self
             .cached_nodes
             .remove(&old)
             .expect_throw("cache does not exist");
         self.cached_nodes.insert(new.clone(), node.clone());
+
+        if let Some(listeners) = self.cached_listeners.remove(&old) {
+            self.cached_listeners.insert(new.clone(), listeners);
+        }
+
         node
     }
 
@@ -184,10 +185,17 @@ impl Renderer {
             }
         }
 
-        // FIXME: more efficient
-        for listener in &new.listeners {
-            self.cached_listeners
-                .push(listener.clone().attach(node.as_ref()));
+        {
+            let caches = self.cached_listeners.entry(new.key()).or_default();
+
+            caches.clear();
+
+            for listener in &new.listeners {
+                caches.insert(
+                    listener.event_type().to_owned(),
+                    listener.clone().attach(node.as_ref()),
+                );
+            }
         }
 
         {
@@ -216,7 +224,7 @@ impl Renderer {
                     node.append_child(&to_append)?;
                 }
                 EitherOrBoth::Both(old, new) => {
-                    self.do_diff(old, new, document)?;
+                    self.diff(old, new, document)?;
                 }
             }
         }
