@@ -77,7 +77,7 @@ pub async fn main() -> Result<(), JsValue> {
 
     let mut app = App::mount("#app")?;
 
-    let _guard = app.subscribe(siro::subscription::interval(1000, || Msg::Tick))?;
+    let _guard = app.subscribe(siro::subscription::animation_frame(|_| Msg::Tick))?;
 
     let mut model = Model {
         date: js_sys::Date::new_0(),
