@@ -1,7 +1,7 @@
 use siro::{
     builder::svg::{self, prelude::*},
     vdom::Node,
-    App, Mailbox,
+    App,
 };
 use std::f32;
 use wasm_bindgen::prelude::*;
@@ -26,7 +26,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, _: &(impl Mailbox<Msg> + 'static)) -> impl Into<Node> {
+fn view(model: &Model) -> impl Into<Node> {
     let hour = model.date.get_hours() % 12;
     let minute = model.date.get_minutes() % 60;
     let second = model.date.get_seconds() % 60;
@@ -76,18 +76,17 @@ pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     let mut app = App::mount("#app")?;
-    let mailbox = app.mailbox();
 
     let _guard = app.subscribe(siro::subscription::interval(1000, || Msg::Tick))?;
 
     let mut model = Model {
         date: js_sys::Date::new_0(),
     };
-    app.render(view(&model, &mailbox))?;
+    app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
-        app.render(view(&model, &mailbox))?;
+        app.render(view(&model))?;
     }
 
     Ok(())
