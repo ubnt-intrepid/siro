@@ -55,7 +55,7 @@ pub trait ElementBuilder: Into<Node> {
 
     fn on<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
     where
-        M: Mailbox<TMsg>,
+        M: Mailbox<TMsg> + 'static,
         F: Fn(&web::Event) -> TMsg + 'static,
     {
         self.on_(event_type, mailbox, move |e| Some(callback(e)))
@@ -63,7 +63,7 @@ pub trait ElementBuilder: Into<Node> {
 
     fn on_<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
     where
-        M: Mailbox<TMsg>,
+        M: Mailbox<TMsg> + 'static,
         F: Fn(&web::Event) -> Option<TMsg> + 'static,
     {
         struct CallbackListener<M, F> {

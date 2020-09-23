@@ -1,8 +1,7 @@
-use crate::global::Global;
 use wasm_bindgen::prelude::*;
 
-pub fn select(selector: &str) -> Option<web::Element> {
-    Global::with(|g| g.document.query_selector(selector).ok())?
+pub fn document() -> Option<web::Document> {
+    web::window()?.document()
 }
 
 pub fn remove_children(element: &web::Element) -> Result<(), JsValue> {

@@ -28,7 +28,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<Node> {
+fn view(model: &Model, mailbox: &(impl Mailbox<Msg> + 'static)) -> impl Into<Node> {
     html::div().children((
         html::button() //
             .on("click", mailbox, |_| Msg::Decrement)
@@ -50,11 +50,7 @@ fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<Node> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app") //
-        .ok_or("cannot find `#app` in document")?;
-    siro::util::remove_children(&mountpoint)?;
-
-    let mut app = App::mount(mountpoint.as_ref())?;
+    let mut app = App::mount("#app")?;
     let mailbox = app.mailbox();
 
     let mut model = Model { value: 0 };

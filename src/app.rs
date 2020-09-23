@@ -1,12 +1,38 @@
 use crate::{
-    global::Global,
     mailbox::Mailbox,
     vdom::{Node, Renderer},
 };
 use futures::{channel::mpsc, prelude::*};
 use wasm_bindgen::prelude::*;
 
+pub trait Mountpoint {
+    fn get_node(&self, document: &web::Document) -> Result<web::Node, JsValue>;
+}
+
+impl Mountpoint for str {
+    fn get_node(&self, document: &web::Document) -> Result<web::Node, JsValue> {
+        document
+            .query_selector(self)?
+            .map(Into::into)
+            .ok_or(format!("cannot find mountpoint: {}", self).into())
+    }
+}
+
+impl Mountpoint for web::Node {
+    fn get_node(&self, _: &web::Document) -> Result<web::Node, JsValue> {
+        Ok(self.clone())
+    }
+}
+
+impl Mountpoint for web::Element {
+    fn get_node(&self, _: &web::Document) -> Result<web::Node, JsValue> {
+        Ok(self.clone().into())
+    }
+}
+
 pub struct App<TMsg: 'static> {
+    document: web::Document,
+    mountpoint: web::Node,
     view: Node,
     renderer: Renderer,
     tx: mpsc::UnboundedSender<TMsg>,
@@ -14,24 +40,30 @@ pub struct App<TMsg: 'static> {
 }
 
 impl<TMsg: 'static> App<TMsg> {
-    pub fn mount(mountpoint: &web::Node) -> Result<Self, JsValue> {
-        Global::with(|g| {
-            let view: Node = "Now rendering...".into();
+    pub fn mount(mountpoint: &(impl Mountpoint + ?Sized)) -> Result<Self, JsValue> {
+        let document = crate::util::document().ok_or("no Document exists")?;
+        let mountpoint = mountpoint.get_node(&document)?;
 
-            let mut renderer = Renderer::default();
+        let mut renderer = Renderer::default();
 
-            let node = renderer.render(&view, &g.document)?;
-            mountpoint.append_child(&node)?;
+        let view: Node = "Now rendering...".into();
+        let node = renderer.render(&view, &document)?;
+        mountpoint.append_child(&node)?;
 
-            let (tx, rx) = mpsc::unbounded();
+        let (tx, rx) = mpsc::unbounded();
 
-            Ok(App {
-                view,
-                renderer,
-                tx,
-                rx,
-            })
+        Ok(App {
+            document,
+            mountpoint,
+            view,
+            renderer,
+            tx,
+            rx,
         })
+    }
+
+    pub fn mountpoint(&self) -> &web::Node {
+        &self.mountpoint
     }
 
     pub fn mailbox(&self) -> impl Mailbox<TMsg> {
@@ -44,7 +76,7 @@ impl<TMsg: 'static> App<TMsg> {
 
     pub fn render(&mut self, view: impl Into<Node>) -> Result<(), JsValue> {
         let view = view.into();
-        Global::with(|g| self.renderer.diff(&self.view, &view, &g.document))?;
+        self.renderer.diff(&self.view, &view, &self.document)?;
         self.view = view;
         Ok(())
     }

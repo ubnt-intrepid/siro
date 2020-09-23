@@ -12,11 +12,7 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app") //
-        .ok_or("cannot find `#app` in document")?;
-    siro::util::remove_children(&mountpoint)?;
-
-    let mut app = App::<()>::mount(mountpoint.as_ref())?;
+    let mut app = App::<()>::mount("#app")?;
 
     app.render({
         svg::svg()
