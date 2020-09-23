@@ -94,6 +94,14 @@ impl Renderer {
         new: &Node,
         document: &web::Document,
     ) -> Result<(), JsValue> {
+        // FIXME: more efficient
+        for listener in self.cached_listeners.drain(..) {
+            drop(listener);
+        }
+        self.do_diff(old, new, document)
+    }
+
+    fn do_diff(&mut self, old: &Node, new: &Node, document: &web::Document) -> Result<(), JsValue> {
         let old_key = old.key();
         let new_key = new.key();
 
@@ -103,11 +111,6 @@ impl Renderer {
         }
 
         let node = self.replant_cache_node(&old_key, &new_key);
-
-        // FIXME: more efficient
-        for listener in self.cached_listeners.drain(..) {
-            drop(listener);
-        }
 
         match (old, new) {
             (Node::Element(old), Node::Element(new)) if old.tag_name == new.tag_name => {
@@ -213,7 +216,7 @@ impl Renderer {
                     node.append_child(&to_append)?;
                 }
                 EitherOrBoth::Both(old, new) => {
-                    self.diff(old, new, document)?;
+                    self.do_diff(old, new, document)?;
                 }
             }
         }
