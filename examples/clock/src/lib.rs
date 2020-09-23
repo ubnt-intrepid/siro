@@ -4,7 +4,7 @@ use siro::{
     App, Mailbox,
 };
 use std::f32;
-use wasm_bindgen::{prelude::*, JsCast as _};
+use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
@@ -17,12 +17,12 @@ struct Model {
 
 #[derive(Debug)]
 enum Msg {
-    Tick(js_sys::Date),
+    Tick,
 }
 
 fn update(model: &mut Model, msg: Msg) {
     match msg {
-        Msg::Tick(date) => model.date = date,
+        Msg::Tick => model.date = js_sys::Date::new_0(),
     }
 }
 
@@ -78,19 +78,7 @@ pub async fn main() -> Result<(), JsValue> {
     let mut app = App::mount("#app")?;
     let mailbox = app.mailbox();
 
-    let (_cb, _id) = {
-        let mailbox = mailbox.clone();
-        let cb = Closure::wrap(Box::new(move || {
-            mailbox.send_message(Msg::Tick(js_sys::Date::new_0()));
-        }) as Box<dyn FnMut()>);
-        let id = app
-            .window()
-            .set_interval_with_callback_and_timeout_and_arguments_0(
-                cb.as_ref().unchecked_ref(),
-                1000,
-            )?;
-        (cb, id)
-    };
+    let _guard = app.subscribe(siro::subscription::interval(1000, || Msg::Tick))?;
 
     let mut model = Model {
         date: js_sys::Date::new_0(),

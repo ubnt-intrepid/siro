@@ -4,6 +4,7 @@ mod app;
 mod mailbox;
 
 pub mod builder;
+pub mod subscription;
 pub mod util;
 pub mod vdom;
 
