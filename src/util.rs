@@ -10,3 +10,11 @@ pub fn remove_children(element: &web::Element) -> Result<(), JsValue> {
     }
     Ok(())
 }
+
+pub struct LogOnDrop(pub &'static str);
+
+impl Drop for LogOnDrop {
+    fn drop(&mut self) {
+        web::console::log_1(&self.0.into());
+    }
+}

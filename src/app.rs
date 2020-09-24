@@ -4,7 +4,6 @@ use crate::{
     vdom::{Node, Renderer},
 };
 use futures::{channel::mpsc, prelude::*};
-use std::any::Any;
 use wasm_bindgen::prelude::*;
 
 pub trait Mountpoint {
@@ -75,8 +74,11 @@ impl<TMsg: 'static> App<TMsg> {
         self.tx.clone()
     }
 
-    pub fn subscribe(&self, s: impl Subscription<TMsg>) -> Result<Box<dyn Any>, JsValue> {
-        s.subscribe(&self.window, self.mailbox())
+    pub fn subscribe<S>(&self, subscription: S) -> Result<S::Handle, JsValue>
+    where
+        S: Subscription<TMsg>,
+    {
+        subscription.subscribe(&self.window, self.mailbox())
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {

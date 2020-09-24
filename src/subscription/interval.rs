@@ -1,6 +1,5 @@
 use super::Subscription;
 use crate::mailbox::Mailbox;
-use std::any::Any;
 use wasm_bindgen::{prelude::*, JsCast as _};
 
 pub fn interval<F, TMsg>(timeout: i32, callback: F) -> impl Subscription<TMsg>
@@ -19,11 +18,13 @@ impl<F, TMsg> Subscription<TMsg> for Interval<F>
 where
     F: FnMut() -> TMsg + 'static,
 {
+    type Handle = Handle;
+
     fn subscribe(
         self,
         window: &web::Window,
         mailbox: impl Mailbox<TMsg> + 'static,
-    ) -> Result<Box<dyn Any>, JsValue> {
+    ) -> Result<Self::Handle, JsValue> {
         let Self {
             timeout,
             mut callback,
@@ -38,22 +39,22 @@ where
             timeout,
         )?;
 
-        struct Guard {
-            window: web::Window,
-            id: i32,
-            _cb: Closure<dyn FnMut()>,
-        }
-
-        impl Drop for Guard {
-            fn drop(&mut self) {
-                self.window.clear_interval_with_handle(self.id);
-            }
-        }
-
-        Ok(Box::new(Guard {
+        Ok(Handle {
             window: window.clone(),
             id,
             _cb: cb,
-        }))
+        })
+    }
+}
+
+struct Handle {
+    window: web::Window,
+    id: i32,
+    _cb: Closure<dyn FnMut()>,
+}
+
+impl Drop for Handle {
+    fn drop(&mut self) {
+        self.window.clear_interval_with_handle(self.id);
     }
 }

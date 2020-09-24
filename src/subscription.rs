@@ -1,17 +1,18 @@
-mod animation_frame;
+mod animation_frames;
 mod interval;
 
-pub use animation_frame::animation_frame;
+pub use animation_frames::animation_frames;
 pub use interval::interval;
 
 use crate::mailbox::Mailbox;
-use std::any::Any;
 use wasm_bindgen::prelude::*;
 
 pub trait Subscription<TMsg> {
+    type Handle;
+
     fn subscribe(
         self,
         window: &web::Window,
         mailbox: impl Mailbox<TMsg> + 'static,
-    ) -> Result<Box<dyn Any>, JsValue>;
+    ) -> Result<Self::Handle, JsValue>;
 }
