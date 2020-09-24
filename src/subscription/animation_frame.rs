@@ -1,10 +1,7 @@
 use super::Subscription;
 use crate::mailbox::Mailbox;
-use std::{
-    any::Any,
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
+use once_cell::unsync::OnceCell;
+use std::{any::Any, cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
 pub fn animation_frame<F, TMsg>(callback: F) -> impl Subscription<TMsg>
@@ -17,7 +14,7 @@ where
 struct RequestFrames {
     id: Cell<Option<i32>>,
     stopped: Cell<bool>,
-    cb: RefCell<Option<Closure<dyn FnMut(f64)>>>,
+    cb: OnceCell<Closure<dyn FnMut(f64)>>,
     window: web::Window,
 }
 
@@ -26,7 +23,7 @@ impl RequestFrames {
         Self {
             id: Cell::new(None),
             stopped: Cell::new(true),
-            cb: RefCell::new(None),
+            cb: OnceCell::new(),
             window,
         }
     }
@@ -44,18 +41,17 @@ impl RequestFrames {
             }
         };
 
-        self.cb.replace(Some(Closure::wrap(Box::new(f))));
+        self.cb
+            .set(Closure::wrap(Box::new(f)))
+            .expect_throw("cb has already been set");
     }
 
     fn request_frame(&self) -> Result<(), JsValue> {
-        let cb = &*self.cb.borrow();
+        let cb = self.cb.get().expect_throw("cb is not set");
 
-        let id = self.window.request_animation_frame(
-            cb.as_ref()
-                .expect_throw("closure must be set")
-                .as_ref()
-                .unchecked_ref(),
-        )?;
+        let id = self
+            .window
+            .request_animation_frame(cb.as_ref().unchecked_ref())?;
 
         self.id.replace(Some(id));
 
