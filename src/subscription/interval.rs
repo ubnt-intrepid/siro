@@ -1,5 +1,5 @@
 use super::Subscription;
-use crate::mailbox::Mailbox;
+use crate::mailbox::Sender;
 use wasm_bindgen::{prelude::*, JsCast as _};
 
 pub fn interval<F, TMsg>(timeout: i32, callback: F) -> impl Subscription<TMsg>
@@ -23,7 +23,7 @@ where
     fn subscribe(
         self,
         window: &web::Window,
-        mailbox: impl Mailbox<TMsg> + 'static,
+        mailbox: impl Sender<TMsg> + 'static,
     ) -> Result<Self::Handle, JsValue> {
         let Self {
             timeout,

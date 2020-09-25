@@ -4,7 +4,7 @@ mod interval;
 pub use animation_frames::animation_frames;
 pub use interval::interval;
 
-use crate::mailbox::Mailbox;
+use crate::mailbox::Sender;
 use wasm_bindgen::prelude::*;
 
 pub trait Subscription<TMsg> {
@@ -13,6 +13,6 @@ pub trait Subscription<TMsg> {
     fn subscribe(
         self,
         window: &web::Window,
-        mailbox: impl Mailbox<TMsg> + 'static,
+        mailbox: impl Sender<TMsg> + 'static,
     ) -> Result<Self::Handle, JsValue>;
 }

@@ -67,14 +67,13 @@ pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     let mut app = App::mount("#app")?;
-    let mailbox = app.mailbox();
 
     let mut model = Model::default();
-    app.render(view(&model, &mailbox))?;
+    app.render(view(&model, &app))?;
 
     while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
-        app.render(view(&model, &mailbox))?;
+        app.render(view(&model, &app))?;
     }
 
     Ok(())

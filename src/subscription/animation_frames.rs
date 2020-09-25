@@ -1,5 +1,5 @@
 use super::Subscription;
-use crate::mailbox::Mailbox;
+use crate::mailbox::Sender;
 use once_cell::unsync::OnceCell;
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
@@ -24,7 +24,7 @@ where
     fn subscribe(
         self,
         window: &web::Window,
-        mailbox: impl Mailbox<TMsg> + 'static,
+        mailbox: impl Sender<TMsg> + 'static,
     ) -> Result<Self::Handle, JsValue> {
         let Self { callback } = self;
 

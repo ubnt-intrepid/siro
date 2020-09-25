@@ -56,7 +56,8 @@ impl<Type: InputType> Input<Type> {
 
     pub fn on_input<M, F, TMsg>(self, mailbox: &M, callback: F) -> Self
     where
-        M: Mailbox<TMsg> + 'static,
+        M: Mailbox<TMsg>,
+        M::Sender: 'static,
         F: Fn(String) -> TMsg + 'static,
     {
         self.on_("input", mailbox, move |e| {

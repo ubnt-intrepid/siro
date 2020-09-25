@@ -2,7 +2,7 @@ pub mod html;
 pub mod svg;
 
 use crate::{
-    mailbox::Mailbox,
+    mailbox::{Mailbox, Sender},
     vdom::{Attribute, Element, Listener, Node, Property},
 };
 use gloo_events::EventListener;
@@ -55,7 +55,8 @@ pub trait ElementBuilder: Into<Node> {
 
     fn on<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
     where
-        M: Mailbox<TMsg> + 'static,
+        M: Mailbox<TMsg>,
+        M::Sender: 'static,
         F: Fn(&web::Event) -> TMsg + 'static,
     {
         self.on_(event_type, mailbox, move |e| Some(callback(e)))
@@ -63,18 +64,19 @@ pub trait ElementBuilder: Into<Node> {
 
     fn on_<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
     where
-        M: Mailbox<TMsg> + 'static,
+        M: Mailbox<TMsg>,
+        M::Sender: 'static,
         F: Fn(&web::Event) -> Option<TMsg> + 'static,
     {
         struct CallbackListener<M, F> {
             event_type: &'static str,
-            mailbox: M,
+            sender: M,
             callback: F,
         }
 
         impl<M, F, TMsg> Listener for CallbackListener<M, F>
         where
-            M: Mailbox<TMsg> + 'static,
+            M: Sender<TMsg> + 'static,
             F: Fn(&web::Event) -> Option<TMsg> + 'static,
         {
             fn event_type(&self) -> &str {
@@ -84,7 +86,7 @@ pub trait ElementBuilder: Into<Node> {
             fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
                 EventListener::new(target, self.event_type, move |e| {
                     if let Some(msg) = (self.callback)(e) {
-                        self.mailbox.send_message(msg);
+                        self.sender.send_message(msg);
                     }
                 })
             }
@@ -92,7 +94,7 @@ pub trait ElementBuilder: Into<Node> {
 
         self.listener(Rc::new(CallbackListener {
             event_type,
-            mailbox: mailbox.clone(),
+            sender: mailbox.sender(),
             callback,
         }))
     }
@@ -145,3 +147,19 @@ impl_children_for_tuples!(
     C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, //
     C11, C12, C13, C14, C15, C16, C17, C18, C19, C20
 );
+
+pub fn iter(iter: impl IntoIterator<Item = impl Into<Node>>) -> impl Children {
+    struct IterChildren<I>(I);
+
+    impl<I> Children for IterChildren<I>
+    where
+        I: IntoIterator,
+        I::Item: Into<Node>,
+    {
+        fn assign(self, children: &mut Vec<Node>) {
+            children.extend(self.0.into_iter().map(Into::into));
+        }
+    }
+
+    IterChildren(iter)
+}

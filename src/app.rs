@@ -1,5 +1,5 @@
 use crate::{
-    mailbox::Mailbox,
+    mailbox::{Mailbox, Sender},
     subscription::Subscription,
     vdom::{Node, Renderer},
 };
@@ -70,15 +70,11 @@ impl<TMsg: 'static> App<TMsg> {
         &self.mountpoint
     }
 
-    pub fn mailbox(&self) -> impl Mailbox<TMsg> {
-        self.tx.clone()
-    }
-
     pub fn subscribe<S>(&self, subscription: S) -> Result<S::Handle, JsValue>
     where
         S: Subscription<TMsg>,
     {
-        subscription.subscribe(&self.window, self.mailbox())
+        subscription.subscribe(&self.window, self.sender())
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {
@@ -90,5 +86,27 @@ impl<TMsg: 'static> App<TMsg> {
         self.renderer.diff(&self.view, &view, &self.document)?;
         self.view = view;
         Ok(())
+    }
+}
+
+impl<TMsg: 'static> Mailbox<TMsg> for App<TMsg> {
+    type Sender = AppSender<TMsg>;
+
+    fn sender(&self) -> Self::Sender {
+        AppSender(self.tx.clone())
+    }
+}
+
+pub struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
+
+impl<TMsg> Clone for AppSender<TMsg> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<TMsg: 'static> Sender<TMsg> for AppSender<TMsg> {
+    fn send_message(&self, msg: TMsg) {
+        self.0.unbounded_send(msg).unwrap_throw();
     }
 }
