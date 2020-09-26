@@ -1,6 +1,3 @@
-pub mod html;
-pub mod svg;
-
 use crate::{
     mailbox::{Mailbox, Sender},
     vdom::{Attribute, Element, Listener, Node, Property},

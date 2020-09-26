@@ -1,10 +1,12 @@
-use super::ElementBuilder;
-use crate::vdom::{Element, Node};
+use crate::{
+    builder::ElementBuilder,
+    vdom::{Element, Node},
+};
 use std::borrow::Cow;
 
 pub mod prelude {
-    pub use super::super::ElementBuilder as _;
     pub use super::PresentationAttributes as _;
+    pub use crate::builder::ElementBuilder as _;
 }
 
 const SVG_NAMESPACE_URI: &str = "http://www.w3.org/2000/svg";

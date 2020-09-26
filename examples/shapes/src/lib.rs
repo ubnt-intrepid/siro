@@ -1,5 +1,5 @@
 use siro::{
-    builder::svg::{self, prelude::*},
+    svg::{self, prelude::*},
     App,
 };
 use wasm_bindgen::prelude::*;

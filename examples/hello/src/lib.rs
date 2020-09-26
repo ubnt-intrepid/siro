@@ -1,5 +1,5 @@
 use siro::{
-    builder::{html, ElementBuilder as _},
+    html::{self, prelude::*},
     App,
 };
 use wasm_bindgen::prelude::*;

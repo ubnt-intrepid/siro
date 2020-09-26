@@ -1,7 +1,13 @@
 pub mod input;
 
-use super::ElementBuilder;
-use crate::vdom::{Element, Node};
+use crate::{
+    builder::ElementBuilder,
+    vdom::{Element, Node},
+};
+
+pub mod prelude {
+    pub use crate::builder::ElementBuilder as _;
+}
 
 pub struct HtmlElement(Element);
 

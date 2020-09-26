@@ -1,5 +1,5 @@
 use siro::{
-    builder::{html, ElementBuilder as _},
+    html::{self, prelude::*},
     vdom::Node,
     App, Mailbox,
 };
@@ -11,7 +11,7 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
     use siro::{
-        builder::{html, ElementBuilder as _},
+        html::{self, prelude::*},
         vdom::Node,
         Mailbox,
     };
