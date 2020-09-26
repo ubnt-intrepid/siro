@@ -21,15 +21,14 @@ where
 {
     type Handle = Handle;
 
-    fn subscribe(
-        self,
-        window: &web::Window,
-        mailbox: impl Sender<TMsg> + 'static,
-    ) -> Result<Self::Handle, JsValue> {
+    fn subscribe<TSender>(self, sender: TSender) -> Result<Self::Handle, JsValue>
+    where
+        TSender: Sender<TMsg>,
+    {
         let Self { callback } = self;
 
         let scheduler = Rc::new(Scheduler {
-            window: window.clone(),
+            window: web::window().ok_or("no global `Window` exists")?,
             running: Cell::new(true),
             current_id: Cell::new(None),
         });
@@ -44,7 +43,7 @@ where
                 let closure = closure2.take();
 
                 if scheduler2.running.get() {
-                    mailbox.send_message(callback(timestamp));
+                    sender.send_message(callback(timestamp));
 
                     scheduler2.schedule(
                         closure

@@ -1,9 +1,19 @@
+use crate::subscription::Subscription;
 use std::{marker::PhantomData, rc::Rc};
+use wasm_bindgen::prelude::*;
 
 pub trait Mailbox<TMsg> {
     type Sender: Sender<TMsg>;
 
+    fn send_message(&self, msg: TMsg);
     fn sender(&self) -> Self::Sender;
+
+    fn subscribe<S>(&self, subscription: S) -> Result<S::Handle, JsValue>
+    where
+        S: Subscription<TMsg>,
+    {
+        subscription.subscribe(self.sender())
+    }
 
     fn map<F>(self, f: F) -> Map<Self, TMsg, F>
     where
@@ -24,6 +34,11 @@ where
     type Sender = T::Sender;
 
     #[inline]
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
+    }
+
+    #[inline]
     fn sender(&self) -> Self::Sender {
         (**self).sender()
     }
@@ -34,6 +49,11 @@ where
     T: Mailbox<TMsg>,
 {
     type Sender = T::Sender;
+
+    #[inline]
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
+    }
 
     #[inline]
     fn sender(&self) -> Self::Sender {
@@ -48,6 +68,11 @@ where
     type Sender = T::Sender;
 
     #[inline]
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
+    }
+
+    #[inline]
     fn sender(&self) -> Self::Sender {
         (**self).sender()
     }
@@ -58,6 +83,11 @@ where
     T: Mailbox<TMsg>,
 {
     type Sender = T::Sender;
+
+    #[inline]
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
+    }
 
     #[inline]
     fn sender(&self) -> Self::Sender {
@@ -84,6 +114,11 @@ where
     F: Fn(UMsg) -> TMsg + 'static,
 {
     type Sender = MapSender<M::Sender, TMsg, F>;
+
+    #[inline]
+    fn send_message(&self, msg: UMsg) {
+        self.mailbox.send_message((self.f)(msg));
+    }
 
     fn sender(&self) -> Self::Sender {
         MapSender {

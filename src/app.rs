@@ -1,6 +1,5 @@
 use crate::{
     mailbox::{Mailbox, Sender},
-    subscription::Subscription,
     vdom::{Renderer, VNode},
 };
 use futures::{channel::mpsc, prelude::*};
@@ -32,7 +31,6 @@ impl Mountpoint for web::Element {
 }
 
 pub struct App<TMsg: 'static> {
-    window: web::Window,
     document: web::Document,
     mountpoint: web::Node,
     view: VNode,
@@ -43,8 +41,7 @@ pub struct App<TMsg: 'static> {
 
 impl<TMsg: 'static> App<TMsg> {
     pub fn mount(mountpoint: &(impl Mountpoint + ?Sized)) -> Result<Self, JsValue> {
-        let window = web::window().ok_or("no global Window exists")?;
-        let document = window.document().ok_or("no Document exists in Window")?;
+        let document = crate::util::document().ok_or("no Document exists in Window")?;
         let mountpoint = mountpoint.get_node(&document)?;
 
         let mut renderer = Renderer::default();
@@ -56,7 +53,6 @@ impl<TMsg: 'static> App<TMsg> {
         let (tx, rx) = mpsc::unbounded();
 
         Ok(App {
-            window,
             document,
             mountpoint,
             view,
@@ -68,13 +64,6 @@ impl<TMsg: 'static> App<TMsg> {
 
     pub fn mountpoint(&self) -> &web::Node {
         &self.mountpoint
-    }
-
-    pub fn subscribe<S>(&self, subscription: S) -> Result<S::Handle, JsValue>
-    where
-        S: Subscription<TMsg>,
-    {
-        subscription.subscribe(&self.window, self.sender())
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {
@@ -91,6 +80,10 @@ impl<TMsg: 'static> App<TMsg> {
 
 impl<TMsg: 'static> Mailbox<TMsg> for App<TMsg> {
     type Sender = AppSender<TMsg>;
+
+    fn send_message(&self, msg: TMsg) {
+        self.tx.unbounded_send(msg).unwrap_throw();
+    }
 
     fn sender(&self) -> Self::Sender {
         AppSender(self.tx.clone())

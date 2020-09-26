@@ -10,9 +10,7 @@ use wasm_bindgen::prelude::*;
 pub trait Subscription<TMsg> {
     type Handle;
 
-    fn subscribe(
-        self,
-        window: &web::Window,
-        mailbox: impl Sender<TMsg> + 'static,
-    ) -> Result<Self::Handle, JsValue>;
+    fn subscribe<TSender>(self, sender: TSender) -> Result<Self::Handle, JsValue>
+    where
+        TSender: Sender<TMsg>;
 }

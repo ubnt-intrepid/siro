@@ -20,18 +20,19 @@ where
 {
     type Handle = Handle;
 
-    fn subscribe(
-        self,
-        window: &web::Window,
-        mailbox: impl Sender<TMsg> + 'static,
-    ) -> Result<Self::Handle, JsValue> {
+    fn subscribe<TSender>(self, sender: TSender) -> Result<Self::Handle, JsValue>
+    where
+        TSender: Sender<TMsg>,
+    {
         let Self {
             timeout,
             mut callback,
         } = self;
 
+        let window = web::window().ok_or("no global `Window` exists")?;
+
         let cb = Closure::wrap(Box::new(move || {
-            mailbox.send_message(callback());
+            sender.send_message(callback());
         }) as Box<dyn FnMut()>);
 
         let id = window.set_interval_with_callback_and_timeout_and_arguments_0(
