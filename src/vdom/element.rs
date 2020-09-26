@@ -13,8 +13,8 @@ use wasm_bindgen::JsValue;
 #[non_exhaustive]
 pub struct VElement {
     rc: Rc<()>,
-    pub tag_name: &'static str,
-    pub namespace_uri: Option<&'static str>,
+    pub tag_name: Cow<'static, str>,
+    pub namespace_uri: Option<Cow<'static, str>>,
     pub attributes: FxIndexMap<Cow<'static, str>, Attribute>,
     pub properties: FxIndexMap<Cow<'static, str>, Property>,
     pub listeners: FxIndexSet<Rc<dyn Listener>>,
@@ -23,7 +23,7 @@ pub struct VElement {
 }
 
 impl VElement {
-    pub fn new(tag_name: &'static str, namespace_uri: Option<&'static str>) -> Self {
+    pub fn new(tag_name: Cow<'static, str>, namespace_uri: Option<Cow<'static, str>>) -> Self {
         Self {
             rc: Rc::new(()),
             tag_name,

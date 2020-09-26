@@ -53,9 +53,9 @@ impl Renderer {
         e: &VElement,
         document: &web::Document,
     ) -> Result<web::Element, JsValue> {
-        let name = wasm_bindgen::intern(e.tag_name);
+        let name = wasm_bindgen::intern(&*e.tag_name);
         let element = match e.namespace_uri {
-            Some(uri) => document.create_element_ns(Some(uri), name)?,
+            Some(ref uri) => document.create_element_ns(Some(&*uri), name)?,
             None => document.create_element(name)?,
         };
 

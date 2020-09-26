@@ -8,7 +8,7 @@ use std::{borrow::Cow, marker::PhantomData};
 macro_rules! input_elements {
     ($( $name:ident => $Type:ident, )*) => {$(
         pub fn $name() -> Input<$Type> {
-            Input(VElement::new("input", None), PhantomData)
+            Input(VElement::new("input".into(), None), PhantomData)
                 .attribute("type", $Type::type_name())
         }
     )*};

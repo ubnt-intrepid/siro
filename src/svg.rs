@@ -11,7 +11,7 @@ macro_rules! svg_elements {
         $name:ident => $T:ident,
     )*) => {$(
         pub fn $name() -> $T {
-            $T(VElement::new(stringify!($name), Some(SVG_NAMESPACE_URI)))
+            $T(VElement::new(stringify!($name).into(), Some(SVG_NAMESPACE_URI.into())))
         }
     )*};
 }
