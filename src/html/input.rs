@@ -1,35 +1,84 @@
-use super::Element;
+use super::HtmlElement;
 use crate::{
+    builder::Element,
     mailbox::Mailbox,
     vdom::{Property, VElement, VNode},
 };
 use std::{borrow::Cow, marker::PhantomData};
 
+pub trait InputType {
+    fn name() -> &'static str;
+}
+
 macro_rules! input_elements {
     ($( $name:ident => $Type:ident, )*) => {$(
-        pub fn $name() -> Input<$Type> {
-            Input(VElement::new("input".into(), None), PhantomData)
-                .attribute("type", $Type::type_name())
+        mod $name {
+            pub struct $Type(std::convert::Infallible);
+
+            impl super::InputType for $Type {
+                fn name() -> &'static str {
+                    stringify!($name)
+                }
+            }
+        }
+
+        pub type $Type = Input<$name::$Type>;
+
+        paste::paste! {
+            #[doc = "Create a builder of [`<input type=\"" $name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $name ") element."]
+            #[inline]
+            pub fn $name() -> $Type {
+                Input::new()
+            }
         }
     )*};
 }
 
 input_elements! {
-    text => Text,
+    button => Button,
+    checkbox => Checkbox,
+    color => Color,
+    date => Date,
+    email => Email,
+    image => Image,
+    month => Month,
+    number => Number,
     password => Password,
+    radio => Radio,
+    range => Range,
+    search => Search,
+    submit => Submit,
+    tel => Tel,
+    text => Text,
+    time => Time,
+    url => Url,
+    week => Week,
 }
 
-pub struct Input<Type: InputType = Text>(VElement, PhantomData<Type>);
+pub struct Input<Type: InputType> {
+    base: HtmlElement,
+    _marker: PhantomData<Type>,
+}
+
+impl<Type: InputType> Input<Type> {
+    fn new() -> Self {
+        Self {
+            base: HtmlElement::new("input".into()),
+            _marker: PhantomData,
+        }
+        .attribute("type", Type::name())
+    }
+}
 
 impl<Type: InputType> From<Input<Type>> for VNode {
     fn from(e: Input<Type>) -> Self {
-        e.0.into()
+        e.base.into()
     }
 }
 
 impl<Type: InputType> Element for Input<Type> {
     fn as_velement(&mut self) -> &mut VElement {
-        &mut self.0
+        self.base.as_velement()
     }
 }
 
@@ -70,23 +119,5 @@ impl<Type: InputType> Input<Type> {
                 },
             ))
         })
-    }
-}
-
-pub trait InputType {
-    fn type_name() -> &'static str;
-}
-
-pub struct Text(std::convert::Infallible);
-impl InputType for Text {
-    fn type_name() -> &'static str {
-        "text"
-    }
-}
-
-pub struct Password(std::convert::Infallible);
-impl InputType for Password {
-    fn type_name() -> &'static str {
-        "password"
     }
 }
