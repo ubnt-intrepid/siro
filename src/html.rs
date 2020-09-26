@@ -62,7 +62,7 @@ html_elements!(
     dl,       // HtmlDListElement
     embed,    // HtmlEmbedElement
     fieldset, // HtmlFieldSetElement
-    from,     // HtmlFormElement
+    form,     // HtmlFormElement
     h1, h2, h3, h4, h5, h6,       // HtmlHeadingElement
     hr,       // HtmlHRElement
     iframe,   // HtmlIFrameElement
