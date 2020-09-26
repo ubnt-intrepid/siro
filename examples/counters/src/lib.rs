@@ -1,8 +1,4 @@
-use siro::{
-    html::{self, prelude::*},
-    vdom::Node,
-    App, Mailbox,
-};
+use siro::{html, prelude::*, App, Mailbox, VNode};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -10,11 +6,7 @@ use wee_alloc::WeeAlloc;
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
-    use siro::{
-        html::{self, prelude::*},
-        vdom::Node,
-        Mailbox,
-    };
+    use siro::{html, prelude::*, vdom::VNode, Mailbox};
 
     #[derive(Default, Clone)]
     pub struct Model {
@@ -35,7 +27,7 @@ mod counter {
         }
     }
 
-    pub fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<Node> {
+    pub fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<VNode> {
         html::div().children((
             html::button() //
                 .on("click", mailbox, |_| Msg::Decrement)
@@ -63,14 +55,12 @@ fn update(model: &mut Model, msg: Msg) {
     counter::update(&mut model[i], msg);
 }
 
-fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<Node> {
-    html::div().children(siro::builder::iter(model.iter().enumerate().map(
-        |(i, m)| {
-            html::div()
-                .child(format!("{}: ", i))
-                .child(counter::view(m, &mailbox.map(move |msg| Msg(i, msg))))
-        },
-    )))
+fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<VNode> {
+    html::div().append(model.iter().enumerate().map(|(i, m)| {
+        html::div()
+            .child(format!("{}: ", i))
+            .child(counter::view(m, &mailbox.map(move |msg| Msg(i, msg))))
+    }))
 }
 
 #[wasm_bindgen(start)]

@@ -1,4 +1,4 @@
-use super::{element::Element, text::Text};
+use super::{element::VElement, text::VText};
 use std::{
     hash::{Hash, Hasher},
     rc::{Rc, Weak},
@@ -28,28 +28,28 @@ impl Hash for Key {
     }
 }
 
-pub enum Node {
-    Element(Element),
-    Text(Text),
+pub enum VNode {
+    Element(VElement),
+    Text(VText),
 }
 
-impl From<Element> for Node {
-    fn from(element: Element) -> Self {
+impl From<VElement> for VNode {
+    fn from(element: VElement) -> Self {
         Self::Element(element)
     }
 }
 
-impl From<Text> for Node {
-    fn from(text: Text) -> Self {
+impl From<VText> for VNode {
+    fn from(text: VText) -> Self {
         Self::Text(text)
     }
 }
 
 macro_rules! impl_from_strs {
     ($( $t:ty ),*) => {$(
-        impl From<$t> for Node {
+        impl From<$t> for VNode {
             fn from(value: $t) -> Self {
-                Self::Text(Text::from(value))
+                Self::Text(VText::from(value))
             }
         }
     )*};
@@ -57,11 +57,11 @@ macro_rules! impl_from_strs {
 
 impl_from_strs!(&'static str, String, std::borrow::Cow<'static, str>);
 
-impl Node {
+impl VNode {
     pub(super) fn key(&self) -> Key {
         match self {
-            Node::Element(e) => e.key(),
-            Node::Text(t) => t.key(),
+            VNode::Element(e) => e.key(),
+            VNode::Text(t) => t.key(),
         }
     }
 }

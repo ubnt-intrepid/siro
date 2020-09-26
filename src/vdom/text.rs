@@ -2,17 +2,17 @@ use super::node::Key;
 use std::{borrow::Cow, rc::Rc};
 
 #[non_exhaustive]
-pub struct Text {
+pub struct VText {
     rc: Rc<()>,
     pub value: Cow<'static, str>,
 }
 
-impl Text {
-    pub fn new<S>(value: S) -> Text
+impl VText {
+    pub fn new<S>(value: S) -> VText
     where
         S: Into<Cow<'static, str>>,
     {
-        Text {
+        VText {
             rc: Rc::new(()),
             value: value.into(),
         }
@@ -25,7 +25,7 @@ impl Text {
 
 macro_rules! impl_from_strs {
     ($( $t:ty ),*) => {$(
-        impl From<$t> for Text {
+        impl From<$t> for VText {
             fn from(value: $t) -> Self {
                 Self::new(value)
             }

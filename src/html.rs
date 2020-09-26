@@ -1,24 +1,20 @@
 pub mod input;
 
 use crate::{
-    builder::ElementBuilder,
-    vdom::{Element, Node},
+    builder::Element,
+    vdom::{VElement, VNode},
 };
 
-pub mod prelude {
-    pub use crate::builder::ElementBuilder as _;
-}
+pub struct HtmlElement(VElement);
 
-pub struct HtmlElement(Element);
-
-impl From<HtmlElement> for Node {
+impl From<HtmlElement> for VNode {
     fn from(HtmlElement(e): HtmlElement) -> Self {
         e.into()
     }
 }
 
-impl ElementBuilder for HtmlElement {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for HtmlElement {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -26,7 +22,7 @@ impl ElementBuilder for HtmlElement {
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
         pub fn $tag_name() -> HtmlElement {
-            HtmlElement(Element::new(stringify!($tag_name), None))
+            HtmlElement(VElement::new(stringify!($tag_name), None))
         }
     )*};
 }

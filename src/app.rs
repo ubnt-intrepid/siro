@@ -1,7 +1,7 @@
 use crate::{
     mailbox::{Mailbox, Sender},
     subscription::Subscription,
-    vdom::{Node, Renderer},
+    vdom::{Renderer, VNode},
 };
 use futures::{channel::mpsc, prelude::*};
 use wasm_bindgen::prelude::*;
@@ -35,7 +35,7 @@ pub struct App<TMsg: 'static> {
     window: web::Window,
     document: web::Document,
     mountpoint: web::Node,
-    view: Node,
+    view: VNode,
     renderer: Renderer,
     tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
@@ -49,7 +49,7 @@ impl<TMsg: 'static> App<TMsg> {
 
         let mut renderer = Renderer::default();
 
-        let view: Node = "Now rendering...".into();
+        let view: VNode = "Now rendering...".into();
         let node = renderer.render(&view, &document)?;
         mountpoint.append_child(&node)?;
 
@@ -81,7 +81,7 @@ impl<TMsg: 'static> App<TMsg> {
         self.rx.next().await
     }
 
-    pub fn render(&mut self, view: impl Into<Node>) -> Result<(), JsValue> {
+    pub fn render(&mut self, view: impl Into<VNode>) -> Result<(), JsValue> {
         let view = view.into();
         self.renderer.diff(&self.view, &view, &self.document)?;
         self.view = view;

@@ -1,14 +1,14 @@
-use super::ElementBuilder;
+use super::Element;
 use crate::{
     mailbox::Mailbox,
-    vdom::{Element, Node, Property},
+    vdom::{Property, VElement, VNode},
 };
 use std::{borrow::Cow, marker::PhantomData};
 
 macro_rules! input_elements {
     ($( $name:ident => $Type:ident, )*) => {$(
         pub fn $name() -> Input<$Type> {
-            Input(Element::new("input", None), PhantomData)
+            Input(VElement::new("input", None), PhantomData)
                 .attribute("type", $Type::type_name())
         }
     )*};
@@ -19,16 +19,16 @@ input_elements! {
     password => Password,
 }
 
-pub struct Input<Type: InputType = Text>(Element, PhantomData<Type>);
+pub struct Input<Type: InputType = Text>(VElement, PhantomData<Type>);
 
-impl<Type: InputType> From<Input<Type>> for Node {
+impl<Type: InputType> From<Input<Type>> for VNode {
     fn from(e: Input<Type>) -> Self {
         e.0.into()
     }
 }
 
-impl<Type: InputType> ElementBuilder for Input<Type> {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl<Type: InputType> Element for Input<Type> {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }

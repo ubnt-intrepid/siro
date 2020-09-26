@@ -13,4 +13,11 @@ pub mod vdom;
 pub use crate::{
     app::{App, Mountpoint}, //
     mailbox::Mailbox,
+    vdom::VNode,
 };
+
+pub mod prelude {
+    pub use crate::builder::Element as _;
+    pub use crate::mailbox::Mailbox as _;
+    pub use crate::svg::PresentationAttributes as _;
+}

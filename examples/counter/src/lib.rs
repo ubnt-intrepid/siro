@@ -1,8 +1,4 @@
-use siro::{
-    html::{self, prelude::*},
-    vdom::Node,
-    App, Mailbox,
-};
+use siro::{html, prelude::*, App, Mailbox, VNode};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -28,7 +24,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &(impl Mailbox<Msg> + 'static)) -> impl Into<Node> {
+fn view(model: &Model, mailbox: &(impl Mailbox<Msg> + 'static)) -> impl Into<VNode> {
     html::div().children((
         html::button() //
             .on("click", mailbox, |_| Msg::Decrement)

@@ -1,5 +1,5 @@
 use super::{
-    node::{Key, Node},
+    node::{Key, VNode},
     FxIndexMap, FxIndexSet,
 };
 use gloo_events::EventListener;
@@ -11,7 +11,7 @@ use std::{
 use wasm_bindgen::JsValue;
 
 #[non_exhaustive]
-pub struct Element {
+pub struct VElement {
     rc: Rc<()>,
     pub tag_name: &'static str,
     pub namespace_uri: Option<&'static str>,
@@ -19,10 +19,10 @@ pub struct Element {
     pub properties: FxIndexMap<Cow<'static, str>, Property>,
     pub listeners: FxIndexSet<Rc<dyn Listener>>,
     pub class_names: FxIndexSet<Cow<'static, str>>,
-    pub children: Vec<Node>,
+    pub children: Vec<VNode>,
 }
 
-impl Element {
+impl VElement {
     pub fn new(tag_name: &'static str, namespace_uri: Option<&'static str>) -> Self {
         Self {
             rc: Rc::new(()),

@@ -1,13 +1,8 @@
 use crate::{
-    builder::ElementBuilder,
-    vdom::{Element, Node},
+    builder::Element,
+    vdom::{VElement, VNode},
 };
 use std::borrow::Cow;
-
-pub mod prelude {
-    pub use super::PresentationAttributes as _;
-    pub use crate::builder::ElementBuilder as _;
-}
 
 const SVG_NAMESPACE_URI: &str = "http://www.w3.org/2000/svg";
 
@@ -16,7 +11,7 @@ macro_rules! svg_elements {
         $name:ident => $T:ident,
     )*) => {$(
         pub fn $name() -> $T {
-            $T(Element::new(stringify!($name), Some(SVG_NAMESPACE_URI)))
+            $T(VElement::new(stringify!($name), Some(SVG_NAMESPACE_URI)))
         }
     )*};
 }
@@ -32,16 +27,16 @@ svg_elements! {
 
 // ==== <svg> ====
 
-pub struct Svg(Element);
+pub struct Svg(VElement);
 
-impl From<Svg> for Node {
+impl From<Svg> for VNode {
     fn from(v: Svg) -> Self {
         v.0.into()
     }
 }
 
-impl ElementBuilder for Svg {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for Svg {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -73,16 +68,16 @@ impl Svg {
 
 // ==== <circle> ====
 
-pub struct Circle(Element);
+pub struct Circle(VElement);
 
-impl From<Circle> for Node {
+impl From<Circle> for VNode {
     fn from(e: Circle) -> Self {
         e.0.into()
     }
 }
 
-impl ElementBuilder for Circle {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for Circle {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -105,16 +100,16 @@ impl Circle {
 
 // ==== <rect> ====
 
-pub struct Rect(Element);
+pub struct Rect(VElement);
 
-impl From<Rect> for Node {
+impl From<Rect> for VNode {
     fn from(e: Rect) -> Self {
         e.0.into()
     }
 }
 
-impl ElementBuilder for Rect {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for Rect {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -148,16 +143,16 @@ impl Rect {
 
 // ==== <line> ====
 
-pub struct Line(Element);
+pub struct Line(VElement);
 
-impl From<Line> for Node {
+impl From<Line> for VNode {
     fn from(e: Line) -> Self {
         e.0.into()
     }
 }
 
-impl ElementBuilder for Line {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for Line {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -184,16 +179,16 @@ impl Line {
 
 // ==== <polyline> ====
 
-pub struct Polyline(Element);
+pub struct Polyline(VElement);
 
-impl From<Polyline> for Node {
+impl From<Polyline> for VNode {
     fn from(e: Polyline) -> Self {
         e.0.into()
     }
 }
 
-impl ElementBuilder for Polyline {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for Polyline {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -218,16 +213,16 @@ impl Polyline {
 
 // ==== <text> ====
 
-pub struct Text(Element);
+pub struct Text(VElement);
 
-impl From<Text> for Node {
+impl From<Text> for VNode {
     fn from(e: Text) -> Self {
         e.0.into()
     }
 }
 
-impl ElementBuilder for Text {
-    fn as_element_mut(&mut self) -> &mut Element {
+impl Element for Text {
+    fn as_velement(&mut self) -> &mut VElement {
         &mut self.0
     }
 }
@@ -246,7 +241,7 @@ impl Text {
 
 // ==== Presentation attributes ====
 
-pub trait PresentationAttributes: ElementBuilder {
+pub trait PresentationAttributes: Element {
     fn dominant_baseline(self, value: impl Into<Cow<'static, str>>) -> Self {
         self.attribute("dominant-baseline", value.into())
     }

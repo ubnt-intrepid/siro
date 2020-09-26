@@ -4,9 +4,9 @@ mod render;
 mod text;
 
 pub use self::{
-    element::{Attribute, Element, Listener, Property},
-    node::Node,
-    text::Text,
+    element::{Attribute, Listener, Property, VElement},
+    node::VNode,
+    text::VText,
 };
 
 pub(crate) use self::render::Renderer;

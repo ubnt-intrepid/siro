@@ -1,7 +1,4 @@
-use siro::{
-    html::{self, prelude::*},
-    App,
-};
+use siro::{html, prelude::*, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 

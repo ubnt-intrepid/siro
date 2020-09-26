@@ -1,6 +1,6 @@
 use super::{
-    element::{Attribute, Element, Property},
-    node::{Key, Node},
+    element::{Attribute, Property, VElement},
+    node::{Key, VNode},
 };
 use gloo_events::EventListener;
 use itertools::{EitherOrBoth, Itertools as _};
@@ -37,12 +37,12 @@ pub(crate) struct Renderer {
 impl Renderer {
     pub(crate) fn render(
         &mut self,
-        node: &Node,
+        node: &VNode,
         document: &web::Document,
     ) -> Result<web::Node, JsValue> {
         let dom: web::Node = match node {
-            Node::Element(e) => self.render_element(e, document)?.into(),
-            Node::Text(t) => document.create_text_node(&*t.value).into(),
+            VNode::Element(e) => self.render_element(e, document)?.into(),
+            VNode::Text(t) => document.create_text_node(&*t.value).into(),
         };
         self.cached_nodes.insert(node.key(), dom.clone());
         Ok(dom)
@@ -50,7 +50,7 @@ impl Renderer {
 
     fn render_element(
         &mut self,
-        e: &Element,
+        e: &VElement,
         document: &web::Document,
     ) -> Result<web::Element, JsValue> {
         let name = wasm_bindgen::intern(e.tag_name);
@@ -94,8 +94,8 @@ impl Renderer {
 
     pub(crate) fn diff(
         &mut self,
-        old: &Node,
-        new: &Node,
+        old: &VNode,
+        new: &VNode,
         document: &web::Document,
     ) -> Result<(), JsValue> {
         let old_key = old.key();
@@ -109,14 +109,14 @@ impl Renderer {
         let node = self.replant_caches(&old_key, &new_key);
 
         match (old, new) {
-            (Node::Element(old), Node::Element(new)) if old.tag_name == new.tag_name => {
+            (VNode::Element(old), VNode::Element(new)) if old.tag_name == new.tag_name => {
                 let node = node
                     .dyn_ref::<web::Element>()
                     .expect_throw("cached node is not Element");
                 self.diff_element(old, new, &node, document)?;
             }
 
-            (Node::Text(current), Node::Text(new)) => {
+            (VNode::Text(current), VNode::Text(new)) => {
                 let node = node
                     .dyn_ref::<web::Text>()
                     .expect_throw("cache is not Text");
@@ -152,8 +152,8 @@ impl Renderer {
 
     fn diff_element(
         &mut self,
-        old: &Element,
-        new: &Element,
+        old: &VElement,
+        new: &VElement,
         node: &web::Element,
         document: &web::Document,
     ) -> Result<(), JsValue> {
