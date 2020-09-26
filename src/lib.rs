@@ -19,5 +19,4 @@ pub use crate::{
 pub mod prelude {
     pub use crate::builder::Element as _;
     pub use crate::mailbox::Mailbox as _;
-    pub use crate::svg::PresentationAttributes as _;
 }
