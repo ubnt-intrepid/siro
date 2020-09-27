@@ -69,7 +69,6 @@ pub trait Element: Into<VNode> {
     fn on<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
     where
         M: Mailbox<TMsg>,
-        M::Sender: 'static,
         F: Fn(&web::Event) -> TMsg + 'static,
     {
         self.on_(event_type, mailbox, move |e| Some(callback(e)))
@@ -78,7 +77,6 @@ pub trait Element: Into<VNode> {
     fn on_<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
     where
         M: Mailbox<TMsg>,
-        M::Sender: 'static,
         F: Fn(&web::Event) -> Option<TMsg> + 'static,
     {
         struct CallbackListener<M, F> {

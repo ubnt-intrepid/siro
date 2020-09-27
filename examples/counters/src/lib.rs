@@ -57,9 +57,12 @@ fn update(model: &mut Model, msg: Msg) {
 
 fn view(model: &Model, mailbox: &impl Mailbox<Msg>) -> impl Into<VNode> {
     html::div().append(model.iter().enumerate().map(|(i, m)| {
-        html::div()
+        html::div() //
             .child(format!("{}: ", i))
-            .child(counter::view(m, &mailbox.map(move |msg| Msg(i, msg))))
+            .child(counter::view(
+                m,
+                &siro::mailbox::proxy(&mailbox, move |msg| Msg(i, msg)),
+            ))
     }))
 }
 

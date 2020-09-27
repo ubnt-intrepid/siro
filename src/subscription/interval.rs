@@ -1,5 +1,5 @@
 use super::Subscription;
-use crate::mailbox::Sender;
+use crate::mailbox::{Mailbox, Sender as _};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
 pub fn interval<F, TMsg>(timeout: i32, callback: F) -> impl Subscription<TMsg>
@@ -20,14 +20,16 @@ where
 {
     type Handle = Handle;
 
-    fn subscribe<TSender>(self, sender: TSender) -> Result<Self::Handle, JsValue>
+    fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        TSender: Sender<TMsg>,
+        M: Mailbox<TMsg>,
     {
         let Self {
             timeout,
             mut callback,
         } = self;
+
+        let sender = mailbox.sender();
 
         let window = web::window().ok_or("no global `Window` exists")?;
 

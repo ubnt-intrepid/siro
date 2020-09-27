@@ -1,29 +1,20 @@
-use crate::subscription::Subscription;
-use std::{marker::PhantomData, rc::Rc};
-use wasm_bindgen::prelude::*;
+mod proxy;
 
+pub use proxy::proxy;
+
+/// Represents mailbox for exchanging the messages within the application.
 pub trait Mailbox<TMsg> {
+    /// The type of `Sender` associated with this mailbox.
     type Sender: Sender<TMsg>;
 
-    fn send_message(&self, msg: TMsg);
+    /// Create an instance of `Sender` associated with this mailbox.
     fn sender(&self) -> Self::Sender;
 
-    fn subscribe<S>(&self, subscription: S) -> Result<S::Handle, JsValue>
-    where
-        S: Subscription<TMsg>,
-    {
-        subscription.subscribe(self.sender())
-    }
-
-    fn map<F>(self, f: F) -> Map<Self, TMsg, F>
-    where
-        Self: Sized,
-    {
-        Map {
-            mailbox: self,
-            f: Rc::new(f),
-            _marker: PhantomData,
-        }
+    /// Post a message to this mailbox.
+    ///
+    /// By default, this method is a shortcut to `self.sender().send_message(msg)`.
+    fn send_message(&self, msg: TMsg) {
+        self.sender().send_message(msg);
     }
 }
 
@@ -34,13 +25,13 @@ where
     type Sender = T::Sender;
 
     #[inline]
-    fn send_message(&self, msg: TMsg) {
-        (**self).send_message(msg);
+    fn sender(&self) -> Self::Sender {
+        (**self).sender()
     }
 
     #[inline]
-    fn sender(&self) -> Self::Sender {
-        (**self).sender()
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
     }
 }
 
@@ -51,13 +42,13 @@ where
     type Sender = T::Sender;
 
     #[inline]
-    fn send_message(&self, msg: TMsg) {
-        (**self).send_message(msg);
+    fn sender(&self) -> Self::Sender {
+        (**self).sender()
     }
 
     #[inline]
-    fn sender(&self) -> Self::Sender {
-        (**self).sender()
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
     }
 }
 
@@ -68,13 +59,13 @@ where
     type Sender = T::Sender;
 
     #[inline]
-    fn send_message(&self, msg: TMsg) {
-        (**self).send_message(msg);
+    fn sender(&self) -> Self::Sender {
+        (**self).sender()
     }
 
     #[inline]
-    fn sender(&self) -> Self::Sender {
-        (**self).sender()
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
     }
 }
 
@@ -85,76 +76,18 @@ where
     type Sender = T::Sender;
 
     #[inline]
-    fn send_message(&self, msg: TMsg) {
-        (**self).send_message(msg);
-    }
-
-    #[inline]
     fn sender(&self) -> Self::Sender {
         (**self).sender()
     }
-}
-
-pub trait Sender<TMsg>: Clone + 'static {
-    fn send_message(&self, msg: TMsg);
-}
-
-// ==== Map ====
-
-pub struct Map<M, TMsg, F> {
-    mailbox: M,
-    f: Rc<F>,
-    _marker: PhantomData<TMsg>,
-}
-
-impl<M, TMsg, F, UMsg> Mailbox<UMsg> for Map<M, TMsg, F>
-where
-    M: Mailbox<TMsg>,
-    TMsg: 'static,
-    F: Fn(UMsg) -> TMsg + 'static,
-{
-    type Sender = MapSender<M::Sender, TMsg, F>;
 
     #[inline]
-    fn send_message(&self, msg: UMsg) {
-        self.mailbox.send_message((self.f)(msg));
-    }
-
-    fn sender(&self) -> Self::Sender {
-        MapSender {
-            sender: self.mailbox.sender(),
-            f: self.f.clone(),
-            _marker: PhantomData,
-        }
+    fn send_message(&self, msg: TMsg) {
+        (**self).send_message(msg);
     }
 }
 
-pub struct MapSender<M, TMsg, F> {
-    sender: M,
-    f: Rc<F>,
-    _marker: PhantomData<TMsg>,
-}
-
-impl<M, TMsg, F> Clone for MapSender<M, TMsg, F>
-where
-    M: Sender<TMsg>,
-{
-    fn clone(&self) -> Self {
-        Self {
-            sender: self.sender.clone(),
-            f: self.f.clone(),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<M, TMsg, F, UMsg> Sender<UMsg> for MapSender<M, TMsg, F>
-where
-    M: Sender<TMsg>,
-    TMsg: 'static,
-    F: Fn(UMsg) -> TMsg + 'static,
-{
-    fn send_message(&self, msg: UMsg) {
-        self.sender.send_message((self.f)(msg));
-    }
+/// Sender for posting messages from callback functions.
+pub trait Sender<TMsg>: 'static {
+    /// Send a message to the mailbox.
+    fn send_message(&self, msg: TMsg);
 }

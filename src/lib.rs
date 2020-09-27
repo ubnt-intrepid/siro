@@ -19,4 +19,5 @@ pub use crate::{
 pub mod prelude {
     pub use crate::builder::Element as _;
     pub use crate::mailbox::Mailbox as _;
+    pub use crate::subscription::Subscription as _;
 }

@@ -1,5 +1,5 @@
 use super::Subscription;
-use crate::mailbox::Sender;
+use crate::mailbox::{Mailbox, Sender as _};
 use once_cell::unsync::OnceCell;
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
@@ -21,11 +21,13 @@ where
 {
     type Handle = Handle;
 
-    fn subscribe<TSender>(self, sender: TSender) -> Result<Self::Handle, JsValue>
+    fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        TSender: Sender<TMsg>,
+        M: Mailbox<TMsg>,
     {
         let Self { callback } = self;
+
+        let sender = mailbox.sender();
 
         let scheduler = Rc::new(Scheduler {
             window: web::window().ok_or("no global `Window` exists")?,
