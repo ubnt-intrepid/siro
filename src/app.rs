@@ -78,7 +78,8 @@ impl<TMsg: 'static> App<TMsg> {
     }
 }
 
-impl<TMsg: 'static> Mailbox<TMsg> for App<TMsg> {
+impl<TMsg: 'static> Mailbox for App<TMsg> {
+    type Msg = TMsg;
     type Sender = AppSender<TMsg>;
 
     fn send_message(&self, msg: TMsg) {
@@ -98,7 +99,9 @@ impl<TMsg> Clone for AppSender<TMsg> {
     }
 }
 
-impl<TMsg: 'static> Sender<TMsg> for AppSender<TMsg> {
+impl<TMsg: 'static> Sender for AppSender<TMsg> {
+    type Msg = TMsg;
+
     fn send_message(&self, msg: TMsg) {
         self.0.unbounded_send(msg).unwrap_throw();
     }

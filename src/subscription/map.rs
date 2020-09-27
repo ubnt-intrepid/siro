@@ -31,9 +31,9 @@ where
 
     fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        M: Mailbox<TMsg>,
+        M: Mailbox<Msg = Self::Msg>,
     {
-        let mailbox = crate::mailbox::proxy(mailbox, self.f);
+        let mailbox = mailbox.map(self.f);
         self.subscription.subscribe(&mailbox)
     }
 }

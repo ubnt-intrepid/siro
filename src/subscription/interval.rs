@@ -16,7 +16,7 @@ impl Subscription for Interval {
 
     fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        M: Mailbox<()>,
+        M: Mailbox<Msg = Self::Msg>,
     {
         let Self { timeout } = self;
 

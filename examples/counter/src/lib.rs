@@ -24,7 +24,10 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &(impl Mailbox<Msg> + 'static)) -> impl Into<VNode> {
+fn view<M: ?Sized>(model: &Model, mailbox: &M) -> impl Into<VNode>
+where
+    M: Mailbox<Msg = Msg>,
+{
     html::div().children((
         html::button() //
             .on("click", mailbox, |_| Msg::Decrement)

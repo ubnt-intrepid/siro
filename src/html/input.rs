@@ -103,11 +103,10 @@ impl<Type: InputType> Input<Type> {
         self.property("value", value.into())
     }
 
-    pub fn on_input<M, F, TMsg>(self, mailbox: &M, callback: F) -> Self
+    pub fn on_input<M, F>(self, mailbox: M, callback: F) -> Self
     where
-        M: Mailbox<TMsg>,
-        M::Sender: 'static,
-        F: Fn(String) -> TMsg + 'static,
+        M: Mailbox,
+        F: Fn(String) -> M::Msg + 'static,
     {
         self.on_("input", mailbox, move |e| {
             Some(callback(

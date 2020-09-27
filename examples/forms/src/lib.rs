@@ -27,7 +27,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &(impl Mailbox<Msg> + 'static)) -> impl Into<VNode> {
+fn view(model: &Model, mailbox: &(impl Mailbox<Msg = Msg> + 'static)) -> impl Into<VNode> {
     html::div()
         .child(
             html::input::text()

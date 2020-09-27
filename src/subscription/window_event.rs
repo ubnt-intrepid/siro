@@ -20,7 +20,7 @@ impl Subscription for WindowEvent {
 
     fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        M: Mailbox<web::Event>,
+        M: Mailbox<Msg = Self::Msg>,
     {
         let Self { event_type } = self;
 

@@ -66,18 +66,18 @@ pub trait Element: Into<VNode> {
         self.attribute("id", value.into())
     }
 
-    fn on<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
+    fn on<M, F>(self, event_type: &'static str, mailbox: M, callback: F) -> Self
     where
-        M: Mailbox<TMsg>,
-        F: Fn(&web::Event) -> TMsg + 'static,
+        M: Mailbox,
+        F: Fn(&web::Event) -> M::Msg + 'static,
     {
         self.on_(event_type, mailbox, move |e| Some(callback(e)))
     }
 
-    fn on_<M, F, TMsg>(self, event_type: &'static str, mailbox: &M, callback: F) -> Self
+    fn on_<M, F>(self, event_type: &'static str, mailbox: M, callback: F) -> Self
     where
-        M: Mailbox<TMsg>,
-        F: Fn(&web::Event) -> Option<TMsg> + 'static,
+        M: Mailbox,
+        F: Fn(&web::Event) -> Option<M::Msg> + 'static,
     {
         struct CallbackListener<M, F> {
             event_type: &'static str,
@@ -85,10 +85,10 @@ pub trait Element: Into<VNode> {
             callback: F,
         }
 
-        impl<M, F, TMsg> Listener for CallbackListener<M, F>
+        impl<M, F> Listener for CallbackListener<M, F>
         where
-            M: Sender<TMsg> + 'static,
-            F: Fn(&web::Event) -> Option<TMsg> + 'static,
+            M: Sender + 'static,
+            F: Fn(&web::Event) -> Option<M::Msg> + 'static,
         {
             fn event_type(&self) -> &str {
                 self.event_type

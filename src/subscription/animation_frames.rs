@@ -18,7 +18,7 @@ impl Subscription for AnimationFrames {
 
     fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        M: Mailbox<f64>,
+        M: Mailbox<Msg = Self::Msg>,
     {
         let sender = mailbox.sender();
 

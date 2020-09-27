@@ -17,7 +17,7 @@ pub trait Subscription {
 
     fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        M: Mailbox<Self::Msg>;
+        M: Mailbox<Msg = Self::Msg>;
 
     fn map<F, TMsg>(self, f: F) -> Map<Self, F, TMsg>
     where
