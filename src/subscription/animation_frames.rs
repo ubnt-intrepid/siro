@@ -4,29 +4,22 @@ use once_cell::unsync::OnceCell;
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
-pub fn animation_frames<F, TMsg>(callback: F) -> impl Subscription<TMsg>
-where
-    F: Fn(f64) -> TMsg + 'static,
-{
-    AnimationFrames { callback }
+pub fn animation_frames() -> AnimationFrames {
+    AnimationFrames { _p: () }
 }
 
-struct AnimationFrames<F> {
-    callback: F,
+pub struct AnimationFrames {
+    _p: (),
 }
 
-impl<F, TMsg> Subscription<TMsg> for AnimationFrames<F>
-where
-    F: Fn(f64) -> TMsg + 'static,
-{
+impl Subscription for AnimationFrames {
+    type Msg = f64;
     type Handle = Handle;
 
     fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
-        M: Mailbox<TMsg>,
+        M: Mailbox<f64>,
     {
-        let Self { callback } = self;
-
         let sender = mailbox.sender();
 
         let scheduler = Rc::new(Scheduler {
@@ -45,7 +38,7 @@ where
                 let closure = closure2.take();
 
                 if scheduler2.running.get() {
-                    sender.send_message(callback(timestamp));
+                    sender.send_message(timestamp);
 
                     scheduler2.schedule(
                         closure
@@ -97,7 +90,7 @@ impl Scheduler {
     }
 }
 
-struct Handle {
+pub struct Handle {
     scheduler: Rc<Scheduler>,
     closure: Rc<OnceCell<Closure<dyn Fn(f64)>>>,
 }

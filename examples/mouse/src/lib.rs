@@ -62,20 +62,17 @@ pub async fn main() -> Result<(), JsValue> {
 
     let mut app = App::mount("#app")?;
 
-    let _mousedown = siro::subscription::window_event("mousedown", |event| {
-        Some(Msg::MouseDown(event.clone().unchecked_into()))
-    })
-    .subscribe(&app)?;
+    let _mousedown = siro::subscription::window_event("mousedown")
+        .map(|event| Msg::MouseDown(event.clone().unchecked_into()))
+        .subscribe(&app)?;
 
-    let _mousemove = siro::subscription::window_event("mousemove", |event| {
-        Some(Msg::MouseMove(event.clone().unchecked_into()))
-    })
-    .subscribe(&app)?;
+    let _mousemove = siro::subscription::window_event("mousemove")
+        .map(|event| Msg::MouseMove(event.clone().unchecked_into()))
+        .subscribe(&app)?;
 
-    let _mouseup = siro::subscription::window_event("mouseup", |event| {
-        Some(Msg::MouseUp(event.clone().unchecked_into()))
-    })
-    .subscribe(&app)?;
+    let _mouseup = siro::subscription::window_event("mouseup")
+        .map(|event| Msg::MouseUp(event.clone().unchecked_into()))
+        .subscribe(&app)?;
 
     let mut model = Model::default();
     app.render(view(&model))?;
