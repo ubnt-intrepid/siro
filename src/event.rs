@@ -1,6 +1,8 @@
 mod on;
+mod on_input;
 
 pub use on::{on, On};
+pub use on_input::{on_input, HasInputEvent, OnInput};
 
 use crate::builder::Element;
 

@@ -1,4 +1,4 @@
-use siro::{html, prelude::*, App, Mailbox, VNode};
+use siro::{event::on_input, html, prelude::*, App, Mailbox, VNode};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -33,19 +33,19 @@ fn view(model: &Model, mailbox: &(impl Mailbox<Msg = Msg> + 'static)) -> impl In
             html::input::text()
                 .placeholder("Name")
                 .value(model.name.clone())
-                .event(mailbox, html::input::on_input(Msg::Name)),
+                .event(mailbox, on_input(Msg::Name)),
         )
         .child(
             html::input::password()
                 .placeholder("Password")
                 .value(model.password.clone())
-                .event(mailbox, html::input::on_input(Msg::Password)),
+                .event(mailbox, on_input(Msg::Password)),
         )
         .child(
             html::input::password()
                 .placeholder("Re-enter Password")
                 .value(model.password_again.clone())
-                .event(mailbox, html::input::on_input(Msg::PasswordAgain)),
+                .event(mailbox, on_input(Msg::PasswordAgain)),
         )
         .child(if model.password == model.password_again {
             html::div() //

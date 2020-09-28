@@ -1,7 +1,7 @@
 use super::HtmlElement;
 use crate::{
     builder::Element,
-    event::{EventHandler, EventHandlerBase},
+    event::HasInputEvent,
     vdom::{Property, VElement, VNode},
 };
 use std::{borrow::Cow, marker::PhantomData};
@@ -23,6 +23,8 @@ macro_rules! input_elements {
         }
 
         pub type $Type = Input<$name::$Type>;
+
+        impl HasInputEvent for $Type {}
 
         paste::paste! {
             #[doc = "Create a builder of [`<input type=\"" $name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $name ") element."]
@@ -102,44 +104,4 @@ impl<Type: InputType> Input<Type> {
     pub fn value(self, value: impl Into<Property>) -> Self {
         self.property("value", value.into())
     }
-}
-
-pub fn on_input<F, TMsg>(f: F) -> OnInput<F>
-where
-    F: Fn(String) -> TMsg,
-    TMsg: 'static,
-{
-    OnInput { f }
-}
-
-pub struct OnInput<F> {
-    f: F,
-}
-
-impl<F, TMsg> EventHandlerBase for OnInput<F>
-where
-    F: Fn(String) -> TMsg,
-    TMsg: 'static,
-{
-    type Msg = TMsg;
-
-    fn event_type(&self) -> &'static str {
-        "input"
-    }
-
-    fn invoke(&self, event: &web::Event) -> Option<Self::Msg> {
-        Some((self.f)(
-            js_sys::Reflect::get(&&event.target()?, &"value".into())
-                .ok()?
-                .as_string()?,
-        ))
-    }
-}
-
-impl<T, F, TMsg> EventHandler<Input<T>> for OnInput<F>
-where
-    T: InputType,
-    F: Fn(String) -> TMsg,
-    TMsg: 'static,
-{
 }

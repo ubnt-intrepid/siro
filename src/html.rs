@@ -1,5 +1,8 @@
 pub mod input;
 
+mod textarea;
+pub use textarea::{textarea, Textarea};
+
 use crate::{
     builder::Element,
     vdom::{VElement, VNode},
@@ -90,7 +93,6 @@ html_elements!(
     tbody,    // HtmlTableSectionElement
     td,       // HtmlTableDataCellElement
     template, // HtmlTemplateElement
-    textarea, // HtmlTextAreaElement
     tfoot, thead, // HtmlTableSectionElement
     th,    // HtmlTableHeaderCellElement
     time,  // HtmlTimeElement
