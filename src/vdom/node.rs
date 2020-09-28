@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
     rc::{Rc, Weak},
 };
+use wasm_bindgen::prelude::*;
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
@@ -31,6 +32,7 @@ impl Hash for Key {
 pub enum VNode {
     Element(VElement),
     Text(VText),
+    Custom(CustomNode),
 }
 
 impl From<VElement> for VNode {
@@ -42,6 +44,12 @@ impl From<VElement> for VNode {
 impl From<VText> for VNode {
     fn from(text: VText) -> Self {
         Self::Text(text)
+    }
+}
+
+impl From<CustomNode> for VNode {
+    fn from(custom: CustomNode) -> Self {
+        Self::Custom(custom)
     }
 }
 
@@ -62,6 +70,32 @@ impl VNode {
         match self {
             VNode::Element(e) => e.key(),
             VNode::Text(t) => t.key(),
+            VNode::Custom(n) => n.key(),
         }
+    }
+}
+
+pub struct CustomNode {
+    rc: Rc<()>,
+    render: Box<dyn Fn(&web::Document) -> Result<web::Node, JsValue>>,
+}
+
+impl CustomNode {
+    pub fn new<F>(render: F) -> Self
+    where
+        F: Fn(&web::Document) -> Result<web::Node, JsValue> + 'static,
+    {
+        Self {
+            rc: Rc::new(()),
+            render: Box::new(render),
+        }
+    }
+
+    fn key(&self) -> Key {
+        Key::new(&self.rc)
+    }
+
+    pub(super) fn render(&self, document: &web::Document) -> Result<web::Node, JsValue> {
+        (self.render)(document)
     }
 }

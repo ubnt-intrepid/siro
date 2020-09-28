@@ -43,6 +43,7 @@ impl Renderer {
         let dom: web::Node = match node {
             VNode::Element(e) => self.render_element(e, document)?.into(),
             VNode::Text(t) => document.create_text_node(&*t.value).into(),
+            VNode::Custom(n) => n.render(document)?,
         };
         self.cached_nodes.insert(node.key(), dom.clone());
         Ok(dom)
