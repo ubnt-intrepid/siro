@@ -1,7 +1,7 @@
 use super::HtmlElement;
 use crate::{
     builder::Element,
-    mailbox::Mailbox,
+    event::{EventHandler, EventHandlerBase},
     vdom::{Property, VElement, VNode},
 };
 use std::{borrow::Cow, marker::PhantomData};
@@ -102,21 +102,44 @@ impl<Type: InputType> Input<Type> {
     pub fn value(self, value: impl Into<Property>) -> Self {
         self.property("value", value.into())
     }
+}
 
-    pub fn on_input<M, F>(self, mailbox: M, callback: F) -> Self
-    where
-        M: Mailbox,
-        F: Fn(String) -> M::Msg + 'static,
-    {
-        self.on_("input", mailbox, move |e| {
-            Some(callback(
-                #[allow(unused_unsafe)]
-                unsafe {
-                    js_sys::Reflect::get(&&e.target()?, &"value".into())
-                        .ok()?
-                        .as_string()?
-                },
-            ))
-        })
+pub fn on_input<F, TMsg>(f: F) -> OnInput<F>
+where
+    F: Fn(String) -> TMsg,
+    TMsg: 'static,
+{
+    OnInput { f }
+}
+
+pub struct OnInput<F> {
+    f: F,
+}
+
+impl<F, TMsg> EventHandlerBase for OnInput<F>
+where
+    F: Fn(String) -> TMsg,
+    TMsg: 'static,
+{
+    type Msg = TMsg;
+
+    fn event_type(&self) -> &'static str {
+        "input"
     }
+
+    fn invoke(&self, event: &web::Event) -> Option<Self::Msg> {
+        Some((self.f)(
+            js_sys::Reflect::get(&&event.target()?, &"value".into())
+                .ok()?
+                .as_string()?,
+        ))
+    }
+}
+
+impl<T, F, TMsg> EventHandler<Input<T>> for OnInput<F>
+where
+    T: InputType,
+    F: Fn(String) -> TMsg,
+    TMsg: 'static,
+{
 }

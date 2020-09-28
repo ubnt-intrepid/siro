@@ -1,4 +1,5 @@
 use crate::{
+    event::{EventHandler, EventHandlerBase},
     mailbox::{Mailbox, Sender},
     vdom::{Attribute, Listener, Property, VElement, VNode},
 };
@@ -66,47 +67,37 @@ pub trait Element: Into<VNode> {
         self.attribute("id", value.into())
     }
 
-    fn on<M, F>(self, event_type: &'static str, mailbox: M, callback: F) -> Self
+    fn event<M, E>(self, mailbox: M, handler: E) -> Self
     where
         M: Mailbox,
-        F: Fn(&web::Event) -> M::Msg + 'static,
+        E: EventHandler<Self, Msg = M::Msg> + 'static,
     {
-        self.on_(event_type, mailbox, move |e| Some(callback(e)))
-    }
-
-    fn on_<M, F>(self, event_type: &'static str, mailbox: M, callback: F) -> Self
-    where
-        M: Mailbox,
-        F: Fn(&web::Event) -> Option<M::Msg> + 'static,
-    {
-        struct CallbackListener<M, F> {
-            event_type: &'static str,
-            sender: M,
-            callback: F,
+        struct EventHandlerListener<S, E> {
+            sender: S,
+            handler: E,
         }
 
-        impl<M, F> Listener for CallbackListener<M, F>
+        impl<S, E> Listener for EventHandlerListener<S, E>
         where
-            M: Sender + 'static,
-            F: Fn(&web::Event) -> Option<M::Msg> + 'static,
+            S: Sender + 'static,
+            E: EventHandlerBase<Msg = S::Msg> + 'static,
         {
             fn event_type(&self) -> &str {
-                self.event_type
+                self.handler.event_type()
             }
 
             fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
-                EventListener::new(target, self.event_type, move |e| {
-                    if let Some(msg) = (self.callback)(e) {
+                EventListener::new(target, self.handler.event_type(), move |e| {
+                    if let Some(msg) = self.handler.invoke(e) {
                         self.sender.send_message(msg);
                     }
                 })
             }
         }
 
-        self.listener(Rc::new(CallbackListener {
-            event_type,
+        self.listener(Rc::new(EventHandlerListener {
             sender: mailbox.sender(),
-            callback,
+            handler,
         }))
     }
 }

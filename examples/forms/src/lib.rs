@@ -33,19 +33,19 @@ fn view(model: &Model, mailbox: &(impl Mailbox<Msg = Msg> + 'static)) -> impl In
             html::input::text()
                 .placeholder("Name")
                 .value(model.name.clone())
-                .on_input(mailbox, Msg::Name),
+                .event(mailbox, html::input::on_input(Msg::Name)),
         )
         .child(
             html::input::password()
                 .placeholder("Password")
                 .value(model.password.clone())
-                .on_input(mailbox, Msg::Password),
+                .event(mailbox, html::input::on_input(Msg::Password)),
         )
         .child(
             html::input::password()
                 .placeholder("Re-enter Password")
                 .value(model.password_again.clone())
-                .on_input(mailbox, Msg::PasswordAgain),
+                .event(mailbox, html::input::on_input(Msg::PasswordAgain)),
         )
         .child(if model.password == model.password_again {
             html::div() //

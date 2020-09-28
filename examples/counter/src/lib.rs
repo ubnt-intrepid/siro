@@ -30,17 +30,17 @@ where
 {
     html::div().children((
         html::button() //
-            .on("click", mailbox, |_| Msg::Decrement)
+            .event(mailbox, siro::event::on("click", |_| Msg::Decrement))
             .child("-"),
         " ",
         model.value.to_string(),
         " ",
         html::button() //
-            .on("click", mailbox, |_| Msg::Increment)
+            .event(mailbox, siro::event::on("click", |_| Msg::Increment))
             .child("+"),
         " ",
         html::button() //
-            .on("click", mailbox, |_| Msg::Reset)
+            .event(mailbox, siro::event::on("click", |_| Msg::Reset))
             .child("Reset"),
     ))
 }
