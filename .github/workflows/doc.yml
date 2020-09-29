@@ -44,7 +44,9 @@ jobs:
       run: cargo fetch
 
     - name: Build API docs
-      run: cargo doc --no-deps
+      run: |
+        cargo doc --no-deps
+        rm -fv target/doc/.lock
 
     - name: Upload artifact
       uses: actions/upload-artifact@v1
