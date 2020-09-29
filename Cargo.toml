@@ -1,9 +1,12 @@
 [package]
 name = "siro"
-version = "0.0.0"
+version = "0.0.0-experimental.1"
 publish = false
-authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
 edition = "2018"
+description = "A client side Web application library"
+authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+repository = "https://github.com/ubnt-intrepid/siro.git"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 futures = "0.3"
