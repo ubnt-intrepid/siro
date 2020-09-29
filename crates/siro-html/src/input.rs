@@ -1,27 +1,56 @@
-use super::HtmlElement;
+//! Components for building [`<input>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input) element.
+
+use crate::html_element::HtmlElement;
 use siro::{
     event::{EventHandler, EventHandlerBase},
     vdom::{Element, Property, VElement, VNode},
 };
-use std::{borrow::Cow, marker::PhantomData};
+use std::borrow::Cow;
 
-pub trait InputType {
-    fn name() -> &'static str;
+/// Represents builder of [`<input>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input) elements.
+pub trait Input: Element {
+    const TYPE: &'static str;
+
+    fn disabled(self, value: bool) -> Self {
+        self.attribute("disabled", value)
+    }
+
+    fn name(self, value: impl Into<Cow<'static, str>>) -> Self {
+        self.attribute("name", value.into())
+    }
+
+    fn placeholder(self, text: impl Into<Cow<'static, str>>) -> Self {
+        self.attribute("placeholder", text.into())
+    }
+
+    fn readonly(self, value: bool) -> Self {
+        self.attribute("readonly", value)
+    }
+
+    fn value(self, value: impl Into<Property>) -> Self {
+        self.property("value", value.into())
+    }
 }
 
 macro_rules! input_elements {
     ($( $name:ident => $Type:ident, )*) => {$(
-        mod $name {
-            pub struct $Type(std::convert::Infallible);
+        pub struct $Type(HtmlElement);
 
-            impl super::InputType for $Type {
-                fn name() -> &'static str {
-                    stringify!($name)
-                }
+        impl Input for $Type {
+            const TYPE: &'static str = stringify!($name);
+        }
+
+        impl From<$Type> for VNode {
+            fn from(e: $Type) -> Self {
+                e.0.into()
             }
         }
 
-        pub type $Type = Input<$name::$Type>;
+        impl Element for $Type {
+            fn as_velement(&mut self) -> &mut VElement {
+                self.0.as_velement()
+            }
+        }
 
         impl HasInputEvent for $Type {}
 
@@ -29,7 +58,8 @@ macro_rules! input_elements {
             #[doc = "Create a builder of [`<input type=\"" $name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $name ") element."]
             #[inline]
             pub fn $name() -> $Type {
-                Input::new()
+                $Type(HtmlElement::new("input".into()))
+                    .attribute("type", <$Type as Input>::TYPE)
             }
         }
     )*};
@@ -56,60 +86,15 @@ input_elements! {
     week => Week,
 }
 
-pub struct Input<Type: InputType> {
-    base: HtmlElement,
-    _marker: PhantomData<Type>,
-}
+// ==== on_input ====
 
-impl<Type: InputType> Input<Type> {
-    fn new() -> Self {
-        Self {
-            base: HtmlElement::new("input".into()),
-            _marker: PhantomData,
-        }
-        .attribute("type", Type::name())
-    }
-}
-
-impl<Type: InputType> From<Input<Type>> for VNode {
-    fn from(e: Input<Type>) -> Self {
-        e.base.into()
-    }
-}
-
-impl<Type: InputType> Element for Input<Type> {
-    fn as_velement(&mut self) -> &mut VElement {
-        self.base.as_velement()
-    }
-}
-
-impl<Type: InputType> Input<Type> {
-    pub fn disabled(self, value: bool) -> Self {
-        self.attribute("disabled", value)
-    }
-
-    pub fn name(self, value: impl Into<Cow<'static, str>>) -> Self {
-        self.attribute("name", value.into())
-    }
-
-    pub fn placeholder(self, text: impl Into<Cow<'static, str>>) -> Self {
-        self.attribute("placeholder", text.into())
-    }
-
-    pub fn readonly(self, value: bool) -> Self {
-        self.attribute("readonly", value)
-    }
-
-    pub fn value(self, value: impl Into<Property>) -> Self {
-        self.property("value", value.into())
-    }
-}
-
+/// A marker trait indicating that the element accepts the handler of [input events](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event).
 pub trait HasInputEvent: Element {}
 
+/// Create a handler of [input events](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event).
 pub fn on_input<F, TMsg>(f: F) -> OnInput<F>
 where
-    F: Fn(String) -> TMsg,
+    F: Fn(String) -> TMsg, // FIXME: use InputEvent instead of String
     TMsg: 'static,
 {
     OnInput { f }

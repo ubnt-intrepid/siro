@@ -1,5 +1,5 @@
 use siro::{prelude::*, App, Mailbox, VNode};
-use siro_html::{self as html, input::on_input};
+use siro_html::{self as html, input::on_input, prelude::*};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
