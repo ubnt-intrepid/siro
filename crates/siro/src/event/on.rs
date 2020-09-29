@@ -1,5 +1,5 @@
 use super::{EventHandler, EventHandlerBase};
-use crate::element::Element;
+use crate::vdom::Element;
 
 pub fn on<F, TMsg>(event_type: &'static str, f: F) -> On<F>
 where

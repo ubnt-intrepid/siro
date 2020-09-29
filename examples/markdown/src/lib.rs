@@ -1,4 +1,5 @@
-use siro::{event::on_input, html, prelude::*, vdom::CustomNode, App, Mailbox, VNode};
+use siro::{prelude::*, vdom::CustomNode, App, Mailbox, VNode};
+use siro_html::{self as html, input::on_input};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 

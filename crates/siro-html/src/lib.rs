@@ -3,10 +3,7 @@ pub mod input;
 mod textarea;
 pub use textarea::{textarea, Textarea};
 
-use crate::{
-    element::Element,
-    vdom::{VElement, VNode},
-};
+use siro::vdom::{Element, VElement, VNode};
 use std::borrow::Cow;
 
 pub struct HtmlElement(VElement);

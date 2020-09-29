@@ -4,6 +4,11 @@ version = "0.0.0"
 publish = false
 edition = "2018"
 
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+doc = false
+
 [dependencies]
 anyhow = "1"
 walkdir = "2"

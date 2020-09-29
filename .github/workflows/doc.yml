@@ -45,7 +45,7 @@ jobs:
 
     - name: Build API docs
       run: |
-        cargo doc --no-deps
+        cargo doc --workspace --no-deps
         rm -fv target/doc/.lock
 
     - name: Upload artifact

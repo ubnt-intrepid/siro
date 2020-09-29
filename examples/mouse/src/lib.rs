@@ -1,4 +1,5 @@
-use siro::{prelude::*, svg, App, VNode};
+use siro::{prelude::*, App, VNode};
+use siro_svg as svg;
 use wasm_bindgen::{prelude::*, JsCast as _};
 use wee_alloc::WeeAlloc;
 

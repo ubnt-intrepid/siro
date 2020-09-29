@@ -1,9 +1,5 @@
-use super::HtmlElement;
-use crate::{
-    element::Element,
-    event::HasInputEvent,
-    vdom::{VElement, VNode},
-};
+use crate::{input::HasInputEvent, HtmlElement};
+use siro::vdom::{Element, VElement, VNode};
 
 /// Create a builder of [`<textarea>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea) element.
 pub fn textarea() -> Textarea {

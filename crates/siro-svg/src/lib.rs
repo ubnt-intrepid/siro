@@ -1,7 +1,4 @@
-use crate::{
-    element::Element,
-    vdom::{VElement, VNode},
-};
+use siro::vdom::{Element, VElement, VNode};
 use std::{borrow::Cow, marker::PhantomData};
 
 const SVG_NAMESPACE_URI: &str = "http://www.w3.org/2000/svg";

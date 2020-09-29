@@ -1,0 +1,25 @@
+[package]
+name = "siro-html"
+version = "0.0.0-experimental.1"
+authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+siro = { version = "0.0.0-experimental.0", path = "../siro" }
+
+js-sys = "0.3"
+paste = "1"
+
+[dependencies.web]
+package = "web-sys"
+version = "0.3"
+features = [
+    "console",
+    "Document",
+    "DomTokenList",
+    "Element",
+    "HtmlElement",
+    "Node",
+    "Text",
+    "Window",
+]

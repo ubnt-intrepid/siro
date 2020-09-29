@@ -4,7 +4,7 @@ mod render;
 mod text;
 
 pub use self::{
-    element::{Attribute, Listener, Property, VElement},
+    element::{Attribute, Children, Element, Listener, Property, VElement},
     node::{CustomNode, VNode},
     text::VText,
 };
