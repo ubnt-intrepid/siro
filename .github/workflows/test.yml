@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - trying
+
+env:
+  CARGO_TERM_VERBOSE: true
+
+jobs:
+  Test:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust toolchains
+      run: |
+        rustup set profile minimal
+
+    - name: Generate Cargo.lock
+      run: cargo generate-lockfile
+
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Fetch cargo dependencies
+      run: cargo fetch
+
+    - name: Run tests (nightly)
+      run: cargo test
