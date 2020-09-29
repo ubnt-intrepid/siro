@@ -1,5 +1,5 @@
 use super::{EventHandler, EventHandlerBase};
-use crate::builder::Element;
+use crate::element::Element;
 
 pub trait HasInputEvent: Element {}
 

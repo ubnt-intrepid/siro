@@ -1,6 +1,6 @@
 use super::HtmlElement;
 use crate::{
-    builder::Element,
+    element::Element,
     event::HasInputEvent,
     vdom::{Property, VElement, VNode},
 };

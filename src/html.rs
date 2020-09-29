@@ -4,7 +4,7 @@ mod textarea;
 pub use textarea::{textarea, Textarea};
 
 use crate::{
-    builder::Element,
+    element::Element,
     vdom::{VElement, VNode},
 };
 use std::borrow::Cow;

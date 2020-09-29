@@ -4,7 +4,7 @@ mod on_input;
 pub use on::{on, On};
 pub use on_input::{on_input, HasInputEvent, OnInput};
 
-use crate::builder::Element;
+use crate::element::Element;
 
 pub trait EventHandlerBase {
     type Msg: 'static;

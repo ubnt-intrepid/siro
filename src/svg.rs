@@ -1,5 +1,5 @@
 use crate::{
-    builder::Element,
+    element::Element,
     vdom::{VElement, VNode},
 };
 use std::{borrow::Cow, marker::PhantomData};
