@@ -37,9 +37,10 @@ where
 fn markdown_preview(input: &str) -> impl Into<VNode> {
     use pulldown_cmark::{Options, Parser};
 
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = Parser::new_ext(input, options);
+    let parser = Parser::new_ext(
+        input,
+        Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TABLES,
+    );
 
     let mut output = String::new();
     pulldown_cmark::html::push_html(&mut output, parser);
@@ -49,7 +50,7 @@ fn markdown_preview(input: &str) -> impl Into<VNode> {
     output = sanitizer.clean(&output).to_string();
 
     CustomNode::new(move |document| {
-        let node = document.create_element("div").unwrap_throw();
+        let node = document.create_element("div")?;
         node.set_inner_html(&output);
         Ok(node.into())
     })
