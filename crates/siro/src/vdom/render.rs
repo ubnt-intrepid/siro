@@ -85,6 +85,16 @@ impl Renderer {
             }
         }
 
+        if !e.styles.is_empty() {
+            let style = js_sys::Reflect::get(&element, &"style".into())?;
+
+            for (key, value) in &e.styles {
+                let key = key.clone().into_owned();
+                let value = value.clone().into_owned();
+                js_sys::Reflect::set(&style, &key.into(), &value.into())?;
+            }
+        }
+
         for child in &e.children {
             let child_element = self.render(child, document)?;
             element.append_child(&child_element)?;
@@ -208,6 +218,28 @@ impl Renderer {
 
             for removed in old.class_names.difference(&new.class_names) {
                 class_list.remove_1(&*removed)?;
+            }
+        }
+
+        {
+            let style = js_sys::Reflect::get(&node, &"style".into())?;
+
+            for (name, new_value) in &new.styles {
+                match old.styles.get(name) {
+                    Some(old) if old == new_value => (),
+                    _ => {
+                        let name = name.clone().into_owned();
+                        let new_value = new_value.clone().into_owned();
+                        js_sys::Reflect::set(&style, &name.into(), &new_value.into())?;
+                    }
+                }
+            }
+
+            for name in old.styles.keys() {
+                if !new.styles.contains_key(name) {
+                    let name = name.clone().into_owned();
+                    js_sys::Reflect::set(&style, &name.into(), &JsValue::UNDEFINED)?;
+                }
             }
         }
 

@@ -19,6 +19,7 @@ pub struct VElement {
     pub properties: FxIndexMap<Cow<'static, str>, Property>,
     pub listeners: FxIndexSet<Rc<dyn Listener>>,
     pub class_names: FxIndexSet<Cow<'static, str>>,
+    pub styles: FxIndexMap<Cow<'static, str>, Cow<'static, str>>,
     pub children: Vec<VNode>,
 }
 
@@ -32,6 +33,7 @@ impl VElement {
             properties: FxIndexMap::default(),
             listeners: FxIndexSet::default(),
             class_names: FxIndexSet::default(),
+            styles: FxIndexMap::default(),
             children: vec![],
         }
     }
@@ -172,6 +174,15 @@ pub trait Element: Into<VNode> {
 
     fn class(mut self, value: impl Into<Cow<'static, str>>) -> Self {
         self.as_velement().class_names.insert(value.into());
+        self
+    }
+
+    fn style(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Cow<'static, str>>,
+    ) -> Self {
+        self.as_velement().styles.insert(name.into(), value.into());
         self
     }
 
