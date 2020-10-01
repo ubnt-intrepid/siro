@@ -33,7 +33,7 @@ macro_rules! html_elements {
 html_elements!(
     abbr, address, article, aside, b, bdi, bdo, cite, code, dd, dfn, dt, em, figcaption, figure,
     footer, header, i, kbd, link, main, mark, nav, noscript, rb, rp, rt, rtc, ruby, s, samp,
-    section, small, sub, summary, sup, u, var, wbr,
+    section, small, strong, sub, summary, sup, u, var, wbr,
 );
 
 html_elements!(

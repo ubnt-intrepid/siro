@@ -1,7 +1,9 @@
 mod on;
+mod on_;
 mod prevent_default;
 
 pub use on::{on, On};
+pub use on_::{on_, OnOpt};
 pub use prevent_default::{prevent_default, PreventDefault};
 
 use crate::{

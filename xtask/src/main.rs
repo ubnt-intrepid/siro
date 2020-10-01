@@ -1,5 +1,6 @@
 use std::{
     env,
+    ffi::OsStr,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -56,20 +57,26 @@ fn setup_path() -> anyhow::Result<()> {
 }
 
 fn build(manifest_dir: &Path) -> anyhow::Result<()> {
-    let mut wasm_pack = Command::new("wasm-pack");
-    wasm_pack
-        .stdin(Stdio::null())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit());
+    let webpack_config = manifest_dir.join("webpack.config.js");
+    if webpack_config.is_file() {
+        let mut webpack = command("webpack");
+        webpack.arg("--config").arg(&webpack_config);
+
+        println!("[xtask] run command: {:?}", webpack);
+        let status = webpack.status()?;
+        anyhow::ensure!(status.success(), "webpack failed with: {:?}", status);
+
+        return Ok(());
+    }
+
+    let mut wasm_pack = command("wasm-pack");
     wasm_pack
         .arg("build")
         .arg("--dev")
         .arg("--no-typescript")
         .args(&["--target", "web"])
         .args(&["--out-name", "index"]);
-
     wasm_pack.arg("--out-dir").arg(manifest_dir.join("pkg"));
-
     wasm_pack.arg(&manifest_dir);
 
     println!("[xtask] run command: {:?}", wasm_pack);
@@ -77,6 +84,15 @@ fn build(manifest_dir: &Path) -> anyhow::Result<()> {
     anyhow::ensure!(status.success(), "wasm-pack failed with: {:?}", status);
 
     Ok(())
+}
+
+fn command(program: impl AsRef<OsStr>) -> Command {
+    let mut command = Command::new(program);
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+    command
 }
 
 fn project_root() -> PathBuf {
