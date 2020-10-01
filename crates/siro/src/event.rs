@@ -23,33 +23,36 @@ pub trait ElementEventExt: Element {
         M: Mailbox,
         E: EventHandler<Self, Msg = M::Msg> + 'static,
     {
-        self.listener(Rc::new(EventHandlerListener {
+        self.listener(Box::new(EventHandlerListener(Rc::new(Inner {
             sender: mailbox.sender(),
             handler,
-        }))
+        }))))
     }
 }
 
 impl<E> ElementEventExt for E where E: Element {}
 
-struct EventHandlerListener<S, E> {
+struct EventHandlerListener<S, E>(Rc<Inner<S, E>>);
+
+struct Inner<S, E> {
     sender: S,
     handler: E,
 }
 
 impl<S, E> Listener for EventHandlerListener<S, E>
 where
-    S: Sender + 'static,
+    S: Sender,
     E: EventHandlerBase<Msg = S::Msg> + 'static,
 {
-    fn event_type(&self) -> &str {
-        self.handler.event_type()
+    fn event_type(&self) -> &'static str {
+        self.0.handler.event_type()
     }
 
-    fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener {
-        EventListener::new(target, self.handler.event_type(), move |e| {
-            if let Some(msg) = self.handler.invoke(e) {
-                self.sender.send_message(msg);
+    fn attach(&self, target: &web::EventTarget) -> EventListener {
+        let inner = self.0.clone();
+        EventListener::new(target, self.event_type(), move |e| {
+            if let Some(msg) = inner.handler.invoke(e) {
+                inner.sender.send_message(msg);
             }
         })
     }

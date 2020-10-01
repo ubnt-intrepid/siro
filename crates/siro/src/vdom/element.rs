@@ -1,30 +1,46 @@
 use super::{
-    node::{Key, VNode},
-    FxIndexMap, FxIndexSet,
+    node::{Id, VNode},
+    types::{CowStr, FxIndexMap, FxIndexSet},
 };
 use gloo_events::EventListener;
 use std::{
-    borrow::Cow,
+    fmt,
     hash::{Hash, Hasher},
     rc::Rc,
 };
 use wasm_bindgen::JsValue;
 
+/// A virtual [`Element`](https://developer.mozilla.org/en-US/docs/Web/API/Element) node.
 #[non_exhaustive]
 pub struct VElement {
     rc: Rc<()>,
-    pub tag_name: Cow<'static, str>,
-    pub namespace_uri: Option<Cow<'static, str>>,
-    pub attributes: FxIndexMap<Cow<'static, str>, Attribute>,
-    pub properties: FxIndexMap<Cow<'static, str>, Property>,
-    pub listeners: FxIndexSet<Rc<dyn Listener>>,
-    pub class_names: FxIndexSet<Cow<'static, str>>,
-    pub styles: FxIndexMap<Cow<'static, str>, Cow<'static, str>>,
+    pub tag_name: CowStr,
+    pub namespace_uri: Option<CowStr>,
+    pub attributes: FxIndexMap<CowStr, Attribute>,
+    pub properties: FxIndexMap<CowStr, Property>,
+    pub listeners: FxIndexSet<Box<dyn Listener>>,
+    pub classes: FxIndexSet<CowStr>,
+    pub styles: FxIndexMap<CowStr, CowStr>,
     pub children: Vec<VNode>,
 }
 
+impl fmt::Debug for VElement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VElement") //
+            .field("tag_name", &self.tag_name)
+            .field("namespace_uri", &self.namespace_uri)
+            .field("attributes", &self.attributes)
+            .field("properties", &self.properties)
+            .field("listeners", &self.listeners)
+            .field("classes", &self.classes)
+            .field("styles", &self.styles)
+            .field("children", &self.children)
+            .finish()
+    }
+}
+
 impl VElement {
-    pub fn new(tag_name: Cow<'static, str>, namespace_uri: Option<Cow<'static, str>>) -> Self {
+    pub fn new(tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
         Self {
             rc: Rc::new(()),
             tag_name,
@@ -32,20 +48,20 @@ impl VElement {
             attributes: FxIndexMap::default(),
             properties: FxIndexMap::default(),
             listeners: FxIndexSet::default(),
-            class_names: FxIndexSet::default(),
+            classes: FxIndexSet::default(),
             styles: FxIndexMap::default(),
             children: vec![],
         }
     }
 
-    pub(super) fn key(&self) -> Key {
-        Key::new(&self.rc)
+    pub(super) fn id(&self) -> Id {
+        Id::new(&self.rc)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Attribute {
-    String(Cow<'static, str>),
+    String(CowStr),
     Bool(bool),
 }
 
@@ -61,8 +77,8 @@ impl From<String> for Attribute {
     }
 }
 
-impl From<Cow<'static, str>> for Attribute {
-    fn from(s: Cow<'static, str>) -> Self {
+impl From<CowStr> for Attribute {
+    fn from(s: CowStr) -> Self {
         Attribute::String(s)
     }
 }
@@ -101,9 +117,17 @@ impl From<Property> for JsValue {
 }
 
 pub trait Listener {
-    fn event_type(&self) -> &str;
+    fn event_type(&self) -> &'static str;
 
-    fn attach(self: Rc<Self>, target: &web::EventTarget) -> EventListener;
+    fn attach(&self, target: &web::EventTarget) -> EventListener;
+}
+
+impl fmt::Debug for dyn Listener + '_ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("dyn_Listener")
+            .field("event_type", &self.event_type())
+            .finish()
+    }
 }
 
 impl PartialEq for dyn Listener + '_ {
@@ -120,74 +144,64 @@ impl Hash for dyn Listener + '_ {
     }
 }
 
-pub trait Element: Into<VNode> {
+/// A mix-in trait for building virtual `Element`.
+pub trait Element: Sized {
+    /// Return a mutable reference to the target `VElement` to modify.
     fn as_velement(&mut self) -> &mut VElement;
 
-    fn attribute(
-        mut self,
-        name: impl Into<Cow<'static, str>>,
-        value: impl Into<Attribute>,
-    ) -> Self {
+    fn attribute(mut self, name: impl Into<CowStr>, value: impl Into<Attribute>) -> Self {
         self.as_velement()
             .attributes
             .insert(name.into(), value.into());
         self
     }
 
-    fn property(mut self, name: impl Into<Cow<'static, str>>, value: impl Into<Property>) -> Self {
+    fn property(mut self, name: impl Into<CowStr>, value: impl Into<Property>) -> Self {
         self.as_velement()
             .properties
             .insert(name.into(), value.into());
         self
     }
 
-    fn listener(mut self, listener: Rc<dyn Listener>) -> Self {
+    fn listener(mut self, listener: Box<dyn Listener>) -> Self {
         self.as_velement().listeners.replace(listener);
         self
     }
 
+    /// Specify a `class` to this element.
+    fn class(mut self, value: impl Into<CowStr>) -> Self {
+        self.as_velement().classes.insert(value.into());
+        self
+    }
+
+    /// Specify an inline style to this element.
+    ///
+    /// The style will be set as a field of [`style`](https://developer.mozilla.org/en-US/docs/Web/API/ElementCSSInlineStyle/style) property.
+    fn style(mut self, name: impl Into<CowStr>, value: impl Into<CowStr>) -> Self {
+        self.as_velement().styles.insert(name.into(), value.into());
+        self
+    }
+
+    /// Specify the [`id`](https://developer.mozilla.org/en-US/docs/Web/API/Element/id) property of this element.
+    fn id(self, value: impl Into<CowStr>) -> Self {
+        self.attribute("id", value.into())
+    }
+
+    /// Append a child node to this element.
     fn child(mut self, child: impl Into<VNode>) -> Self {
         self.as_velement().children.push(child.into());
         self
     }
 
+    /// Append a set of child nodes to this element.
     fn children(mut self, children: impl Children) -> Self {
-        children.assign(&mut self.as_velement().children);
+        children.append_to(&mut self.as_velement().children);
         self
     }
 
+    /// Append an iterator of child nodes to this element.
     fn append(self, iter: impl IntoIterator<Item = impl Into<VNode>>) -> Self {
-        struct IterChildren<I>(I);
-
-        impl<I> Children for IterChildren<I>
-        where
-            I: IntoIterator,
-            I::Item: Into<VNode>,
-        {
-            fn assign(self, children: &mut Vec<VNode>) {
-                children.extend(self.0.into_iter().map(Into::into));
-            }
-        }
-
         self.children(IterChildren(iter))
-    }
-
-    fn class(mut self, value: impl Into<Cow<'static, str>>) -> Self {
-        self.as_velement().class_names.insert(value.into());
-        self
-    }
-
-    fn style(
-        mut self,
-        name: impl Into<Cow<'static, str>>,
-        value: impl Into<Cow<'static, str>>,
-    ) -> Self {
-        self.as_velement().styles.insert(name.into(), value.into());
-        self
-    }
-
-    fn id(self, value: impl Into<Cow<'static, str>>) -> Self {
-        self.attribute("id", value.into())
     }
 }
 
@@ -197,10 +211,16 @@ impl Element for VElement {
     }
 }
 
+/// A trait that represents a set of child nodes.
 pub trait Children {
-    fn assign(self, children: &mut Vec<VNode>)
+    /// Append itself to `children`.
+    fn append_to(self, children: &mut Vec<VNode>)
     where
         Self: Sized;
+}
+
+impl Children for () {
+    fn append_to(self, _: &mut Vec<VNode>) {}
 }
 
 macro_rules! impl_children_for_tuples {
@@ -210,7 +230,7 @@ macro_rules! impl_children_for_tuples {
             $H: Into<VNode>,
             $( $T: Into<VNode>, )+
         {
-            fn assign(self, children: &mut Vec<VNode>) {
+            fn append_to(self, children: &mut Vec<VNode>) {
                 #[allow(non_snake_case)]
                 let ( $H, $($T),+ ) = self;
 
@@ -227,7 +247,7 @@ macro_rules! impl_children_for_tuples {
         where
             $C: Into<VNode>,
         {
-            fn assign(self, children: &mut Vec<VNode>) {
+            fn append_to(self, children: &mut Vec<VNode>) {
                 children.push(self.0.into());
             }
         }
@@ -238,3 +258,15 @@ impl_children_for_tuples!(
     C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, //
     C11, C12, C13, C14, C15, C16, C17, C18, C19, C20
 );
+
+struct IterChildren<I>(I);
+
+impl<I> Children for IterChildren<I>
+where
+    I: IntoIterator,
+    I::Item: Into<VNode>,
+{
+    fn append_to(self, children: &mut Vec<VNode>) {
+        children.extend(self.0.into_iter().map(Into::into));
+    }
+}

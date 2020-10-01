@@ -1,38 +1,50 @@
-use super::{element::VElement, text::VText};
+use super::{custom::CustomNode, element::VElement, text::VText, types::CowStr};
 use std::{
+    fmt,
     hash::{Hash, Hasher},
     rc::{Rc, Weak},
 };
-use wasm_bindgen::prelude::*;
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
-pub(super) struct Key(Weak<()>);
+pub(super) struct Id(Weak<()>);
 
-impl Key {
+impl Id {
+    #[inline]
     pub(super) fn new(rc: &Rc<()>) -> Self {
         Self(Rc::downgrade(rc))
     }
 }
 
-impl PartialEq for Key {
+impl PartialEq for Id {
     fn eq(&self, other: &Self) -> bool {
         self.0.ptr_eq(&other.0)
     }
 }
 
-impl Eq for Key {}
+impl Eq for Id {}
 
-impl Hash for Key {
+impl Hash for Id {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.as_ptr().hash(state);
     }
 }
 
+#[non_exhaustive]
 pub enum VNode {
     Element(VElement),
     Text(VText),
     Custom(CustomNode),
+}
+
+impl fmt::Debug for VNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Element(e) => e.fmt(f),
+            Self::Text(t) => t.fmt(f),
+            Self::Custom(c) => c.fmt(f),
+        }
+    }
 }
 
 impl From<VElement> for VNode {
@@ -63,39 +75,14 @@ macro_rules! impl_from_strs {
     )*};
 }
 
-impl_from_strs!(&'static str, String, std::borrow::Cow<'static, str>);
+impl_from_strs!(&'static str, String, CowStr);
 
 impl VNode {
-    pub(super) fn key(&self) -> Key {
+    pub(super) fn id(&self) -> Id {
         match self {
-            VNode::Element(e) => e.key(),
-            VNode::Text(t) => t.key(),
-            VNode::Custom(n) => n.key(),
+            VNode::Element(e) => e.id(),
+            VNode::Text(t) => t.id(),
+            VNode::Custom(n) => n.id(),
         }
-    }
-}
-
-pub struct CustomNode {
-    rc: Rc<()>,
-    render: Box<dyn Fn(&web::Document) -> Result<web::Node, JsValue>>,
-}
-
-impl CustomNode {
-    pub fn new<F>(render: F) -> Self
-    where
-        F: Fn(&web::Document) -> Result<web::Node, JsValue> + 'static,
-    {
-        Self {
-            rc: Rc::new(()),
-            render: Box::new(render),
-        }
-    }
-
-    fn key(&self) -> Key {
-        Key::new(&self.rc)
-    }
-
-    pub(super) fn render(&self, document: &web::Document) -> Result<web::Node, JsValue> {
-        (self.render)(document)
     }
 }

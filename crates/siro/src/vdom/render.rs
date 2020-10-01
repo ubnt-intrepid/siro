@@ -1,6 +1,6 @@
 use super::{
     element::{Attribute, Property, VElement},
-    node::{Key, VNode},
+    node::{Id, VNode},
 };
 use gloo_events::EventListener;
 use itertools::{EitherOrBoth, Itertools as _};
@@ -21,17 +21,14 @@ fn set_property(
     name: &str,
     value: Option<Property>,
 ) -> Result<(), JsValue> {
-    #[allow(unused_unsafe)] // workaround(rust-analyzer)
-    unsafe {
-        js_sys::Reflect::set(element, &JsValue::from_str(name), &value.into())?;
-    }
+    js_sys::Reflect::set(element, &JsValue::from_str(name), &value.into())?;
     Ok(())
 }
 
 #[derive(Default)]
 pub(crate) struct Renderer {
-    cached_nodes: FxHashMap<Key, web::Node>,
-    cached_listeners: FxHashMap<Key, FxHashMap<String, EventListener>>,
+    cached_nodes: FxHashMap<Id, web::Node>,
+    cached_listeners: FxHashMap<Id, FxHashMap<&'static str, EventListener>>,
 }
 
 impl Renderer {
@@ -45,7 +42,7 @@ impl Renderer {
             VNode::Text(t) => document.create_text_node(&*t.value).into(),
             VNode::Custom(n) => n.render(document)?,
         };
-        self.cached_nodes.insert(node.key(), dom.clone());
+        self.cached_nodes.insert(node.id(), dom.clone());
         Ok(dom)
     }
 
@@ -69,18 +66,17 @@ impl Renderer {
         }
 
         if !e.listeners.is_empty() {
-            let caches = self.cached_listeners.entry(e.key()).or_default();
+            let caches = self.cached_listeners.entry(e.id()).or_default();
 
             for listener in &e.listeners {
-                let listener = listener.clone().attach(element.as_ref());
-                caches.insert(listener.event_type().to_owned(), listener);
+                caches.insert(listener.event_type(), listener.attach(element.as_ref()));
             }
         }
 
-        if !e.class_names.is_empty() {
+        if !e.classes.is_empty() {
             let class_list = element.class_list();
 
-            for class_name in &e.class_names {
+            for class_name in &e.classes {
                 class_list.add_1(&*class_name)?;
             }
         }
@@ -109,8 +105,8 @@ impl Renderer {
         new: &VNode,
         document: &web::Document,
     ) -> Result<(), JsValue> {
-        let old_key = old.key();
-        let new_key = new.key();
+        let old_key = old.id();
+        let new_key = new.id();
 
         if old_key == new_key {
             // Same nodes.
@@ -147,7 +143,7 @@ impl Renderer {
         Ok(())
     }
 
-    fn replant_caches(&mut self, old: &Key, new: &Key) -> web::Node {
+    fn replant_caches(&mut self, old: &Id, new: &Id) -> web::Node {
         let node = self
             .cached_nodes
             .remove(&old)
@@ -168,55 +164,56 @@ impl Renderer {
         node: &web::Element,
         document: &web::Document,
     ) -> Result<(), JsValue> {
-        for (name, new_value) in &new.attributes {
-            match old.attributes.get(name) {
-                Some(old) if old == new_value => (),
-                _ => set_attribute(&node, name, new_value)?,
+        {
+            for (name, new_value) in &new.attributes {
+                match old.attributes.get(name) {
+                    Some(old) if old == new_value => (),
+                    _ => set_attribute(&node, name, new_value)?,
+                }
             }
-        }
 
-        for name in old.attributes.keys() {
-            if !new.attributes.contains_key(name) {
-                node.remove_attribute(name)?;
-            }
-        }
-
-        for (name, new_value) in &new.properties {
-            match old.properties.get(name) {
-                Some(old) if old == new_value => (),
-                _ => {
-                    set_property(node.as_ref(), &*name, Some(new_value.clone()))?;
+            for name in old.attributes.keys() {
+                if !new.attributes.contains_key(name) {
+                    node.remove_attribute(name)?;
                 }
             }
         }
 
-        for name in old.properties.keys() {
-            if !new.properties.contains_key(name) {
-                set_property(node.as_ref(), &*name, None)?;
+        {
+            for (name, new_value) in &new.properties {
+                match old.properties.get(name) {
+                    Some(old) if old == new_value => (),
+                    _ => {
+                        set_property(node.as_ref(), &*name, Some(new_value.clone()))?;
+                    }
+                }
+            }
+
+            for name in old.properties.keys() {
+                if !new.properties.contains_key(name) {
+                    set_property(node.as_ref(), &*name, None)?;
+                }
             }
         }
 
         {
-            let caches = self.cached_listeners.entry(new.key()).or_default();
+            let caches = self.cached_listeners.entry(new.id()).or_default();
 
             caches.clear();
 
             for listener in &new.listeners {
-                caches.insert(
-                    listener.event_type().to_owned(),
-                    listener.clone().attach(node.as_ref()),
-                );
+                caches.insert(listener.event_type().into(), listener.attach(node.as_ref()));
             }
         }
 
         {
             let class_list = node.class_list();
 
-            for added in new.class_names.difference(&old.class_names) {
+            for added in new.classes.difference(&old.classes) {
                 class_list.add_1(&*added)?
             }
 
-            for removed in old.class_names.difference(&new.class_names) {
+            for removed in old.classes.difference(&new.classes) {
                 class_list.remove_1(&*removed)?;
             }
         }
@@ -248,7 +245,7 @@ impl Renderer {
                 EitherOrBoth::Left(old) => {
                     let current = self
                         .cached_nodes
-                        .remove(&old.key())
+                        .remove(&old.id())
                         .expect_throw("cache does not exist");
                     node.remove_child(&current)?;
                 }
