@@ -10,7 +10,7 @@ pub mod vdom;
 #[doc(no_inline)]
 pub use crate::{
     app::App, //
-    event::EventHandler,
+    event::Event,
     mailbox::Mailbox,
     subscription::Subscription,
     vdom::{Element, VNode},
@@ -19,7 +19,7 @@ pub use crate::{
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        event::{ElementEventExt as _, EventHandler as _},
+        event::{ElementEventExt as _, Event as _},
         mailbox::Mailbox as _,
         subscription::Subscription as _,
         vdom::Element as _,

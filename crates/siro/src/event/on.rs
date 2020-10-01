@@ -1,9 +1,11 @@
-use super::{EventHandler, EventHandlerBase};
+use super::{Emitter, Event};
 use crate::vdom::Element;
 
+/// Create an `Event` corresponding to the provided event type.
+#[inline]
 pub fn on<F, TMsg>(event_type: &'static str, f: F) -> On<F>
 where
-    F: Fn(&web::Event) -> TMsg,
+    F: Fn(&web::Event) -> TMsg + 'static,
     TMsg: 'static,
 {
     On { event_type, f }
@@ -14,26 +16,36 @@ pub struct On<F> {
     f: F,
 }
 
-impl<F, TMsg> EventHandlerBase for On<F>
+impl<T, F, TMsg> Event<T> for On<F>
 where
-    F: Fn(&web::Event) -> TMsg,
+    T: Element,
+    F: Fn(&web::Event) -> TMsg + 'static,
     TMsg: 'static,
 {
     type Msg = TMsg;
+    type Emitter = OnEmitter<F>;
 
     fn event_type(&self) -> &'static str {
         self.event_type
     }
 
-    fn invoke(&self, event: &web::Event) -> Option<Self::Msg> {
-        Some((self.f)(event))
+    fn into_emitter(self) -> Self::Emitter {
+        OnEmitter { f: self.f }
     }
 }
 
-impl<T, F, TMsg> EventHandler<T> for On<F>
+pub struct OnEmitter<F> {
+    f: F,
+}
+
+impl<F, TMsg> Emitter for OnEmitter<F>
 where
-    T: Element,
-    F: Fn(&web::Event) -> TMsg,
+    F: Fn(&web::Event) -> TMsg + 'static,
     TMsg: 'static,
 {
+    type Msg = TMsg;
+
+    fn emit(&self, event: &web::Event) -> Option<Self::Msg> {
+        Some((self.f)(event))
+    }
 }

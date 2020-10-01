@@ -2,7 +2,7 @@
 
 use crate::html_element::HtmlElement;
 use siro::{
-    event::{EventHandler, EventHandlerBase},
+    event::{Emitter, Event},
     vdom::{Element, Property, VElement, VNode},
 };
 use std::borrow::Cow;
@@ -104,30 +104,43 @@ pub struct OnInput<F> {
     f: F,
 }
 
-impl<F, TMsg> EventHandlerBase for OnInput<F>
+impl<T, F, TMsg> Event<T> for OnInput<F>
 where
-    F: Fn(String) -> TMsg,
+    T: HasInputEvent,
+    F: Fn(String) -> TMsg + 'static,
     TMsg: 'static,
 {
     type Msg = TMsg;
+    type Emitter = OnInputEmitter<F>;
 
+    #[inline]
     fn event_type(&self) -> &'static str {
         "input"
     }
 
-    fn invoke(&self, event: &web::Event) -> Option<Self::Msg> {
+    #[inline]
+    fn into_emitter(self) -> Self::Emitter {
+        OnInputEmitter { f: self.f }
+    }
+}
+
+#[doc(hidden)]
+pub struct OnInputEmitter<F> {
+    f: F,
+}
+
+impl<F, TMsg> Emitter for OnInputEmitter<F>
+where
+    F: Fn(String) -> TMsg + 'static,
+    TMsg: 'static,
+{
+    type Msg = TMsg;
+
+    fn emit(&self, event: &web::Event) -> Option<Self::Msg> {
         Some((self.f)(
             js_sys::Reflect::get(&&event.target()?, &"value".into())
                 .ok()?
                 .as_string()?,
         ))
     }
-}
-
-impl<T, F, TMsg> EventHandler<T> for OnInput<F>
-where
-    T: HasInputEvent,
-    F: Fn(String) -> TMsg,
-    TMsg: 'static,
-{
 }
