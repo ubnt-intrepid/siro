@@ -1,5 +1,4 @@
-use siro::{prelude::*, App, Mailbox, VNode};
-use siro_html as html;
+use siro::{event, html, prelude::*, App, View};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -25,24 +24,18 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view<M: ?Sized>(model: &Model, mailbox: &M) -> impl Into<VNode>
-where
-    M: Mailbox<Msg = Msg>,
-{
-    html::div().children((
-        html::button() //
-            .event(mailbox, siro::event::on("click", |_| Msg::Decrement))
-            .child("-"),
+fn view(model: &Model) -> impl View<Msg = Msg> {
+    html::div((
+        html::button("-") //
+            .with(event::on("click", |_| Msg::Decrement)),
         " ",
         model.value.to_string(),
         " ",
-        html::button() //
-            .event(mailbox, siro::event::on("click", |_| Msg::Increment))
-            .child("+"),
+        html::button("+") //
+            .with(event::on("click", |_| Msg::Increment)),
         " ",
-        html::button() //
-            .event(mailbox, siro::event::on("click", |_| Msg::Reset))
-            .child("Reset"),
+        html::button("Reset") //
+            .with(event::on("click", |_| Msg::Reset)),
     ))
 }
 
@@ -53,11 +46,11 @@ pub async fn main() -> Result<(), JsValue> {
     let mut app = App::mount("#app")?;
 
     let mut model = Model { value: 0 };
-    app.render(view(&model, &app))?;
+    app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
-        app.render(view(&model, &app))?;
+        app.render(view(&model))?;
     }
 
     Ok(())

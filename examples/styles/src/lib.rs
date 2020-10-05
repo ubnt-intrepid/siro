@@ -1,5 +1,4 @@
-use siro::{prelude::*, App};
-use siro_html as html;
+use siro::{html, view::style, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -13,13 +12,14 @@ pub fn main() -> Result<(), JsValue> {
     let mut app = App::<()>::mount("#app")?;
 
     app.render({
-        html::div().children((
-            html::span().style("color", "red").child("Hello"),
+        html::div((
+            html::span((style("color", "red"), "Hello")),
             ", from ",
-            html::span()
-                .style("fontWeight", "bold")
-                .style("textDecoration", "underline")
-                .child("Rust"),
+            html::span((
+                style("fontWeight", "bold"),
+                style("textDecoration", "underline"),
+                "Rust",
+            )),
             "!",
         ))
     })?;

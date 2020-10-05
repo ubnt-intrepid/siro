@@ -1,5 +1,8 @@
-use siro::{prelude::*, App, Mailbox, VNode};
-use siro_html::{self as html, input::on_input, prelude::*};
+use siro::{
+    event, html,
+    view::{attribute, class, if_else, property},
+    App, View,
+};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -28,35 +31,36 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model, mailbox: &(impl Mailbox<Msg = Msg> + 'static)) -> impl Into<VNode> {
-    html::div()
-        .child(
-            html::input::text()
-                .placeholder("Name")
-                .value(model.name.clone())
-                .event(mailbox, on_input(Msg::Name)),
-        )
-        .child(
-            html::input::password()
-                .placeholder("Password")
-                .value(model.password.clone())
-                .event(mailbox, on_input(Msg::Password)),
-        )
-        .child(
-            html::input::password()
-                .placeholder("Re-enter Password")
-                .value(model.password_again.clone())
-                .event(mailbox, on_input(Msg::PasswordAgain)),
-        )
-        .child(if model.password == model.password_again {
-            html::div() //
-                .class("text-green")
-                .child("Ok")
-        } else {
-            html::div() //
-                .class("text-red")
-                .child("Password does not match!")
-        })
+fn view(model: &Model) -> impl View<Msg = Msg> {
+    let type_ = |value: &'static str| attribute("type", value);
+    let placeholder = |value: &'static str| attribute("placeholder", value);
+    let value = |value: String| property("value", value);
+
+    html::div((
+        html::input((
+            type_("text"),
+            placeholder("Name"),
+            value(model.name.clone()),
+            event::on_input(Msg::Name),
+        )),
+        html::input((
+            type_("password"),
+            placeholder("Password"),
+            value(model.password.clone()),
+            event::on_input(Msg::Password),
+        )),
+        html::input((
+            type_("password"),
+            placeholder("Re-enter Password"),
+            value(model.password_again.clone()),
+            event::on_input(Msg::PasswordAgain),
+        )),
+        if_else(
+            model.password == model.password_again,
+            html::div((class("text-green"), "Ok")),
+            html::div((class("text-red"), "Password does not match!")),
+        ),
+    ))
 }
 
 #[wasm_bindgen(start)]
@@ -66,11 +70,11 @@ pub async fn main() -> Result<(), JsValue> {
     let mut app = App::mount("#app")?;
 
     let mut model = Model::default();
-    app.render(view(&model, &app))?;
+    app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
-        app.render(view(&model, &app))?;
+        app.render(view(&model))?;
     }
 
     Ok(())

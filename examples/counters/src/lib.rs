@@ -1,5 +1,4 @@
-use siro::{prelude::*, App, Mailbox, VNode};
-use siro_html as html;
+use siro::{html, prelude::*, App, View};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -7,8 +6,7 @@ use wee_alloc::WeeAlloc;
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
-    use siro::{prelude::*, vdom::VNode, Mailbox};
-    use siro_html as html;
+    use siro::{event, html, prelude::*, View};
 
     #[derive(Default, Clone)]
     pub struct Model {
@@ -29,21 +27,18 @@ mod counter {
         }
     }
 
-    pub fn view(model: &Model, mailbox: &impl Mailbox<Msg = Msg>) -> impl Into<VNode> {
-        html::div().children((
-            html::button() //
-                .event(mailbox, siro::event::on("click", |_| Msg::Decrement))
-                .child("-"),
+    pub fn view(model: &Model) -> impl View<Msg = Msg> {
+        html::div((
+            html::button("-") //
+                .with(event::on("click", |_| Msg::Decrement)),
             " ",
             model.value.to_string(),
             " ",
-            html::button() //
-                .event(mailbox, siro::event::on("click", |_| Msg::Increment))
-                .child("+"),
+            html::button("+") //
+                .with(event::on("click", |_| Msg::Increment)),
             " ",
-            html::button() //
-                .event(mailbox, siro::event::on("click", |_| Msg::Reset))
-                .child("Reset"),
+            html::button("Reset") //
+                .with(event::on("click", |_| Msg::Reset)),
         ))
     }
 }
@@ -57,12 +52,18 @@ fn update(model: &mut Model, msg: Msg) {
     counter::update(&mut model[i], msg);
 }
 
-fn view(model: &Model, mailbox: &impl Mailbox<Msg = Msg>) -> impl Into<VNode> {
-    html::div().append(model.iter().enumerate().map(|(i, m)| {
-        html::div() //
-            .child(format!("{}: ", i))
-            .child(counter::view(m, &mailbox.map(move |msg| Msg(i, msg))))
-    }))
+fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
+    html::div(siro::view::iter(
+        model
+            .iter() //
+            .enumerate()
+            .map(|(i, m)| {
+                html::div((
+                    format!("{}: ", i),
+                    counter::view(m).map(move |msg| Msg(i, msg)),
+                ))
+            }),
+    ))
 }
 
 #[wasm_bindgen(start)]
@@ -72,11 +73,11 @@ pub async fn main() -> Result<(), JsValue> {
     let mut app = App::mount("#app")?;
 
     let mut model = vec![counter::Model::default(); 10];
-    app.render(view(&model, &app))?;
+    app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
-        app.render(view(&model, &app))?;
+        app.render(view(&model))?;
     }
 
     Ok(())

@@ -1,5 +1,4 @@
-use siro::{prelude::*, App};
-use siro_html as html;
+use siro::{view::text, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -13,11 +12,8 @@ pub fn main() -> Result<(), JsValue> {
     // Mount a Siro application on the specified mountpoint.
     let mut app = App::<()>::mount("#app")?;
 
-    // Draw the virtual DOM.
-    app.render({
-        html::h1() //
-            .child("Hello from Rust!")
-    })?;
+    // Draw the view.
+    app.render(text("Hello from Rust!"))?;
 
     Ok(())
 }

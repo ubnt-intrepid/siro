@@ -2,26 +2,27 @@
 
 pub mod app;
 pub mod event;
+pub mod html;
 pub mod mailbox;
 pub mod subscription;
+pub mod svg;
 pub mod util;
 pub mod vdom;
+pub mod view;
 
 #[doc(no_inline)]
 pub use crate::{
     app::App, //
-    event::Event,
     mailbox::Mailbox,
     subscription::Subscription,
-    vdom::{Element, VNode},
+    view::View,
 };
 
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        event::{ElementEventExt as _, Event as _},
         mailbox::Mailbox as _,
         subscription::Subscription as _,
-        vdom::Element as _,
+        view::{View as _, ViewExt as _},
     };
 }

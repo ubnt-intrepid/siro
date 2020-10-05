@@ -1,8 +1,10 @@
-use siro::{prelude::*, vdom::CustomNode, App, Mailbox, VNode};
-use siro_html::{self as html, input::on_input};
+use siro::{
+    event, html,
+    view::{attribute, raw},
+    App, View,
+};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
-
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
@@ -22,20 +24,15 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view<M: ?Sized>(model: &Model, mailbox: &M) -> impl Into<VNode>
-where
-    M: Mailbox<Msg = Msg>,
-{
-    html::div() //
-        .id("editor")
-        .child(
-            html::textarea() //
-                .event(mailbox, on_input(Msg::Edit)),
-        )
-        .child(markdown_preview(&model.input))
+fn view(model: &Model) -> impl View<Msg = Msg> {
+    html::div((
+        attribute("id", "editor"),
+        html::textarea(event::on_input(Msg::Edit)),
+        raw(markdown_preview(&model.input)),
+    ))
 }
 
-fn markdown_preview(input: &str) -> impl Into<VNode> {
+fn markdown_preview(input: &str) -> String {
     use pulldown_cmark::{Options, Parser};
 
     let parser = Parser::new_ext(
@@ -48,13 +45,7 @@ fn markdown_preview(input: &str) -> impl Into<VNode> {
 
     let mut sanitizer = ammonia::Builder::new();
     sanitizer.add_allowed_classes("code", &["language-rust"]);
-    output = sanitizer.clean(&output).to_string();
-
-    CustomNode::new(move |document| {
-        let node = document.create_element("div")?;
-        node.set_inner_html(&output);
-        Ok(node.into())
-    })
+    sanitizer.clean(&output).to_string()
 }
 
 #[wasm_bindgen(start)]
@@ -64,11 +55,11 @@ pub async fn main() -> Result<(), JsValue> {
     let mut app = App::mount("#app")?;
 
     let mut model = Model::default();
-    app.render(view(&model, &app))?;
+    app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
         update(&mut model, msg);
-        app.render(view(&model, &app))?;
+        app.render(view(&model))?;
     }
 
     Ok(())

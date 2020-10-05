@@ -10,7 +10,6 @@ doc = false
 
 [dependencies]
 siro = { path = "../../crates/siro" }
-siro-html = { path = "../../crates/siro-html" }
 
 ammonia = "3"
 console_error_panic_hook = "0.1"

@@ -1,29 +1,14 @@
-//! HTML support for `siro`.
-
-pub mod input;
-
-mod html_element;
-mod textarea;
-
-pub use crate::{
-    html_element::{unknown, HtmlElement},
-    textarea::{textarea, Textarea},
-};
-
-pub mod prelude {
-    #[doc(no_inline)]
-    pub use crate::input::Input as _;
-}
-
-// ====
+use crate::view::{element, Element, ModifyView, View, ViewExt as _};
 
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
         paste::paste! {
             #[doc = "Create a builder of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/" $tag_name ") element."]
             #[inline]
-            pub fn $tag_name() -> HtmlElement {
-                HtmlElement::new(stringify!($tag_name).into())
+            pub fn $tag_name<TMsg: 'static>(
+                m: impl ModifyView<Element<TMsg>, Msg = TMsg>,
+            ) -> impl View<Msg = TMsg> {
+                element(stringify!($tag_name), None).with(m)
             }
         }
     )*};
@@ -60,6 +45,7 @@ html_elements!(
     hr,       // HtmlHRElement
     iframe,   // HtmlIFrameElement
     img,      // HtmlImageElement
+    input,    // HtmlInputElement
     label,    // HtmlLabelElement
     legend,   // HtmlLegendElement
     li,       // HtmlLiElement
@@ -83,6 +69,7 @@ html_elements!(
     tbody,    // HtmlTableSectionElement
     td,       // HtmlTableDataCellElement
     template, // HtmlTemplateElement
+    textarea, // HtmlTextAreaElement
     tfoot, thead, // HtmlTableSectionElement
     th,    // HtmlTableHeaderCellElement
     time,  // HtmlTimeElement

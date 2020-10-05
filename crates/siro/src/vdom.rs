@@ -9,7 +9,7 @@ mod types;
 
 pub use self::{
     custom::CustomNode,
-    element::{Attribute, Children, Element, Listener, Property, VElement},
+    element::{Attribute, Listener, Property, VElement},
     node::VNode,
     text::VText,
     types::{CowStr, FxIndexMap, FxIndexSet},
