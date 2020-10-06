@@ -1,4 +1,4 @@
-use super::{ModifyView, View, ViewExt as _};
+use super::ModifyView;
 use crate::{mailbox::Mailbox, vdom::VNode};
 
 pub fn if_<M>(pred: bool, m: M) -> If<M> {
@@ -10,44 +10,16 @@ pub struct If<M> {
     m: M,
 }
 
-impl<TView, M, TMsg> ModifyView<TView> for If<M>
+impl<TMsg: 'static, T> ModifyView<TMsg> for If<T>
 where
-    TView: View<Msg = TMsg>,
-    M: ModifyView<TView, Msg = TMsg>,
-    TMsg: 'static,
+    T: ModifyView<TMsg>,
 {
-    type Msg = M::Msg;
-    type View = WithIf<M::View, TView>;
-
-    fn modify(self, view: TView) -> Self::View {
-        if self.pred {
-            WithIf::Modified(view.with(self.m))
-        } else {
-            WithIf::NotModified(view)
-        }
-    }
-}
-
-pub enum WithIf<TView, UView> {
-    Modified(TView),
-    NotModified(UView),
-}
-
-impl<TView, UView, TMsg> View for WithIf<TView, UView>
-where
-    TView: View<Msg = TMsg>,
-    UView: View<Msg = TMsg>,
-    TMsg: 'static,
-{
-    type Msg = TMsg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+    fn modify<M: ?Sized>(self, vnode: &mut VNode, mailbox: &M)
     where
-        M: Mailbox<Msg = Self::Msg>,
+        M: Mailbox<Msg = TMsg>,
     {
-        match self {
-            Self::Modified(l) => l.render(mailbox),
-            Self::NotModified(r) => r.render(mailbox),
+        if self.pred {
+            self.m.modify(vnode, mailbox);
         }
     }
 }

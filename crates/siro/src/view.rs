@@ -36,169 +36,67 @@ pub trait View {
 }
 
 /// The modifier of a `View`.
-pub trait ModifyView<TView: View> {
-    /// The message type associated with modified view.
-    type Msg: 'static;
-
-    /// The type of modified `View`.
-    type View: View<Msg = Self::Msg>;
-
-    /// Modify a `View` into another one.
-    fn modify(self, view: TView) -> Self::View;
+pub trait ModifyView<TMsg: 'static> {
+    fn modify<M: ?Sized>(self, vnode: &mut VNode, mailbox: &M)
+    where
+        M: Mailbox<Msg = TMsg>;
 }
 
-impl<TView> ModifyView<TView> for ()
-where
-    TView: View,
-{
-    type Msg = TView::Msg;
-    type View = TView;
-
-    fn modify(self, view: TView) -> Self::View {
-        view
+impl<TMsg: 'static> ModifyView<TMsg> for () {
+    fn modify<M: ?Sized>(self, _: &mut VNode, _: &M)
+    where
+        M: Mailbox<Msg = TMsg>,
+    {
     }
 }
 
-impl<TView, M> ModifyView<TView> for (M,)
-where
-    TView: View,
-    M: ModifyView<TView>,
-{
-    type Msg = M::Msg;
-    type View = M::View;
+macro_rules! impl_modifier_for_tuples {
+    ( $H:ident, $( $T:ident ),* ) => {
+        impl<TMsg: 'static, $H, $( $T ),*> ModifyView<TMsg> for ($H, $( $T ),*)
+        where
+            $H: ModifyView<TMsg>,
+            $( $T: ModifyView<TMsg>, )*
+        {
+            fn modify<M:?Sized>(self, vnode: &mut VNode, mailbox: &M)
+            where
+                M: Mailbox<Msg = TMsg>,
+            {
+                #[allow(non_snake_case)]
+                let ($H, $( $T ),*) = self;
+                $H.modify(vnode, mailbox);
+                $( $T.modify(vnode, mailbox); )*
+            }
+        }
 
-    fn modify(self, view: TView) -> Self::View {
-        self.0.modify(view)
-    }
+        impl_modifier_for_tuples!($($T),*);
+    };
+    ( $T:ident ) => {
+        impl<TMsg: 'static, $T> ModifyView<TMsg> for ($T,)
+        where
+            $T: ModifyView<TMsg>,
+        {
+            fn modify<M: ?Sized>(self, vnode: &mut VNode, mailbox: &M)
+            where
+                M: Mailbox<Msg = TMsg>,
+            {
+                self.0.modify(vnode, mailbox);
+            }
+        }
+    };
 }
 
-impl<TView, M1, M2> ModifyView<TView> for (M1, M2)
-where
-    TView: View,
-    M1: ModifyView<TView>,
-    M2: ModifyView<M1::View>,
-{
-    type Msg = M2::Msg;
-    type View = M2::View;
-
-    fn modify(self, view: TView) -> Self::View {
-        let view = self.0.modify(view);
-        self.1.modify(view)
-    }
-}
-
-impl<TView, M1, M2, M3> ModifyView<TView> for (M1, M2, M3)
-where
-    TView: View,
-    M1: ModifyView<TView>,
-    M2: ModifyView<M1::View>,
-    M3: ModifyView<M2::View>,
-{
-    type Msg = M3::Msg;
-    type View = M3::View;
-
-    fn modify(self, view: TView) -> Self::View {
-        let view = self.0.modify(view);
-        let view = self.1.modify(view);
-        self.2.modify(view)
-    }
-}
-
-impl<TView, M1, M2, M3, M4> ModifyView<TView> for (M1, M2, M3, M4)
-where
-    TView: View,
-    M1: ModifyView<TView>,
-    M2: ModifyView<M1::View>,
-    M3: ModifyView<M2::View>,
-    M4: ModifyView<M3::View>,
-{
-    type Msg = M4::Msg;
-    type View = M4::View;
-
-    fn modify(self, view: TView) -> Self::View {
-        let view = self.0.modify(view);
-        let view = self.1.modify(view);
-        let view = self.2.modify(view);
-        self.3.modify(view)
-    }
-}
-
-impl<TView, M1, M2, M3, M4, M5> ModifyView<TView> for (M1, M2, M3, M4, M5)
-where
-    TView: View,
-    M1: ModifyView<TView>,
-    M2: ModifyView<M1::View>,
-    M3: ModifyView<M2::View>,
-    M4: ModifyView<M3::View>,
-    M5: ModifyView<M4::View>,
-{
-    type Msg = M5::Msg;
-    type View = M5::View;
-
-    fn modify(self, view: TView) -> Self::View {
-        let view = self.0.modify(view);
-        let view = self.1.modify(view);
-        let view = self.2.modify(view);
-        let view = self.3.modify(view);
-        self.4.modify(view)
-    }
-}
-
-impl<TView, M1, M2, M3, M4, M5, M6> ModifyView<TView> for (M1, M2, M3, M4, M5, M6)
-where
-    TView: View,
-    M1: ModifyView<TView>,
-    M2: ModifyView<M1::View>,
-    M3: ModifyView<M2::View>,
-    M4: ModifyView<M3::View>,
-    M5: ModifyView<M4::View>,
-    M6: ModifyView<M5::View>,
-{
-    type Msg = M6::Msg;
-    type View = M6::View;
-
-    fn modify(self, view: TView) -> Self::View {
-        let view = self.0.modify(view);
-        let view = self.1.modify(view);
-        let view = self.2.modify(view);
-        let view = self.3.modify(view);
-        let view = self.4.modify(view);
-        self.5.modify(view)
-    }
-}
-
-impl<TView, M1, M2, M3, M4, M5, M6, M7> ModifyView<TView> for (M1, M2, M3, M4, M5, M6, M7)
-where
-    TView: View,
-    M1: ModifyView<TView>,
-    M2: ModifyView<M1::View>,
-    M3: ModifyView<M2::View>,
-    M4: ModifyView<M3::View>,
-    M5: ModifyView<M4::View>,
-    M6: ModifyView<M5::View>,
-    M7: ModifyView<M6::View>,
-{
-    type Msg = M7::Msg;
-    type View = M7::View;
-
-    fn modify(self, view: TView) -> Self::View {
-        let view = self.0.modify(view);
-        let view = self.1.modify(view);
-        let view = self.2.modify(view);
-        let view = self.3.modify(view);
-        let view = self.4.modify(view);
-        let view = self.5.modify(view);
-        self.6.modify(view)
-    }
-}
+impl_modifier_for_tuples!(M1, M2, M3, M4, M5, M6, M7, M8, M9, M10);
 
 pub trait ViewExt: View {
-    fn with<M>(self, modifier: M) -> M::View
+    fn with<M>(self, modifier: M) -> With<Self, M>
     where
         Self: Sized,
-        M: ModifyView<Self>,
+        M: ModifyView<Self::Msg>,
     {
-        modifier.modify(self)
+        With {
+            view: self,
+            modifier,
+        }
     }
 
     fn map<F, TMsg: 'static>(self, f: F) -> Map<Self, F>
@@ -211,6 +109,28 @@ pub trait ViewExt: View {
 }
 
 impl<TView> ViewExt for TView where TView: View {}
+
+pub struct With<TView, T> {
+    view: TView,
+    modifier: T,
+}
+
+impl<TView, T> View for With<TView, T>
+where
+    TView: View,
+    T: ModifyView<TView::Msg>,
+{
+    type Msg = TView::Msg;
+
+    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+    where
+        M: Mailbox<Msg = Self::Msg>,
+    {
+        let mut vnode = self.view.render(mailbox);
+        self.modifier.modify(&mut vnode, mailbox);
+        vnode
+    }
+}
 
 pub struct Map<TView, F> {
     view: TView,

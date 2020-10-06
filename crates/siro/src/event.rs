@@ -1,7 +1,7 @@
 use crate::{
     mailbox::{Mailbox, Sender},
     vdom::{Listener, VNode},
-    view::{ModifyView, View},
+    view::ModifyView,
 };
 use gloo_events::EventListener;
 use std::rc::Rc;
@@ -19,52 +19,23 @@ pub struct OnEvent<F> {
     f: F,
 }
 
-impl<TView, F, TMsg> ModifyView<TView> for OnEvent<F>
+impl<F, TMsg> ModifyView<TMsg> for OnEvent<F>
 where
-    TView: View<Msg = TMsg>,
     F: Fn(&web::Event) -> Option<TMsg> + Clone + 'static,
     TMsg: 'static,
 {
-    type Msg = TMsg;
-    type View = OnEventView<TView, F>;
-
-    fn modify(self, view: TView) -> Self::View {
-        OnEventView {
-            view,
-            modifier: self,
-        }
-    }
-}
-
-pub struct OnEventView<TView, F> {
-    view: TView,
-    modifier: OnEvent<F>,
-}
-
-impl<TView, F, TMsg> View for OnEventView<TView, F>
-where
-    TView: View<Msg = TMsg>,
-    F: Fn(&web::Event) -> Option<TMsg> + Clone + 'static,
-    TMsg: 'static,
-{
-    type Msg = TMsg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+    fn modify<M: ?Sized>(self, vnode: &mut VNode, mailbox: &M)
     where
-        M: Mailbox<Msg = Self::Msg>,
+        M: Mailbox<Msg = TMsg>,
     {
-        match self.view.render(mailbox) {
-            VNode::Element(mut element) => {
-                element
-                    .listeners
-                    .replace(Box::new(OnEventListener(Rc::new(Inner {
-                        event_type: self.modifier.event_type,
-                        f: self.modifier.f.clone(),
-                        sender: mailbox.sender(),
-                    }))));
-                element.into()
-            }
-            node => node,
+        if let VNode::Element(element) = vnode {
+            element
+                .listeners
+                .replace(Box::new(OnEventListener(Rc::new(Inner {
+                    event_type: self.event_type,
+                    f: self.f,
+                    sender: mailbox.sender(),
+                }))));
         }
     }
 }

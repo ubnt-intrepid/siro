@@ -1,4 +1,4 @@
-use super::{ModifyView, View};
+use super::ModifyView;
 use crate::{
     mailbox::Mailbox,
     vdom::{CowStr, VNode},
@@ -16,44 +16,13 @@ pub struct Style {
     value: CowStr,
 }
 
-impl<TView> ModifyView<TView> for Style
-where
-    TView: View,
-{
-    type Msg = TView::Msg;
-    type View = WithStyle<TView>;
-
-    fn modify(self, view: TView) -> Self::View {
-        WithStyle {
-            view,
-            name: self.name,
-            value: self.value,
-        }
-    }
-}
-
-pub struct WithStyle<T> {
-    view: T,
-    name: CowStr,
-    value: CowStr,
-}
-
-impl<TView> View for WithStyle<TView>
-where
-    TView: View,
-{
-    type Msg = TView::Msg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+impl<TMsg: 'static> ModifyView<TMsg> for Style {
+    fn modify<M: ?Sized>(self, vnode: &mut VNode, _: &M)
     where
-        M: Mailbox<Msg = Self::Msg>,
+        M: Mailbox<Msg = TMsg>,
     {
-        match self.view.render(mailbox) {
-            VNode::Element(mut element) => {
-                element.styles.insert(self.name, self.value);
-                element.into()
-            }
-            node => node,
+        if let VNode::Element(element) = vnode {
+            element.styles.insert(self.name, self.value);
         }
     }
 }

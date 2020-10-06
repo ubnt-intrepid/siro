@@ -1,4 +1,4 @@
-use super::{ModifyView, View};
+use super::ModifyView;
 use crate::{
     mailbox::Mailbox,
     vdom::{self, CowStr, VNode},
@@ -16,44 +16,13 @@ pub struct Attribute {
     value: vdom::Attribute,
 }
 
-impl<TView> ModifyView<TView> for Attribute
-where
-    TView: View,
-{
-    type Msg = TView::Msg;
-    type View = WithAttribute<TView>;
-
-    fn modify(self, view: TView) -> Self::View {
-        WithAttribute {
-            view,
-            name: self.name,
-            value: self.value,
-        }
-    }
-}
-
-pub struct WithAttribute<T> {
-    view: T,
-    name: CowStr,
-    value: vdom::Attribute,
-}
-
-impl<TView> View for WithAttribute<TView>
-where
-    TView: View,
-{
-    type Msg = TView::Msg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+impl<TMsg: 'static> ModifyView<TMsg> for Attribute {
+    fn modify<M: ?Sized>(self, vnode: &mut VNode, _: &M)
     where
-        M: Mailbox<Msg = Self::Msg>,
+        M: Mailbox<Msg = TMsg>,
     {
-        match self.view.render(mailbox) {
-            VNode::Element(mut element) => {
-                element.attributes.insert(self.name, self.value);
-                element.into()
-            }
-            node => node,
+        if let VNode::Element(element) = vnode {
+            element.attributes.insert(self.name, self.value);
         }
     }
 }

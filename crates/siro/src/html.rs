@@ -1,4 +1,4 @@
-use crate::view::{element, Element, ModifyView, View, ViewExt as _};
+use crate::view::{element, ModifyView, View, ViewExt as _};
 
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
@@ -6,7 +6,7 @@ macro_rules! html_elements {
             #[doc = "Create a builder of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/" $tag_name ") element."]
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
-                m: impl ModifyView<Element<TMsg>, Msg = TMsg>,
+                m: impl ModifyView<TMsg>,
             ) -> impl View<Msg = TMsg> {
                 element(stringify!($tag_name), None).with(m)
             }

@@ -13,50 +13,19 @@ pub struct Iter<I> {
     iter: I,
 }
 
-impl<TView, I, TMsg> ModifyView<TView> for Iter<I>
+impl<TMsg: 'static, I> ModifyView<TMsg> for Iter<I>
 where
-    TView: View<Msg = TMsg>,
     I: IntoIterator,
     I::Item: View<Msg = TMsg>,
-    TMsg: 'static,
 {
-    type Msg = TView::Msg;
-    type View = WithIter<TView, I>;
-
-    fn modify(self, view: TView) -> Self::View {
-        WithIter {
-            view,
-            iter: self.iter,
-        }
-    }
-}
-
-pub struct WithIter<TView, I> {
-    view: TView,
-    iter: I,
-}
-
-impl<TView, I, TMsg> View for WithIter<TView, I>
-where
-    TView: View<Msg = TMsg>,
-    I: IntoIterator,
-    I::Item: View<Msg = TMsg>,
-    TMsg: 'static,
-{
-    type Msg = TView::Msg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+    fn modify<M: ?Sized>(self, vnode: &mut VNode, mailbox: &M)
     where
-        M: Mailbox<Msg = Self::Msg>,
+        M: Mailbox<Msg = TMsg>,
     {
-        match self.view.render(mailbox) {
-            VNode::Element(mut element) => {
-                element
-                    .children
-                    .extend(self.iter.into_iter().map(|view| view.render(mailbox)));
-                element.into()
-            }
-            node => node,
+        if let VNode::Element(element) = vnode {
+            element
+                .children
+                .extend(self.iter.into_iter().map(|view| view.render(mailbox)));
         }
     }
 }
