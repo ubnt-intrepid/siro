@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use siro::{
     event, html,
     prelude::*,
-    view::{attribute, class, if_, property},
+    view::{attribute, class, if_, property, ModifyView},
     App, View,
 };
 use wasm_bindgen::{prelude::*, JsCast as _};
@@ -364,9 +364,7 @@ fn value(value: impl Into<siro::vdom::Property>) -> siro::view::Property {
 
 // ==== custom events ====
 
-fn on_check<TMsg: 'static>(
-    f: impl Fn(bool) -> TMsg + Clone + 'static,
-) -> event::OnEvent<impl for<'a> Fn(&'a web_sys::Event) -> Option<TMsg> + Clone + 'static> {
+fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + Clone + 'static) -> impl ModifyView<TMsg> {
     event::on_event("click", move |e: &web_sys::Event| {
         let checked = js_sys::Reflect::get(&&e.target()?, &JsValue::from_str("checked"))
             .ok()?
@@ -375,9 +373,7 @@ fn on_check<TMsg: 'static>(
     })
 }
 
-fn on_enter<TMsg: 'static>(
-    f: impl Fn() -> TMsg + Clone + 'static,
-) -> event::OnEvent<impl for<'a> Fn(&'a web_sys::Event) -> Option<TMsg> + Clone + 'static> {
+fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl ModifyView<TMsg> {
     event::on_event("keydown", move |e: &web_sys::Event| {
         let key = js_sys::Reflect::get(e.as_ref(), &JsValue::from_str("key"))
             .ok()?
