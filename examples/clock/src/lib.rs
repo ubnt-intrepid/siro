@@ -29,16 +29,16 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
 
     svg::svg(
         (
-            svg::attr::viewbox(0, 0, 400, 400),
-            svg::attr::width(400),
-            svg::attr::height(400),
+            svg::attr::viewbox("0 0 400 400"),
+            svg::attr::width("400"),
+            svg::attr::height("400"),
         ),
         (
             svg::circle(
                 (
-                    svg::attr::cx(200),
-                    svg::attr::cy(200),
-                    svg::attr::r(120),
+                    svg::attr::cx("200"),
+                    svg::attr::cy("200"),
+                    svg::attr::r("120"),
                     svg::attr::fill("#1293D8"),
                 ),
                 (),
@@ -48,8 +48,8 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
             view_hand("#ff3860", 3, 90.0, second as f32 / 60.0),
             svg::text(
                 (
-                    svg::attr::x(200),
-                    svg::attr::y(260),
+                    svg::attr::x("200"),
+                    svg::attr::y("260"),
                     svg::attr::text_anchor("middle"),
                     svg::attr::dominant_baseline("central"),
                     svg::attr::fill("white"),
@@ -62,17 +62,17 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
 
 fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl View<Msg = Msg> {
     let t = f32::consts::TAU * (turns - 0.25);
-    let x = (200.0 + length * t.cos()) as i32;
-    let y = (200.0 + length * t.sin()) as i32;
+    let x = 200.0 + length * t.cos();
+    let y = 200.0 + length * t.sin();
 
     svg::line(
         (
-            svg::attr::x1(200),
-            svg::attr::y1(200),
-            svg::attr::x2(x),
-            svg::attr::y2(y),
+            svg::attr::x1("200"),
+            svg::attr::y1("200"),
+            svg::attr::x2(format!("{:.3}", x)),
+            svg::attr::y2(format!("{:.3}", y)),
             svg::attr::stroke(stroke),
-            svg::attr::stroke_width(width),
+            svg::attr::stroke_width(width.to_string()),
             svg::attr::stroke_linecap("round"),
         ),
         (),

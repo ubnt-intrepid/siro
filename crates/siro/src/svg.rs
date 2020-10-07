@@ -3,6 +3,8 @@ use crate::{
     view::{element, Children, View, ViewExt as _},
 };
 
+// TODO: implement all elements and attributes.
+
 const SVG_NAMESPACE_URI: &str = "http://www.w3.org/2000/svg";
 
 macro_rules! svg_elements {
@@ -38,77 +40,38 @@ pub mod attr {
         vdom::CowStr,
     };
 
-    pub fn viewbox(min_x: i32, min_y: i32, width: i32, height: i32) -> Attribute {
-        attribute(
-            "viewbox",
-            format!("{} {} {} {}", min_x, min_y, width, height),
-        )
-    }
-
-    macro_rules! length_attributes {
-        ( $( $name:ident => $attr:expr, )* ) => {$(
-            pub fn $name(val: i32) -> Attribute {
-                attribute($attr, val.to_string())
+    macro_rules! svg_attributes {
+        ( $( $name:ident => $attrname:expr, )* ) => {$(
+            paste::paste! {
+                #[doc = "Create an `Attr` to specify [`" $attrname "`](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/" $attrname ") attribute."]
+                pub fn $name(val: impl Into<CowStr>) -> Attribute {
+                    attribute($attrname, val.into())
+                }
             }
         )*};
     }
 
-    length_attributes! {
-        width => "width",
-        height => "height",
-        x => "x",
-        y => "y",
-        x1 => "x1",
-        y1 => "y1",
-        x2 => "x2",
-        y2 => "y2",
+    svg_attributes! {
         cx => "cx",
         cy => "cy",
-        r => "r",
-        stroke_width => "stroke-width",
-    }
-
-    macro_rules! string_attributes {
-        ( $( $name:ident => $attr:expr, )* ) => {$(
-            pub fn $name(val: impl Into<CowStr>) -> Attribute {
-                attribute($attr, val.into())
-            }
-        )*};
-    }
-
-    string_attributes! {
-        fill => "fill",
-        stroke => "stroke",
-        text_anchor => "text-anchor",
         dominant_baseline => "dominant-baseline",
+        fill => "fill",
+        height => "height",
+        points => "points",
+        r => "r",
+        stroke => "stroke",
+        stroke_dasharray => "stroke-dasharray",
         stroke_linecap => "stroke-linecap",
+        stroke_width => "stroke-width",
+        text_anchor => "text-anchor",
         transform => "transform",
-    }
-
-    pub fn points(points: impl IntoIterator<Item = impl Into<(i32, i32)>>) -> Attribute {
-        attribute(
-            "points",
-            points.into_iter().fold(String::new(), |mut acc, p| {
-                let (x, y) = p.into();
-                if !acc.is_empty() {
-                    acc += ", ";
-                }
-                acc += &format!("{},{}", x, y);
-                acc
-            }),
-        )
-    }
-
-    pub fn stroke_dasharray(value: impl IntoIterator<Item = i32>) -> Attribute {
-        attribute(
-            "stroke-dasharray",
-            value.into_iter().fold(String::new(), |mut acc, val| {
-                if !acc.is_empty() {
-                    acc += " ";
-                }
-                acc += &val.to_string();
-                acc
-            }),
-        )
+        viewbox => "viewbox",
+        width => "width",
+        x => "x",
+        x1 => "x1",
+        x2 => "x2",
+        y => "y",
+        y1 => "y1",
+        y2 => "y2",
     }
 }
