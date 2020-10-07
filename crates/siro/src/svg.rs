@@ -1,6 +1,5 @@
 use crate::{
-    attr::{attribute, Attr, Attribute},
-    vdom::CowStr,
+    attr::Attr,
     view::{element, Children, View, ViewExt as _},
 };
 
@@ -32,76 +31,84 @@ svg_elements! {
     svg,
 }
 
-pub fn viewbox(min_x: i32, min_y: i32, width: i32, height: i32) -> Attribute {
-    attribute(
-        "viewbox",
-        format!("{} {} {} {}", min_x, min_y, width, height),
-    )
-}
+/// SVG attributes.
+pub mod attr {
+    use crate::{
+        attr::{attribute, Attribute},
+        vdom::CowStr,
+    };
 
-macro_rules! length_attributes {
-    ( $( $name:ident => $attr:expr, )* ) => {$(
-        pub fn $name(val: i32) -> Attribute {
-            attribute($attr, val.to_string())
-        }
-    )*};
-}
+    pub fn viewbox(min_x: i32, min_y: i32, width: i32, height: i32) -> Attribute {
+        attribute(
+            "viewbox",
+            format!("{} {} {} {}", min_x, min_y, width, height),
+        )
+    }
 
-length_attributes! {
-    width => "width",
-    height => "height",
-    x => "x",
-    y => "y",
-    x1 => "x1",
-    y1 => "y1",
-    x2 => "x2",
-    y2 => "y2",
-    cx => "cx",
-    cy => "cy",
-    r => "r",
-    stroke_width => "stroke-width",
-}
-
-macro_rules! string_attributes {
-    ( $( $name:ident => $attr:expr, )* ) => {$(
-        pub fn $name(val: impl Into<CowStr>) -> Attribute {
-            attribute($attr, val.into())
-        }
-    )*};
-}
-
-string_attributes! {
-    fill => "fill",
-    stroke => "stroke",
-    text_anchor => "text-anchor",
-    dominant_baseline => "dominant-baseline",
-    stroke_linecap => "stroke-linecap",
-    transform => "transform",
-}
-
-pub fn points(points: impl IntoIterator<Item = impl Into<(i32, i32)>>) -> Attribute {
-    attribute(
-        "points",
-        points.into_iter().fold(String::new(), |mut acc, p| {
-            let (x, y) = p.into();
-            if !acc.is_empty() {
-                acc += ", ";
+    macro_rules! length_attributes {
+        ( $( $name:ident => $attr:expr, )* ) => {$(
+            pub fn $name(val: i32) -> Attribute {
+                attribute($attr, val.to_string())
             }
-            acc += &format!("{},{}", x, y);
-            acc
-        }),
-    )
-}
+        )*};
+    }
 
-pub fn stroke_dasharray(value: impl IntoIterator<Item = i32>) -> Attribute {
-    attribute(
-        "stroke-dasharray",
-        value.into_iter().fold(String::new(), |mut acc, val| {
-            if !acc.is_empty() {
-                acc += " ";
+    length_attributes! {
+        width => "width",
+        height => "height",
+        x => "x",
+        y => "y",
+        x1 => "x1",
+        y1 => "y1",
+        x2 => "x2",
+        y2 => "y2",
+        cx => "cx",
+        cy => "cy",
+        r => "r",
+        stroke_width => "stroke-width",
+    }
+
+    macro_rules! string_attributes {
+        ( $( $name:ident => $attr:expr, )* ) => {$(
+            pub fn $name(val: impl Into<CowStr>) -> Attribute {
+                attribute($attr, val.into())
             }
-            acc += &val.to_string();
-            acc
-        }),
-    )
+        )*};
+    }
+
+    string_attributes! {
+        fill => "fill",
+        stroke => "stroke",
+        text_anchor => "text-anchor",
+        dominant_baseline => "dominant-baseline",
+        stroke_linecap => "stroke-linecap",
+        transform => "transform",
+    }
+
+    pub fn points(points: impl IntoIterator<Item = impl Into<(i32, i32)>>) -> Attribute {
+        attribute(
+            "points",
+            points.into_iter().fold(String::new(), |mut acc, p| {
+                let (x, y) = p.into();
+                if !acc.is_empty() {
+                    acc += ", ";
+                }
+                acc += &format!("{},{}", x, y);
+                acc
+            }),
+        )
+    }
+
+    pub fn stroke_dasharray(value: impl IntoIterator<Item = i32>) -> Attribute {
+        attribute(
+            "stroke-dasharray",
+            value.into_iter().fold(String::new(), |mut acc, val| {
+                if !acc.is_empty() {
+                    acc += " ";
+                }
+                acc += &val.to_string();
+                acc
+            }),
+        )
+    }
 }

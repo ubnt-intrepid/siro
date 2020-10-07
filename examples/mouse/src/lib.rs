@@ -51,10 +51,10 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
         ),
         svg::circle(
             (
-                svg::r(20),
-                svg::cx(model.x),
-                svg::cy(model.y),
-                svg::fill(if model.clicked { "red" } else { "#ad7fa8" }),
+                svg::attr::r(20),
+                svg::attr::cx(model.x),
+                svg::attr::cy(model.y),
+                svg::attr::fill(if model.clicked { "red" } else { "#ad7fa8" }),
             ),
             (),
         ),

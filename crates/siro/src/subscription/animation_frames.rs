@@ -16,7 +16,7 @@ impl Subscription for AnimationFrames {
     type Msg = f64;
     type Handle = Handle;
 
-    fn subscribe<M>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
+    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
         M: Mailbox<Msg = Self::Msg>,
     {

@@ -6,15 +6,14 @@ use crate::{
 use gloo_events::EventListener;
 use std::rc::Rc;
 
-pub fn on_event<F, TMsg>(event_type: &'static str, f: F) -> OnEvent<F>
-where
-    F: for<'a> Fn(&'a web::Event) -> Option<TMsg> + Clone + 'static,
-    TMsg: 'static,
-{
+pub fn on_event<TMsg: 'static>(
+    event_type: &'static str,
+    f: impl Fn(&web::Event) -> Option<TMsg> + Clone + 'static,
+) -> impl Attr<TMsg> {
     OnEvent { event_type, f }
 }
 
-pub struct OnEvent<F> {
+struct OnEvent<F> {
     event_type: &'static str,
     f: F,
 }
@@ -66,20 +65,14 @@ where
     }
 }
 
-pub fn on<F, TMsg>(
+pub fn on<TMsg: 'static>(
     event_type: &'static str,
-    f: F,
-) -> OnEvent<impl for<'a> Fn(&'a web::Event) -> Option<TMsg> + Clone + 'static>
-where
-    F: for<'a> Fn(&'a web::Event) -> TMsg + Clone + 'static,
-    TMsg: 'static,
-{
+    f: impl Fn(&web::Event) -> TMsg + Clone + 'static,
+) -> impl Attr<TMsg> {
     on_event(event_type, move |event| Some(f(event)))
 }
 
-pub fn on_input<TMsg: 'static>(
-    f: impl Fn(String) -> TMsg + Clone + 'static,
-) -> OnEvent<impl for<'a> Fn(&'a web::Event) -> Option<TMsg> + Clone + 'static> {
+pub fn on_input<TMsg: 'static>(f: impl Fn(String) -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
     on_event("input", move |event| {
         let value = js_sys::Reflect::get(
             &&event.target()?, //

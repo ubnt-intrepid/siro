@@ -86,29 +86,33 @@ impl<TMsg: 'static> App<TMsg> {
 
 impl<TMsg: 'static> Mailbox for App<TMsg> {
     type Msg = TMsg;
-    type Sender = AppSender<TMsg>;
+    type Sender = imp::AppSender<TMsg>;
 
     fn send_message(&self, msg: TMsg) {
         self.tx.unbounded_send(msg).unwrap_throw();
     }
 
     fn sender(&self) -> Self::Sender {
-        AppSender(self.tx.clone())
+        imp::AppSender(self.tx.clone())
     }
 }
 
-pub struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
+mod imp {
+    use super::*;
 
-impl<TMsg> Clone for AppSender<TMsg> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
+    pub struct AppSender<TMsg>(pub(super) mpsc::UnboundedSender<TMsg>);
+
+    impl<TMsg> Clone for AppSender<TMsg> {
+        fn clone(&self) -> Self {
+            Self(self.0.clone())
+        }
     }
-}
 
-impl<TMsg: 'static> Sender for AppSender<TMsg> {
-    type Msg = TMsg;
+    impl<TMsg: 'static> Sender for AppSender<TMsg> {
+        type Msg = TMsg;
 
-    fn send_message(&self, msg: TMsg) {
-        self.0.unbounded_send(msg).unwrap_throw();
+        fn send_message(&self, msg: TMsg) {
+            self.0.unbounded_send(msg).unwrap_throw();
+        }
     }
 }

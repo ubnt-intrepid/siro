@@ -29,17 +29,17 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
 
     svg::svg(
         (
-            svg::viewbox(0, 0, 400, 400),
-            svg::width(400),
-            svg::height(400),
+            svg::attr::viewbox(0, 0, 400, 400),
+            svg::attr::width(400),
+            svg::attr::height(400),
         ),
         (
             svg::circle(
                 (
-                    svg::cx(200),
-                    svg::cy(200),
-                    svg::r(120),
-                    svg::fill("#1293D8"),
+                    svg::attr::cx(200),
+                    svg::attr::cy(200),
+                    svg::attr::r(120),
+                    svg::attr::fill("#1293D8"),
                 ),
                 (),
             ),
@@ -48,11 +48,11 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
             view_hand("#ff3860", 3, 90.0, second as f32 / 60.0),
             svg::text(
                 (
-                    svg::x(200),
-                    svg::y(260),
-                    svg::text_anchor("middle"),
-                    svg::dominant_baseline("central"),
-                    svg::fill("white"),
+                    svg::attr::x(200),
+                    svg::attr::y(260),
+                    svg::attr::text_anchor("middle"),
+                    svg::attr::dominant_baseline("central"),
+                    svg::attr::fill("white"),
                 ),
                 format!("{:02}:{:02}:{:02}", hour, minute, second),
             ),
@@ -67,13 +67,13 @@ fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl 
 
     svg::line(
         (
-            svg::x1(200),
-            svg::y1(200),
-            svg::x2(x),
-            svg::y2(y),
-            svg::stroke(stroke),
-            svg::stroke_width(width),
-            svg::stroke_linecap("round"),
+            svg::attr::x1(200),
+            svg::attr::y1(200),
+            svg::attr::x2(x),
+            svg::attr::y2(y),
+            svg::attr::stroke(stroke),
+            svg::attr::stroke_width(width),
+            svg::attr::stroke_linecap("round"),
         ),
         (),
     )
