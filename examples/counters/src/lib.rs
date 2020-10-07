@@ -6,7 +6,7 @@ use wee_alloc::WeeAlloc;
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
-    use siro::{event, html, prelude::*, View};
+    use siro::{event, html, View};
 
     #[derive(Default, Clone)]
     pub struct Model {
@@ -28,18 +28,18 @@ mod counter {
     }
 
     pub fn view(model: &Model) -> impl View<Msg = Msg> {
-        html::div((
-            html::button("-") //
-                .with(event::on("click", |_| Msg::Decrement)),
-            " ",
-            model.value.to_string(),
-            " ",
-            html::button("+") //
-                .with(event::on("click", |_| Msg::Increment)),
-            " ",
-            html::button("Reset") //
-                .with(event::on("click", |_| Msg::Reset)),
-        ))
+        html::div(
+            (),
+            (
+                html::button(event::on("click", |_| Msg::Decrement), "-"),
+                " ",
+                model.value.to_string(),
+                " ",
+                html::button(event::on("click", |_| Msg::Increment), "+"),
+                " ",
+                html::button(event::on("click", |_| Msg::Reset), "Reset"),
+            ),
+        )
     }
 }
 
@@ -53,17 +53,23 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
-    html::div(siro::view::iter(
-        model
-            .iter() //
-            .enumerate()
-            .map(|(i, m)| {
-                html::div((
-                    format!("{}: ", i),
-                    counter::view(m).map(move |msg| Msg(i, msg)),
-                ))
-            }),
-    ))
+    html::div(
+        (),
+        siro::view::iter(
+            model
+                .iter() //
+                .enumerate()
+                .map(|(i, m)| {
+                    html::div(
+                        (),
+                        (
+                            format!("{}: ", i),
+                            counter::view(m).map(move |msg| Msg(i, msg)),
+                        ),
+                    )
+                }),
+        ),
+    )
 }
 
 #[wasm_bindgen(start)]

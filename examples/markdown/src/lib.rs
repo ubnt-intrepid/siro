@@ -1,8 +1,4 @@
-use siro::{
-    event, html,
-    view::{attribute, raw},
-    App, View,
-};
+use siro::{attr::attribute, event, html, view::raw, App, View};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 #[global_allocator]
@@ -25,11 +21,13 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    html::div((
+    html::div(
         attribute("id", "editor"),
-        html::textarea(event::on_input(Msg::Edit)),
-        raw(markdown_preview(&model.input)),
-    ))
+        (
+            html::textarea(event::on_input(Msg::Edit), ()),
+            raw(markdown_preview(&model.input)),
+        ),
+    )
 }
 
 fn markdown_preview(input: &str) -> String {

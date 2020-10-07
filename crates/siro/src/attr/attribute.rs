@@ -1,9 +1,10 @@
-use super::ModifyView;
+use super::Attr;
 use crate::{
     mailbox::Mailbox,
-    vdom::{self, CowStr, VNode},
+    vdom::{self, CowStr, VElement},
 };
 
+/// Create an `Attr` that specifies an arbitrary attribute value, like `domNode.setAttribute(name, value)`.
 pub fn attribute(name: impl Into<CowStr>, value: impl Into<vdom::Attribute>) -> Attribute {
     Attribute {
         name: name.into(),
@@ -16,13 +17,11 @@ pub struct Attribute {
     value: vdom::Attribute,
 }
 
-impl<TMsg: 'static> ModifyView<TMsg> for Attribute {
-    fn modify<M: ?Sized>(self, vnode: &mut VNode, _: &M)
+impl<TMsg: 'static> Attr<TMsg> for Attribute {
+    fn apply<M: ?Sized>(self, element: &mut VElement, _: &M)
     where
         M: Mailbox<Msg = TMsg>,
     {
-        if let VNode::Element(element) = vnode {
-            element.attributes.insert(self.name, self.value);
-        }
+        element.attributes.insert(self.name, self.value);
     }
 }

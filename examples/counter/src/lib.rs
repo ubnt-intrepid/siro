@@ -1,4 +1,4 @@
-use siro::{event, html, prelude::*, App, View};
+use siro::{event, html, App, View};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -25,18 +25,18 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    html::div((
-        html::button("-") //
-            .with(event::on("click", |_| Msg::Decrement)),
-        " ",
-        model.value.to_string(),
-        " ",
-        html::button("+") //
-            .with(event::on("click", |_| Msg::Increment)),
-        " ",
-        html::button("Reset") //
-            .with(event::on("click", |_| Msg::Reset)),
-    ))
+    html::div(
+        (),
+        (
+            html::button(event::on("click", |_| Msg::Decrement), "-"),
+            " ",
+            model.value.to_string(),
+            " ",
+            html::button(event::on("click", |_| Msg::Increment), "+"),
+            " ",
+            html::button(event::on("click", |_| Msg::Reset), "Reset"),
+        ),
+    )
 }
 
 #[wasm_bindgen(start)]

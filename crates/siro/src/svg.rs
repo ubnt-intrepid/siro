@@ -1,6 +1,7 @@
 use crate::{
+    attr::{attribute, Attr, Attribute},
     vdom::CowStr,
-    view::{attribute, element, Attribute, ModifyView, View, ViewExt as _},
+    view::{element, Children, View, ViewExt as _},
 };
 
 const SVG_NAMESPACE_URI: &str = "http://www.w3.org/2000/svg";
@@ -11,9 +12,12 @@ macro_rules! svg_elements {
             #[doc = "Create a builder of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/" $tag_name ") element."]
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
-                m: impl ModifyView<TMsg>,
+                attr: impl Attr<TMsg>,
+                children: impl Children<TMsg>,
             ) -> impl View<Msg = TMsg> {
-                element(stringify!($tag_name), Some(SVG_NAMESPACE_URI.into())).with(m)
+                element(stringify!($tag_name), Some(SVG_NAMESPACE_URI.into()))
+                    .attr(attr)
+                    .children(children)
             }
         }
     )*};

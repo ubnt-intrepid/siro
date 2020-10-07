@@ -1,7 +1,7 @@
 use siro::{
+    attr::{attribute, class, property},
     event, html,
     util::if_else,
-    view::{attribute, class, property},
     App, View,
 };
 use wasm_bindgen::prelude::*;
@@ -37,31 +37,43 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
     let placeholder = |value: &'static str| attribute("placeholder", value);
     let value = |value: String| property("value", value);
 
-    html::div((
-        html::input((
-            type_("text"),
-            placeholder("Name"),
-            value(model.name.clone()),
-            event::on_input(Msg::Name),
-        )),
-        html::input((
-            type_("password"),
-            placeholder("Password"),
-            value(model.password.clone()),
-            event::on_input(Msg::Password),
-        )),
-        html::input((
-            type_("password"),
-            placeholder("Re-enter Password"),
-            value(model.password_again.clone()),
-            event::on_input(Msg::PasswordAgain),
-        )),
-        if_else(
-            model.password == model.password_again,
-            || html::div((class("text-green"), "Ok")),
-            || html::div((class("text-red"), "Password does not match!")),
+    html::div(
+        (),
+        (
+            html::input(
+                (
+                    type_("text"),
+                    placeholder("Name"),
+                    value(model.name.clone()),
+                    event::on_input(Msg::Name),
+                ),
+                (),
+            ),
+            html::input(
+                (
+                    type_("password"),
+                    placeholder("Password"),
+                    value(model.password.clone()),
+                    event::on_input(Msg::Password),
+                ),
+                (),
+            ),
+            html::input(
+                (
+                    type_("password"),
+                    placeholder("Re-enter Password"),
+                    value(model.password_again.clone()),
+                    event::on_input(Msg::PasswordAgain),
+                ),
+                (),
+            ),
+            if_else(
+                model.password == model.password_again,
+                || html::div(class("text-green"), "Ok"),
+                || html::div(class("text-red"), "Password does not match!"),
+            ),
         ),
-    ))
+    )
 }
 
 #[wasm_bindgen(start)]

@@ -1,7 +1,7 @@
 use crate::{
+    attr::Attr,
     mailbox::{Mailbox, Sender},
-    vdom::{Listener, VNode},
-    view::ModifyView,
+    vdom::{Listener, VElement},
 };
 use gloo_events::EventListener;
 use std::rc::Rc;
@@ -19,24 +19,22 @@ pub struct OnEvent<F> {
     f: F,
 }
 
-impl<F, TMsg> ModifyView<TMsg> for OnEvent<F>
+impl<F, TMsg> Attr<TMsg> for OnEvent<F>
 where
     F: Fn(&web::Event) -> Option<TMsg> + Clone + 'static,
     TMsg: 'static,
 {
-    fn modify<M: ?Sized>(self, vnode: &mut VNode, mailbox: &M)
+    fn apply<M: ?Sized>(self, element: &mut VElement, mailbox: &M)
     where
         M: Mailbox<Msg = TMsg>,
     {
-        if let VNode::Element(element) = vnode {
-            element
-                .listeners
-                .replace(Box::new(OnEventListener(Rc::new(Inner {
-                    event_type: self.event_type,
-                    f: self.f,
-                    sender: mailbox.sender(),
-                }))));
-        }
+        element
+            .listeners
+            .replace(Box::new(OnEventListener(Rc::new(Inner {
+                event_type: self.event_type,
+                f: self.f,
+                sender: mailbox.sender(),
+            }))));
     }
 }
 

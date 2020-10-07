@@ -2,10 +2,9 @@ use futures::future::Future;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use siro::{
+    attr::{attribute, class, property, Attr},
     event, html,
-    prelude::*,
     util::if_,
-    view::{attribute, class, property, ModifyView},
     App, View,
 };
 use wasm_bindgen::{prelude::*, JsCast as _};
@@ -161,61 +160,76 @@ fn update(
 // ==== view ====
 
 fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
-    html::div((
+    html::div(
         class("todomvc-wrapper"),
-        html::section((
-            class("todoapp"),
-            view_header(model),
-            view_main(model),
-            if_(!model.entries.is_empty(), || view_controls(model)),
-        )),
-        view_info_footer(),
-    ))
+        (
+            html::section(
+                class("todoapp"),
+                (
+                    view_header(model),
+                    view_main(model),
+                    if_(!model.entries.is_empty(), || view_controls(model)),
+                ),
+            ),
+            view_info_footer(),
+        ),
+    )
 }
 
 fn view_header(model: &Model) -> impl View<Msg = Msg> {
-    html::header((
+    html::header(
         class("header"),
-        html::h1("todos"),
-        html::input((
-            class("new-todo"),
-            placeholder("What needs to be done?"),
-            autofocus(true),
-            name("new_todo"),
-            value(model.input.clone()),
-            event::on_input(Msg::UpdateField),
-            on_enter(|| Msg::Add),
-        )),
-    ))
+        (
+            html::h1((), "todos"),
+            html::input(
+                (
+                    class("new-todo"),
+                    placeholder("What needs to be done?"),
+                    autofocus(true),
+                    name("new_todo"),
+                    value(model.input.clone()),
+                    event::on_input(Msg::UpdateField),
+                    on_enter(|| Msg::Add),
+                ),
+                (),
+            ),
+        ),
+    )
 }
 
 fn view_main(model: &Model) -> impl View<Msg = Msg> + '_ {
     let all_completed = model.entries.values().all(|entry| entry.completed);
 
-    html::section((
+    html::section(
         class("main"),
-        html::input(input_type("checkbox")).with((
-            class("toggle-all"),
-            id("toggle-all"),
-            checked(all_completed),
-            event::on("click", move |_| Msg::CheckAll(!all_completed)),
-        )),
-        html::label((label_for("toggle-all"), "Mark all as complete")),
-        html::ul((
-            class("todo-list"),
-            siro::view::iter(
-                model
-                    .entries
-                    .values()
-                    .filter(move |entry| match model.visibility {
-                        Some(Visibility::Active) => !entry.completed,
-                        Some(Visibility::Completed) => entry.completed,
-                        _ => true,
-                    })
-                    .map(|entry| view_entry(entry)),
+        (
+            html::input(
+                (
+                    input_type("checkbox"),
+                    class("toggle-all"),
+                    id("toggle-all"),
+                    checked(all_completed),
+                    event::on("click", move |_| Msg::CheckAll(!all_completed)),
+                ),
+                (),
             ),
-        )),
-    ))
+            html::label(label_for("toggle-all"), "Mark all as complete"),
+            html::ul(
+                class("todo-list"),
+                siro::view::iter(
+                    model
+                        .entries
+                        .values()
+                        .filter(move |entry| match model.visibility {
+                            Some(Visibility::Active) => !entry.completed,
+                            Some(Visibility::Completed) => entry.completed,
+                            _ => true,
+                        })
+                        .map(|entry| view_entry(entry)),
+                ),
+            ),
+        ),
+    )
 }
 
 fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
@@ -229,39 +243,54 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
 
     let input_id = input_id(entry_id);
 
-    html::li((
-        if_(completed, || class("completed")),
-        html::div((
-            class("view"),
-            html::input(input_type("checkbox")).with((
-                class("toggle"),
-                checked(completed),
-                on_check(move |checked| Msg::Check(entry_id, checked)),
-            )),
-            html::label((
-                event::on("dblclick", move |_| Msg::EditingEntry(entry_id, true)),
-                description.clone(),
-            )),
-            html::button((
-                class("destroy"),
-                event::on("click", move |_| Msg::Delete(entry_id)),
-            )),
-        )),
-        if_(editing, || {
-            (
-                class("editing"),
-                html::input(input_type("text")).with((
-                    class("edit"),
-                    name("title"),
-                    id(input_id.clone()),
-                    value(description.clone()),
-                    event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
-                    event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
-                    on_enter(move || Msg::EditingEntry(entry_id, false)),
-                )),
-            )
-        }),
-    ))
+    html::li(
+        (
+            if_(completed, || class("completed")),
+            if_(editing, || class("editing")),
+        ),
+        (
+            html::div(
+                class("view"),
+                (
+                    html::input(
+                        (
+                            input_type("checkbox"),
+                            class("toggle"),
+                            checked(completed),
+                            on_check(move |checked| Msg::Check(entry_id, checked)),
+                        ),
+                        (),
+                    ),
+                    html::label(
+                        event::on("dblclick", move |_| Msg::EditingEntry(entry_id, true)),
+                        description.clone(),
+                    ),
+                    html::button(
+                        (
+                            class("destroy"),
+                            event::on("click", move |_| Msg::Delete(entry_id)),
+                        ),
+                        (),
+                    ),
+                ),
+            ),
+            if_(editing, || {
+                html::input(
+                    (
+                        input_type("text"),
+                        class("edit"),
+                        name("title"),
+                        id(input_id.clone()),
+                        value(description.clone()),
+                        event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
+                        event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
+                        on_enter(move || Msg::EditingEntry(entry_id, false)),
+                    ),
+                    (),
+                )
+            }),
+        ),
+    )
 }
 
 fn view_controls(model: &Model) -> impl View<Msg = Msg> {
@@ -276,27 +305,35 @@ fn view_controls(model: &Model) -> impl View<Msg = Msg> {
         }
     }
 
-    html::footer((
+    html::footer(
         class("footer"),
-        html::span((
-            class("todo-count"),
-            html::strong(entries_left.to_string()),
-            format!(" item{} left", plural_prefix(entries_left)),
-        )),
-        html::ul((
-            class("filters"),
-            view_visibility_swap(model, Visibility::All, "All", "#/"),
-            view_visibility_swap(model, Visibility::Active, "Active", "#/active"),
-            view_visibility_swap(model, Visibility::Completed, "Completed", "#/completed"),
-        )),
-        if_(has_completed, || {
-            html::button((
-                class("clear-completed"),
-                event::on("click", |_| Msg::DeleteCompleted),
-                "Clear completed",
-            ))
-        }),
-    ))
+        (
+            html::span(
+                class("todo-count"),
+                (
+                    html::strong((), entries_left.to_string()),
+                    format!(" item{} left", plural_prefix(entries_left)),
+                ),
+            ),
+            html::ul(
+                class("filters"),
+                (
+                    view_visibility_swap(model, Visibility::All, "All", "#/"),
+                    view_visibility_swap(model, Visibility::Active, "Active", "#/active"),
+                    view_visibility_swap(model, Visibility::Completed, "Completed", "#/completed"),
+                ),
+            ),
+            if_(has_completed, || {
+                html::button(
+                    (
+                        class("clear-completed"),
+                        event::on("click", |_| Msg::DeleteCompleted),
+                    ),
+                    "Clear completed",
+                )
+            }),
+        ),
+    )
 }
 
 fn view_visibility_swap(
@@ -306,65 +343,79 @@ fn view_visibility_swap(
     url: &'static str,
 ) -> impl View<Msg = Msg> {
     let selected = model.visibility.map_or(false, |vis| vis == v);
-    html::li((
+    html::li(
         event::on("click", move |_| Msg::ChangeVisibility(v)),
-        html::a((href(url), if_(selected, || class("selected")), text)),
-    ))
+        html::a(
+            (
+                href(url), //
+                if_(selected, || class("selected")),
+            ),
+            text,
+        ),
+    )
 }
 
 fn view_info_footer() -> impl View<Msg = Msg> {
-    html::footer((
+    html::footer(
         class("info"),
-        html::p("Double-click to edit a todo"),
-        html::p((
-            "Written by ",
-            html::a((href("https://github.com/ubnt-intrepid"), "@ubnt-intrepid")),
-            html::p(("Part of ", html::a((href("http://todomvc.com"), "TodoMVC")))),
-        )),
-    ))
+        (
+            html::p((), "Double-click to edit a todo"),
+            html::p(
+                (),
+                (
+                    "Written by ",
+                    html::a(href("https://github.com/ubnt-intrepid"), "@ubnt-intrepid"),
+                    html::p(
+                        (),
+                        ("Part of ", html::a(href("http://todomvc.com"), "TodoMVC")),
+                    ),
+                ),
+            ),
+        ),
+    )
 }
 
 // ==== custom attributes/properties ====
 
-fn autofocus(autofocus: bool) -> siro::view::Attribute {
+fn autofocus(autofocus: bool) -> siro::attr::Attribute {
     attribute("autofocus", autofocus)
 }
 
-fn href(url: &'static str) -> siro::view::Attribute {
+fn href(url: &'static str) -> siro::attr::Attribute {
     attribute("href", url)
 }
 
-fn id(id: impl Into<siro::vdom::CowStr>) -> siro::view::Attribute {
+fn id(id: impl Into<siro::vdom::CowStr>) -> siro::attr::Attribute {
     attribute("id", id.into())
 }
 
-fn input_type(type_name: &'static str) -> siro::view::Attribute {
+fn input_type(type_name: &'static str) -> siro::attr::Attribute {
     attribute("type", type_name)
 }
 
-fn label_for(for_: &'static str) -> siro::view::Attribute {
+fn label_for(for_: &'static str) -> siro::attr::Attribute {
     attribute("for", for_)
 }
 
-fn name(name: &'static str) -> siro::view::Attribute {
+fn name(name: &'static str) -> siro::attr::Attribute {
     attribute("name", name)
 }
 
-fn placeholder(placeholder: &'static str) -> siro::view::Attribute {
+fn placeholder(placeholder: &'static str) -> siro::attr::Attribute {
     attribute("placeholder", placeholder)
 }
 
-fn checked(checked: bool) -> siro::view::Property {
+fn checked(checked: bool) -> siro::attr::Property {
     property("checked", checked)
 }
 
-fn value(value: impl Into<siro::vdom::Property>) -> siro::view::Property {
+fn value(value: impl Into<siro::vdom::Property>) -> siro::attr::Property {
     property("value", value)
 }
 
 // ==== custom events ====
 
-fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + Clone + 'static) -> impl ModifyView<TMsg> {
+fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
     event::on_event("click", move |e: &web_sys::Event| {
         let checked = js_sys::Reflect::get(&&e.target()?, &JsValue::from_str("checked"))
             .ok()?
@@ -373,7 +424,7 @@ fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + Clone + 'static) -> impl M
     })
 }
 
-fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl ModifyView<TMsg> {
+fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
     event::on_event("keydown", move |e: &web_sys::Event| {
         let key = js_sys::Reflect::get(e.as_ref(), &JsValue::from_str("key"))
             .ok()?

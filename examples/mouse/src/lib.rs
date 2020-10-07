@@ -1,4 +1,4 @@
-use siro::{prelude::*, svg, view::attribute, App, View};
+use siro::{attr::attribute, prelude::*, svg, App, View};
 use wasm_bindgen::{prelude::*, JsCast as _};
 use wee_alloc::WeeAlloc;
 
@@ -42,18 +42,23 @@ fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
     // FIXME: avoid using .attribute()
-    svg::svg((
-        attribute("viewbox", "-500 -500 1000 1000"),
-        attribute("width", "100%"),
-        attribute("height", "100%"),
-        attribute("style", "position: fixed; top: 0px; left: 0px;"),
-        svg::circle((
-            svg::r(20),
-            svg::cx(model.x),
-            svg::cy(model.y),
-            svg::fill(if model.clicked { "red" } else { "#ad7fa8" }),
-        )),
-    ))
+    svg::svg(
+        (
+            attribute("viewbox", "-500 -500 1000 1000"),
+            attribute("width", "100%"),
+            attribute("height", "100%"),
+            attribute("style", "position: fixed; top: 0px; left: 0px;"),
+        ),
+        svg::circle(
+            (
+                svg::r(20),
+                svg::cx(model.x),
+                svg::cy(model.y),
+                svg::fill(if model.clicked { "red" } else { "#ad7fa8" }),
+            ),
+            (),
+        ),
+    )
 }
 
 #[wasm_bindgen(start)]
