@@ -5,6 +5,3 @@ members = [
     "examples/*",
     "xtask",
 ]
-exclude = [
-    "examples/.template",
-]

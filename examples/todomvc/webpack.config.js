@@ -1,4 +1,5 @@
 const path = require('path');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
 
 module.exports = (env, arg) => {
@@ -11,6 +12,7 @@ module.exports = (env, arg) => {
             filename: 'bundle.js',
         },
         plugins: [
+            new CleanWebpackPlugin(),
             new WasmPackPlugin({
                 crateDirectory: __dirname,
                 extraArgs: '--no-typescript',
