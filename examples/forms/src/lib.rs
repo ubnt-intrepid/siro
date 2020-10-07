@@ -1,6 +1,7 @@
 use siro::{
     event, html,
-    view::{attribute, class, if_else, property},
+    util::if_else,
+    view::{attribute, class, property},
     App, View,
 };
 use wasm_bindgen::prelude::*;
@@ -57,8 +58,8 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
         )),
         if_else(
             model.password == model.password_again,
-            html::div((class("text-green"), "Ok")),
-            html::div((class("text-red"), "Password does not match!")),
+            || html::div((class("text-green"), "Ok")),
+            || html::div((class("text-red"), "Password does not match!")),
         ),
     ))
 }

@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use siro::{
     event, html,
     prelude::*,
-    view::{attribute, class, if_, property, ModifyView},
+    util::if_,
+    view::{attribute, class, property, ModifyView},
     App, View,
 };
 use wasm_bindgen::{prelude::*, JsCast as _};
@@ -166,7 +167,7 @@ fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
             class("todoapp"),
             view_header(model),
             view_main(model),
-            if_(!model.entries.is_empty(), view_controls(model)),
+            if_(!model.entries.is_empty(), || view_controls(model)),
         )),
         view_info_footer(),
     ))
@@ -229,7 +230,7 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
     let input_id = input_id(entry_id);
 
     html::li((
-        if_(completed, class("completed")),
+        if_(completed, || class("completed")),
         html::div((
             class("view"),
             html::input(input_type("checkbox")).with((
@@ -246,8 +247,7 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
                 event::on("click", move |_| Msg::Delete(entry_id)),
             )),
         )),
-        if_(
-            editing,
+        if_(editing, || {
             (
                 class("editing"),
                 html::input(input_type("text")).with((
@@ -259,8 +259,8 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
                     event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
                     on_enter(move || Msg::EditingEntry(entry_id, false)),
                 )),
-            ),
-        ),
+            )
+        }),
     ))
 }
 
@@ -289,7 +289,7 @@ fn view_controls(model: &Model) -> impl View<Msg = Msg> {
             view_visibility_swap(model, Visibility::Active, "Active", "#/active"),
             view_visibility_swap(model, Visibility::Completed, "Completed", "#/completed"),
         )),
-        if_(has_completed, {
+        if_(has_completed, || {
             html::button((
                 class("clear-completed"),
                 event::on("click", |_| Msg::DeleteCompleted),
@@ -308,7 +308,7 @@ fn view_visibility_swap(
     let selected = model.visibility.map_or(false, |vis| vis == v);
     html::li((
         event::on("click", move |_| Msg::ChangeVisibility(v)),
-        html::a((href(url), if_(selected, class("selected")), text)),
+        html::a((href(url), if_(selected, || class("selected")), text)),
     ))
 }
 
