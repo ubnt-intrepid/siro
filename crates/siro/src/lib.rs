@@ -1,10 +1,8 @@
 pub mod app;
 pub mod attr;
 pub mod event;
-pub mod html;
 pub mod mailbox;
 pub mod subscription;
-pub mod svg;
 pub mod util;
 pub mod vdom;
 pub mod view;

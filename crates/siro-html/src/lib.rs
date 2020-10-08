@@ -1,6 +1,6 @@
 //! HTML directives.
 
-use crate::{
+use siro::{
     attr::Attr,
     view::{element, Children, View, ViewExt as _},
 };
@@ -89,7 +89,7 @@ html_elements!(
 
 /// HTML attributes.
 pub mod attr {
-    use crate::{
+    use siro::{
         attr::{attribute, property, Attribute, Property},
         vdom,
     };
@@ -131,7 +131,7 @@ pub mod attr {
 ///
 /// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
 pub mod input {
-    use crate::{
+    use siro::{
         attr::{attribute, Attr},
         view::{Children, View},
     };

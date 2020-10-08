@@ -2,7 +2,8 @@ use futures::prelude::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use siro::prelude::*;
-use siro::{attr, event, html, util::if_, App};
+use siro::{attr, event, util::if_then, App};
+use siro_html as html;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
 use web_sys::Storage;
@@ -165,7 +166,7 @@ fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
                 (
                     view_header(model),
                     view_main(model),
-                    if_(!model.entries.is_empty(), || view_controls(model)),
+                    if_then(!model.entries.is_empty(), || view_controls(model)),
                 ),
             ),
             view_info_footer(),
@@ -241,8 +242,8 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
 
     html::li(
         (
-            if_(completed, || attr::class("completed")),
-            if_(editing, || attr::class("editing")),
+            if_then(completed, || attr::class("completed")),
+            if_then(editing, || attr::class("editing")),
         ),
         (
             html::div(
@@ -269,7 +270,7 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
                     ),
                 ),
             ),
-            if_(editing, || {
+            if_then(editing, || {
                 html::input::text(
                     (
                         attr::class("edit"),
@@ -317,7 +318,7 @@ fn view_controls(model: &Model) -> impl View<Msg = Msg> {
                     view_visibility_swap(model, Visibility::Completed, "Completed", "#/completed"),
                 ),
             ),
-            if_(has_completed, || {
+            if_then(has_completed, || {
                 html::button(
                     (
                         attr::class("clear-completed"),
@@ -342,7 +343,7 @@ fn view_visibility_swap(
         html::a(
             (
                 html::attr::href(url),
-                if_(selected, || attr::class("selected")),
+                if_then(selected, || attr::class("selected")),
             ),
             text,
         ),

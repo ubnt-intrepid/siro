@@ -1,0 +1,10 @@
+[package]
+name = "siro-html"
+version = "0.0.0-experimental.1"
+publish = false
+authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+siro = { version = "0.0.0-experimental.1", path = "../siro" }
+paste = "1"

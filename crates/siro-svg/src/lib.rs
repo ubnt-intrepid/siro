@@ -1,6 +1,6 @@
 //! SVG directives.
 
-use crate::{
+use siro::{
     attr::Attr,
     view::{element, Children, View, ViewExt as _},
 };
@@ -37,7 +37,7 @@ svg_elements! {
 
 /// SVG attributes.
 pub mod attr {
-    use crate::{
+    use siro::{
         attr::{attribute, Attribute},
         vdom::CowStr,
     };

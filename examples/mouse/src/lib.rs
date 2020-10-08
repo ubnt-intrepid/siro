@@ -1,5 +1,7 @@
 use siro::prelude::*;
-use siro::{attr::style, svg, App};
+use siro::{attr::style, App};
+use siro_svg as svg;
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
 use wee_alloc::WeeAlloc;

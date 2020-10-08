@@ -12,15 +12,7 @@ pub fn remove_children(element: &web::Element) -> Result<(), JsValue> {
     Ok(())
 }
 
-pub struct LogOnDrop(pub &'static str);
-
-impl Drop for LogOnDrop {
-    fn drop(&mut self) {
-        web::console::log_1(&self.0.into());
-    }
-}
-
-pub fn if_<T>(pred: bool, f: impl FnOnce() -> T) -> Option<T> {
+pub fn if_then<T>(pred: bool, f: impl FnOnce() -> T) -> Option<T> {
     if pred {
         Some(f())
     } else {

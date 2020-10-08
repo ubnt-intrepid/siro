@@ -1,5 +1,6 @@
 use siro::prelude::*;
-use siro::{svg, App};
+use siro::App;
+use siro_svg as svg;
 use std::f32;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
