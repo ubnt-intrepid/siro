@@ -32,7 +32,6 @@ impl Mountpoint for web::Element {
 }
 
 pub struct App<TMsg: 'static> {
-    document: web::Document,
     mountpoint: web::Node,
     vnode: VNode,
     renderer: Renderer,
@@ -45,16 +44,15 @@ impl<TMsg: 'static> App<TMsg> {
         let document = crate::util::document().ok_or("no Document exists in Window")?;
         let mountpoint = mountpoint.get_node(&document)?;
 
-        let mut renderer = Renderer::default();
+        let mut renderer = Renderer::new(document);
 
         let view: VNode = "Now rendering...".into();
-        let node = renderer.render(&view, &document)?;
+        let node = renderer.render(&view)?;
         mountpoint.append_child(&node)?;
 
         let (tx, rx) = mpsc::unbounded();
 
         Ok(App {
-            document,
             mountpoint,
             vnode: view,
             renderer,
@@ -77,7 +75,7 @@ impl<TMsg: 'static> App<TMsg> {
     {
         let vnode = view.render(&*self);
 
-        self.renderer.diff(&self.vnode, &vnode, &self.document)?;
+        self.renderer.diff(&self.vnode, &vnode)?;
         self.vnode = vnode;
 
         Ok(())

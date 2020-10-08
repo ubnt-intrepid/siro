@@ -25,36 +25,36 @@ fn set_property(
     Ok(())
 }
 
-#[derive(Default)]
 pub(crate) struct Renderer {
+    document: web::Document,
     cached_nodes: FxHashMap<Id, web::Node>,
     cached_listeners: FxHashMap<Id, FxHashMap<&'static str, EventListener>>,
 }
 
 impl Renderer {
-    pub(crate) fn render(
-        &mut self,
-        node: &VNode,
-        document: &web::Document,
-    ) -> Result<web::Node, JsValue> {
+    pub(crate) fn new(document: web::Document) -> Self {
+        Self {
+            document,
+            cached_nodes: FxHashMap::default(),
+            cached_listeners: FxHashMap::default(),
+        }
+    }
+
+    pub(crate) fn render(&mut self, node: &VNode) -> Result<web::Node, JsValue> {
         let dom: web::Node = match node {
-            VNode::Element(e) => self.render_element(e, document)?.into(),
-            VNode::Text(t) => document.create_text_node(&*t.value).into(),
-            VNode::Custom(n) => n.render(document)?,
+            VNode::Element(e) => self.render_element(e)?.into(),
+            VNode::Text(t) => self.document.create_text_node(&*t.value).into(),
+            VNode::Custom(n) => n.render(&self.document)?,
         };
         self.cached_nodes.insert(node.id(), dom.clone());
         Ok(dom)
     }
 
-    fn render_element(
-        &mut self,
-        e: &VElement,
-        document: &web::Document,
-    ) -> Result<web::Element, JsValue> {
+    fn render_element(&mut self, e: &VElement) -> Result<web::Element, JsValue> {
         let name = wasm_bindgen::intern(&*e.tag_name);
         let element = match e.namespace_uri {
-            Some(ref uri) => document.create_element_ns(Some(&*uri), name)?,
-            None => document.create_element(name)?,
+            Some(ref uri) => self.document.create_element_ns(Some(&*uri), name)?,
+            None => self.document.create_element(name)?,
         };
 
         for (name, value) in &e.attributes {
@@ -92,19 +92,14 @@ impl Renderer {
         }
 
         for child in &e.children {
-            let child_element = self.render(child, document)?;
+            let child_element = self.render(child)?;
             element.append_child(&child_element)?;
         }
 
         Ok(element)
     }
 
-    pub(crate) fn diff(
-        &mut self,
-        old: &VNode,
-        new: &VNode,
-        document: &web::Document,
-    ) -> Result<(), JsValue> {
+    pub(crate) fn diff(&mut self, old: &VNode, new: &VNode) -> Result<(), JsValue> {
         let old_key = old.id();
         let new_key = new.id();
 
@@ -120,7 +115,7 @@ impl Renderer {
                 let node = node
                     .dyn_ref::<web::Element>()
                     .expect_throw("cached node is not Element");
-                self.diff_element(old, new, &node, document)?;
+                self.diff_element(old, new, &node)?;
             }
 
             (VNode::Text(current), VNode::Text(new)) => {
@@ -134,7 +129,7 @@ impl Renderer {
 
             (_, new) => {
                 if let Some(parent) = node.parent_node() {
-                    let replacement = self.render(new, document)?;
+                    let replacement = self.render(new)?;
                     parent.replace_child(&replacement, &node)?;
                 }
             }
@@ -162,7 +157,6 @@ impl Renderer {
         old: &VElement,
         new: &VElement,
         node: &web::Element,
-        document: &web::Document,
     ) -> Result<(), JsValue> {
         {
             for (name, new_value) in &new.attributes {
@@ -250,11 +244,11 @@ impl Renderer {
                     node.remove_child(&current)?;
                 }
                 EitherOrBoth::Right(new) => {
-                    let to_append = self.render(new, document)?;
+                    let to_append = self.render(new)?;
                     node.append_child(&to_append)?;
                 }
                 EitherOrBoth::Both(old, new) => {
-                    self.diff(old, new, document)?;
+                    self.diff(old, new)?;
                 }
             }
         }
