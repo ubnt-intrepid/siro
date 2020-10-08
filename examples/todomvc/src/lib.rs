@@ -1,12 +1,7 @@
 use futures::future::Future;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use siro::{
-    attr::{attribute, class, property, Attr},
-    event, html,
-    util::if_,
-    App, View,
-};
+use siro::{attr, event, html, util::if_, App, View};
 use wasm_bindgen::{prelude::*, JsCast as _};
 use web_sys::Storage;
 use wee_alloc::WeeAlloc;
@@ -161,10 +156,10 @@ fn update(
 
 fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
     html::div(
-        class("todomvc-wrapper"),
+        attr::class("todomvc-wrapper"),
         (
             html::section(
-                class("todoapp"),
+                attr::class("todoapp"),
                 (
                     view_header(model),
                     view_main(model),
@@ -178,18 +173,18 @@ fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
 
 fn view_header(model: &Model) -> impl View<Msg = Msg> {
     html::header(
-        class("header"),
+        attr::class("header"),
         (
             html::h1((), "todos"),
             html::input(
                 (
-                    class("new-todo"),
-                    placeholder("What needs to be done?"),
-                    autofocus(true),
-                    name("new_todo"),
-                    value(model.input.clone()),
+                    attr::class("new-todo"),
+                    html::attr::placeholder("What needs to be done?"),
+                    html::attr::autofocus(true),
+                    html::attr::name("new_todo"),
+                    html::attr::value(model.input.clone()),
                     event::on_input(Msg::UpdateField),
-                    on_enter(|| Msg::Add),
+                    event::on_enter(|| Msg::Add),
                 ),
                 (),
             ),
@@ -201,21 +196,20 @@ fn view_main(model: &Model) -> impl View<Msg = Msg> + '_ {
     let all_completed = model.entries.values().all(|entry| entry.completed);
 
     html::section(
-        class("main"),
+        attr::class("main"),
         (
-            html::input(
+            html::input::checkbox(
                 (
-                    input_type("checkbox"),
-                    class("toggle-all"),
-                    id("toggle-all"),
-                    checked(all_completed),
+                    attr::class("toggle-all"),
+                    html::attr::id("toggle-all"),
+                    html::attr::checked(all_completed),
                     event::on("click", move |_| Msg::CheckAll(!all_completed)),
                 ),
                 (),
             ),
-            html::label(label_for("toggle-all"), "Mark all as complete"),
+            html::label(html::attr::label_for("toggle-all"), "Mark all as complete"),
             html::ul(
-                class("todo-list"),
+                attr::class("todo-list"),
                 siro::view::iter(
                     model
                         .entries
@@ -245,19 +239,18 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
 
     html::li(
         (
-            if_(completed, || class("completed")),
-            if_(editing, || class("editing")),
+            if_(completed, || attr::class("completed")),
+            if_(editing, || attr::class("editing")),
         ),
         (
             html::div(
-                class("view"),
+                attr::class("view"),
                 (
-                    html::input(
+                    html::input::checkbox(
                         (
-                            input_type("checkbox"),
-                            class("toggle"),
-                            checked(completed),
-                            on_check(move |checked| Msg::Check(entry_id, checked)),
+                            attr::class("toggle"),
+                            html::attr::checked(completed),
+                            event::on("click", move |_| Msg::Check(entry_id, !completed)),
                         ),
                         (),
                     ),
@@ -267,7 +260,7 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
                     ),
                     html::button(
                         (
-                            class("destroy"),
+                            attr::class("destroy"),
                             event::on("click", move |_| Msg::Delete(entry_id)),
                         ),
                         (),
@@ -275,16 +268,15 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
                 ),
             ),
             if_(editing, || {
-                html::input(
+                html::input::text(
                     (
-                        input_type("text"),
-                        class("edit"),
-                        name("title"),
-                        id(input_id.clone()),
-                        value(description.clone()),
+                        attr::class("edit"),
+                        html::attr::name("title"),
+                        html::attr::id(input_id.clone()),
+                        html::attr::value(description.clone()),
                         event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
                         event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
-                        on_enter(move || Msg::EditingEntry(entry_id, false)),
+                        event::on_enter(move || Msg::EditingEntry(entry_id, false)),
                     ),
                     (),
                 )
@@ -306,17 +298,17 @@ fn view_controls(model: &Model) -> impl View<Msg = Msg> {
     }
 
     html::footer(
-        class("footer"),
+        attr::class("footer"),
         (
             html::span(
-                class("todo-count"),
+                attr::class("todo-count"),
                 (
                     html::strong((), entries_left.to_string()),
                     format!(" item{} left", plural_prefix(entries_left)),
                 ),
             ),
             html::ul(
-                class("filters"),
+                attr::class("filters"),
                 (
                     view_visibility_swap(model, Visibility::All, "All", "#/"),
                     view_visibility_swap(model, Visibility::Active, "Active", "#/active"),
@@ -326,7 +318,7 @@ fn view_controls(model: &Model) -> impl View<Msg = Msg> {
             if_(has_completed, || {
                 html::button(
                     (
-                        class("clear-completed"),
+                        attr::class("clear-completed"),
                         event::on("click", |_| Msg::DeleteCompleted),
                     ),
                     "Clear completed",
@@ -347,8 +339,8 @@ fn view_visibility_swap(
         event::on("click", move |_| Msg::ChangeVisibility(v)),
         html::a(
             (
-                href(url), //
-                if_(selected, || class("selected")),
+                html::attr::href(url),
+                if_(selected, || attr::class("selected")),
             ),
             text,
         ),
@@ -357,83 +349,28 @@ fn view_visibility_swap(
 
 fn view_info_footer() -> impl View<Msg = Msg> {
     html::footer(
-        class("info"),
+        attr::class("info"),
         (
             html::p((), "Double-click to edit a todo"),
             html::p(
                 (),
                 (
                     "Written by ",
-                    html::a(href("https://github.com/ubnt-intrepid"), "@ubnt-intrepid"),
+                    html::a(
+                        html::attr::href("https://github.com/ubnt-intrepid"),
+                        "@ubnt-intrepid",
+                    ),
                     html::p(
                         (),
-                        ("Part of ", html::a(href("http://todomvc.com"), "TodoMVC")),
+                        (
+                            "Part of ",
+                            html::a(html::attr::href("http://todomvc.com"), "TodoMVC"),
+                        ),
                     ),
                 ),
             ),
         ),
     )
-}
-
-// ==== custom attributes/properties ====
-
-fn autofocus(autofocus: bool) -> siro::attr::Attribute {
-    attribute("autofocus", autofocus)
-}
-
-fn href(url: &'static str) -> siro::attr::Attribute {
-    attribute("href", url)
-}
-
-fn id(id: impl Into<siro::vdom::CowStr>) -> siro::attr::Attribute {
-    attribute("id", id.into())
-}
-
-fn input_type(type_name: &'static str) -> siro::attr::Attribute {
-    attribute("type", type_name)
-}
-
-fn label_for(for_: &'static str) -> siro::attr::Attribute {
-    attribute("for", for_)
-}
-
-fn name(name: &'static str) -> siro::attr::Attribute {
-    attribute("name", name)
-}
-
-fn placeholder(placeholder: &'static str) -> siro::attr::Attribute {
-    attribute("placeholder", placeholder)
-}
-
-fn checked(checked: bool) -> siro::attr::Property {
-    property("checked", checked)
-}
-
-fn value(value: impl Into<siro::vdom::Property>) -> siro::attr::Property {
-    property("value", value)
-}
-
-// ==== custom events ====
-
-fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
-    event::on_event("click", move |e: &web_sys::Event| {
-        let checked = js_sys::Reflect::get(&&e.target()?, &JsValue::from_str("checked"))
-            .ok()?
-            .as_bool()?;
-        Some(f(checked))
-    })
-}
-
-fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
-    event::on_event("keydown", move |e: &web_sys::Event| {
-        let key = js_sys::Reflect::get(e.as_ref(), &JsValue::from_str("key"))
-            .ok()?
-            .as_string()?;
-        match &*key {
-            "Enter" => Some(f()),
-            _ => None,
-        }
-    })
 }
 
 // ==== misc ====

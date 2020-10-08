@@ -1,16 +1,18 @@
+//! SVG directives.
+
 use crate::{
     attr::Attr,
     view::{element, Children, View, ViewExt as _},
 };
 
-// TODO: implement all elements and attributes.
+// TODO: implement missing elements and attributes.
 
 const SVG_NAMESPACE_URI: &str = "http://www.w3.org/2000/svg";
 
 macro_rules! svg_elements {
     ($( $tag_name:ident ),* $(,)? ) => {$(
         paste::paste! {
-            #[doc = "Create a builder of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/" $tag_name ") element."]
+            #[doc = "Create a `View` of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/" $tag_name ") element."]
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
                 attr: impl Attr<TMsg>,

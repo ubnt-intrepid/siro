@@ -5,6 +5,7 @@ use crate::{
 };
 use gloo_events::EventListener;
 use std::rc::Rc;
+use wasm_bindgen::JsValue;
 
 pub fn on_event<TMsg: 'static>(
     event_type: &'static str,
@@ -72,14 +73,25 @@ pub fn on<TMsg: 'static>(
     on_event(event_type, move |event| Some(f(event)))
 }
 
+// ==== common event handlers ====
+
 pub fn on_input<TMsg: 'static>(f: impl Fn(String) -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
-    on_event("input", move |event| {
-        let value = js_sys::Reflect::get(
-            &&event.target()?, //
-            &"value".into(),
-        )
-        .ok()?
-        .as_string()?;
+    on_event("input", move |e| {
+        let value = js_sys::Reflect::get(&&e.target()?, &JsValue::from_str("value"))
+            .ok()?
+            .as_string()?;
         Some(f(value))
+    })
+}
+
+pub fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
+    on_event("keydown", move |e: &web::Event| {
+        let key = js_sys::Reflect::get(e.as_ref(), &JsValue::from_str("key"))
+            .ok()?
+            .as_string()?;
+        match &*key {
+            "Enter" => Some(f()),
+            _ => None,
+        }
     })
 }

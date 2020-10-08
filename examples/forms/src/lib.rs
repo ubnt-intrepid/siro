@@ -1,9 +1,4 @@
-use siro::{
-    attr::{attribute, class, property},
-    event, html,
-    util::if_else,
-    App, View,
-};
+use siro::{attr, event, html, util::if_else, App, View};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -33,44 +28,37 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    let type_ = |value: &'static str| attribute("type", value);
-    let placeholder = |value: &'static str| attribute("placeholder", value);
-    let value = |value: String| property("value", value);
-
     html::div(
         (),
         (
             html::input(
                 (
-                    type_("text"),
-                    placeholder("Name"),
-                    value(model.name.clone()),
+                    html::attr::placeholder("Name"),
+                    html::attr::value(model.name.clone()),
                     event::on_input(Msg::Name),
                 ),
                 (),
             ),
-            html::input(
+            html::input::password(
                 (
-                    type_("password"),
-                    placeholder("Password"),
-                    value(model.password.clone()),
+                    html::attr::placeholder("Password"),
+                    html::attr::value(model.password.clone()),
                     event::on_input(Msg::Password),
                 ),
                 (),
             ),
-            html::input(
+            html::input::password(
                 (
-                    type_("password"),
-                    placeholder("Re-enter Password"),
-                    value(model.password_again.clone()),
+                    html::attr::placeholder("Re-enter Password"),
+                    html::attr::value(model.password_again.clone()),
                     event::on_input(Msg::PasswordAgain),
                 ),
                 (),
             ),
             if_else(
                 model.password == model.password_again,
-                || html::div(class("text-green"), "Ok"),
-                || html::div(class("text-red"), "Password does not match!"),
+                || html::div(attr::class("text-green"), "Ok"),
+                || html::div(attr::class("text-red"), "Password does not match!"),
             ),
         ),
     )

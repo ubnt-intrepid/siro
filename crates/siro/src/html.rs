@@ -1,3 +1,5 @@
+//! HTML directives.
+
 use crate::{
     attr::Attr,
     view::{element, Children, View, ViewExt as _},
@@ -6,7 +8,7 @@ use crate::{
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
         paste::paste! {
-            #[doc = "Create a builder of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/" $tag_name ") element."]
+            #[doc = "Create a `View` of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/" $tag_name ") element."]
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
                 attr: impl Attr<TMsg>,
@@ -84,3 +86,82 @@ html_elements!(
     ul,    // HtmlUListElement
     video, // HtmlVideoElement
 );
+
+/// HTML attributes.
+pub mod attr {
+    use crate::{
+        attr::{attribute, property, Attribute, Property},
+        vdom,
+    };
+
+    pub fn autofocus(autofocus: bool) -> Attribute {
+        attribute("autofocus", autofocus)
+    }
+
+    pub fn href(url: impl Into<vdom::CowStr>) -> Attribute {
+        attribute("href", url.into())
+    }
+
+    pub fn id(id: impl Into<vdom::CowStr>) -> Attribute {
+        attribute("id", id.into())
+    }
+
+    pub fn label_for(target_id: impl Into<vdom::CowStr>) -> Attribute {
+        attribute("for", target_id.into())
+    }
+
+    pub fn name(name: impl Into<vdom::CowStr>) -> Attribute {
+        attribute("name", name.into())
+    }
+
+    pub fn placeholder(placeholder: impl Into<vdom::CowStr>) -> Attribute {
+        attribute("placeholder", placeholder.into())
+    }
+
+    pub fn checked(checked: bool) -> Property {
+        property("checked", checked)
+    }
+
+    pub fn value(value: impl Into<vdom::Property>) -> Property {
+        property("value", value)
+    }
+}
+
+/// `View`s for [`<input>`] with specific element type.
+///
+/// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
+pub mod input {
+    use crate::{
+        attr::{attribute, Attr},
+        view::{Children, View},
+    };
+
+    macro_rules! input_elements {
+        ( $( $type_name:ident ),* $(,)? ) => {$(
+            paste::paste! {
+                #[doc = "Create a `View` of [`<input type=\"" $type_name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $type_name ") element."]
+                #[inline]
+                pub fn $type_name<TMsg: 'static>(
+                    attr: impl Attr<TMsg>,
+                    children: impl Children<TMsg>
+                ) -> impl View<Msg = TMsg> {
+                    super::input((attribute("type", stringify!($type_name)), attr), children)
+                }
+            }
+        )*};
+    }
+
+    input_elements!(
+        button, checkbox, color, date, email, file, hidden, image, month, number, password, radio,
+        range, reset, search, submit, tel, text, time, url, week,
+    );
+
+    /// Create a `View` of [`<input type="datetime-local">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/datetime-local) element.
+    #[inline]
+    pub fn datetime_local<TMsg: 'static>(
+        attr: impl Attr<TMsg>,
+        children: impl Children<TMsg>,
+    ) -> impl View<Msg = TMsg> {
+        super::input((attribute("type", "datetime-local"), attr), children)
+    }
+}

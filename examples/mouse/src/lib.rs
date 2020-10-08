@@ -1,4 +1,4 @@
-use siro::{attr::attribute, prelude::*, svg, App, View};
+use siro::{attr::style, prelude::*, svg, App, View};
 use wasm_bindgen::{prelude::*, JsCast as _};
 use wee_alloc::WeeAlloc;
 
@@ -41,13 +41,14 @@ fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
 }
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    // FIXME: avoid using .attribute()
     svg::svg(
         (
-            attribute("viewbox", "-500 -500 1000 1000"),
-            attribute("width", "100%"),
-            attribute("height", "100%"),
-            attribute("style", "position: fixed; top: 0px; left: 0px;"),
+            svg::attr::viewbox("-500 -500 1000 1000"),
+            svg::attr::width("100%"),
+            svg::attr::height("100%"),
+            style("position", "fixed"),
+            style("top", "0px"),
+            style("left", "0px"),
         ),
         svg::circle(
             (
@@ -68,15 +69,15 @@ pub async fn main() -> Result<(), JsValue> {
     let mut app = App::mount("#app")?;
 
     let _mousedown = siro::subscription::window_event("mousedown")
-        .map(|event| Msg::MouseDown(event.clone().unchecked_into()))
+        .map(|event| Msg::MouseDown(event.unchecked_into()))
         .subscribe(&app)?;
 
     let _mousemove = siro::subscription::window_event("mousemove")
-        .map(|event| Msg::MouseMove(event.clone().unchecked_into()))
+        .map(|event| Msg::MouseMove(event.unchecked_into()))
         .subscribe(&app)?;
 
     let _mouseup = siro::subscription::window_event("mouseup")
-        .map(|event| Msg::MouseUp(event.clone().unchecked_into()))
+        .map(|event| Msg::MouseUp(event.unchecked_into()))
         .subscribe(&app)?;
 
     let mut model = Model::default();
