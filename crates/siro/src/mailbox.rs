@@ -2,6 +2,9 @@ mod map;
 
 pub use map::Map;
 
+use crate::subscription::Subscription;
+use wasm_bindgen::JsValue;
+
 /// Represents mailbox for exchanging the messages within the application.
 pub trait Mailbox {
     type Msg: 'static;
@@ -17,16 +20,6 @@ pub trait Mailbox {
     /// By default, this method is a shortcut to `self.sender().send_message(msg)`.
     fn send_message(&self, msg: Self::Msg) {
         self.sender().send_message(msg);
-    }
-
-    /// Create a proxy `Mailbox` to receive other type of messages.
-    fn map<F, TMsg>(self, f: F) -> Map<Self, F, TMsg>
-    where
-        Self: Sized,
-        F: Fn(TMsg) -> Self::Msg + Clone + 'static,
-        TMsg: 'static,
-    {
-        Map::new(self, f)
     }
 }
 
@@ -109,3 +102,24 @@ pub trait Sender: 'static {
     /// Send a message to the mailbox.
     fn send_message(&self, msg: Self::Msg);
 }
+
+pub trait MailboxExt: Mailbox {
+    /// Create a proxy `Mailbox` to receive other type of messages.
+    fn map<F, TMsg>(self, f: F) -> Map<Self, F, TMsg>
+    where
+        Self: Sized,
+        F: Fn(TMsg) -> Self::Msg + Clone + 'static,
+        TMsg: 'static,
+    {
+        Map::new(self, f)
+    }
+
+    fn subscribe<S>(&self, subscription: S) -> Result<S::Handle, JsValue>
+    where
+        S: Subscription<Msg = Self::Msg>,
+    {
+        subscription.subscribe(self)
+    }
+}
+
+impl<M: ?Sized> MailboxExt for M where M: Mailbox {}

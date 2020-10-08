@@ -18,7 +18,9 @@ pub trait Subscription {
     fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
     where
         M: Mailbox<Msg = Self::Msg>;
+}
 
+pub trait SubscriptionExt: Subscription {
     fn map<F, TMsg>(self, f: F) -> Map<Self, F, TMsg>
     where
         Self: Sized,
@@ -28,3 +30,5 @@ pub trait Subscription {
         Map::new(self, f)
     }
 }
+
+impl<S: ?Sized> SubscriptionExt for S where S: Subscription {}

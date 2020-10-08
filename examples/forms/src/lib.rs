@@ -1,4 +1,5 @@
-use siro::{attr, event, html, util::if_else, App, View};
+use siro::prelude::*;
+use siro::{attr, event, html, util::if_else, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 

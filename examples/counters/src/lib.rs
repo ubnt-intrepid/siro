@@ -1,4 +1,5 @@
-use siro::{html, prelude::*, App, View};
+use siro::prelude::*;
+use siro::{html, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -6,7 +7,8 @@ use wee_alloc::WeeAlloc;
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
-    use siro::{event, html, View};
+    use siro::prelude::*;
+    use siro::{event, html};
 
     #[derive(Default, Clone)]
     pub struct Model {

@@ -1,5 +1,7 @@
-use siro::{attr::style, prelude::*, svg, App, View};
-use wasm_bindgen::{prelude::*, JsCast as _};
+use siro::prelude::*;
+use siro::{attr::style, svg, App};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast as _;
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
@@ -68,17 +70,18 @@ pub async fn main() -> Result<(), JsValue> {
 
     let mut app = App::mount("#app")?;
 
-    let _mousedown = siro::subscription::window_event("mousedown")
-        .map(|event| Msg::MouseDown(event.unchecked_into()))
-        .subscribe(&app)?;
-
-    let _mousemove = siro::subscription::window_event("mousemove")
-        .map(|event| Msg::MouseMove(event.unchecked_into()))
-        .subscribe(&app)?;
-
-    let _mouseup = siro::subscription::window_event("mouseup")
-        .map(|event| Msg::MouseUp(event.unchecked_into()))
-        .subscribe(&app)?;
+    let _mousedown = app.subscribe(
+        siro::subscription::window_event("mousedown")
+            .map(|event| Msg::MouseDown(event.unchecked_into())),
+    )?;
+    let _mousemove = app.subscribe(
+        siro::subscription::window_event("mousemove")
+            .map(|event| Msg::MouseMove(event.unchecked_into())),
+    )?;
+    let _mouseup = app.subscribe(
+        siro::subscription::window_event("mouseup")
+            .map(|event| Msg::MouseUp(event.unchecked_into())),
+    )?;
 
     let mut model = Model::default();
     app.render(view(&model))?;

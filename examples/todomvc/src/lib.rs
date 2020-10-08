@@ -1,8 +1,10 @@
-use futures::future::Future;
+use futures::prelude::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use siro::{attr, event, html, util::if_, App, View};
-use wasm_bindgen::{prelude::*, JsCast as _};
+use siro::prelude::*;
+use siro::{attr, event, html, util::if_, App};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast as _;
 use web_sys::Storage;
 use wee_alloc::WeeAlloc;
 

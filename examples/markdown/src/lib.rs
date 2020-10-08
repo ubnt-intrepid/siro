@@ -1,4 +1,5 @@
-use siro::{event, html, view::raw, App, View};
+use siro::prelude::*;
+use siro::{event, html, view::raw, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 #[global_allocator]

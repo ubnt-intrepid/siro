@@ -11,19 +11,21 @@ pub mod util;
 pub mod vdom;
 pub mod view;
 
-#[doc(no_inline)]
+#[doc(inline)]
 pub use crate::{
     app::App, //
     mailbox::Mailbox,
     subscription::Subscription,
-    view::View,
+    view::{Children, View},
 };
 
+/// A *prelude* for end users.
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        mailbox::Mailbox as _,
-        subscription::Subscription as _,
-        view::{View as _, ViewExt as _},
+        attr::Attr,
+        mailbox::{Mailbox, MailboxExt as _},
+        subscription::{Subscription, SubscriptionExt as _},
+        view::{Children, View, ViewExt as _},
     };
 }

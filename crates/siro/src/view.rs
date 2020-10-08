@@ -8,7 +8,11 @@ pub use element::{element, Element};
 pub use raw::{raw, Raw};
 pub use text::{text, Text};
 
-use crate::{attr::Attr, mailbox::Mailbox, vdom::VNode};
+use crate::{
+    attr::Attr,
+    mailbox::{Mailbox, MailboxExt as _},
+    vdom::VNode,
+};
 
 /// The view object that renders virtual DOM.
 pub trait View {

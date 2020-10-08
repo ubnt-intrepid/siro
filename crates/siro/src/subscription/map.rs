@@ -1,5 +1,5 @@
 use super::Subscription;
-use crate::mailbox::Mailbox;
+use crate::mailbox::{Mailbox, MailboxExt as _};
 use std::marker::PhantomData;
 use wasm_bindgen::prelude::*;
 
