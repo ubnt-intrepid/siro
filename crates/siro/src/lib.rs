@@ -1,5 +1,3 @@
-#![feature(move_ref_pattern)] // Delete after https://github.com/rust-lang/rust/pull/76119 is merged
-
 pub mod app;
 pub mod attr;
 pub mod event;

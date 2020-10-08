@@ -19,6 +19,8 @@ jobs:
     - name: Install Rust toolchains
       run: |
         rustup set profile minimal
+        rustup install stable
+        rustup default stable
 
     - name: Generate Cargo.lock
       run: cargo generate-lockfile
@@ -38,5 +40,5 @@ jobs:
     - name: Fetch cargo dependencies
       run: cargo fetch
 
-    - name: Run tests (nightly)
+    - name: Run tests
       run: cargo test
