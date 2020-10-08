@@ -1,9 +1,9 @@
-use super::node::Id;
-use std::{fmt, rc::Rc};
+use super::id::{NodeId, NodeIdAnchor};
+use std::fmt;
 use wasm_bindgen::JsValue;
 
 pub struct CustomNode {
-    rc: Rc<()>,
+    anchor: NodeIdAnchor,
     render: Box<dyn Fn(&web::Document) -> Result<web::Node, JsValue>>,
 }
 
@@ -19,16 +19,16 @@ impl CustomNode {
         F: Fn(&web::Document) -> Result<web::Node, JsValue> + 'static,
     {
         Self {
-            rc: Rc::new(()),
+            anchor: NodeIdAnchor::default(),
             render: Box::new(render),
         }
     }
 
-    pub(super) fn id(&self) -> Id {
-        Id::new(&self.rc)
+    pub(crate) fn id(&self) -> NodeId {
+        self.anchor.id()
     }
 
-    pub(super) fn render(&self, document: &web::Document) -> Result<web::Node, JsValue> {
+    pub(crate) fn render(&self, document: &web::Document) -> Result<web::Node, JsValue> {
         (self.render)(document)
     }
 }

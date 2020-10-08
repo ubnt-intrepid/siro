@@ -1,34 +1,5 @@
-use super::{custom::CustomNode, element::VElement, text::VText, types::CowStr};
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-    rc::{Rc, Weak},
-};
-
-#[derive(Clone, Debug)]
-#[repr(transparent)]
-pub(super) struct Id(Weak<()>);
-
-impl Id {
-    #[inline]
-    pub(super) fn new(rc: &Rc<()>) -> Self {
-        Self(Rc::downgrade(rc))
-    }
-}
-
-impl PartialEq for Id {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.ptr_eq(&other.0)
-    }
-}
-
-impl Eq for Id {}
-
-impl Hash for Id {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.as_ptr().hash(state);
-    }
-}
+use super::{custom::CustomNode, element::VElement, id::NodeId, text::VText, types::CowStr};
+use std::fmt;
 
 #[non_exhaustive]
 pub enum VNode {
@@ -78,7 +49,7 @@ macro_rules! impl_from_strs {
 impl_from_strs!(&'static str, String, CowStr);
 
 impl VNode {
-    pub(super) fn id(&self) -> Id {
+    pub(crate) fn id(&self) -> NodeId {
         match self {
             VNode::Element(e) => e.id(),
             VNode::Text(t) => t.id(),

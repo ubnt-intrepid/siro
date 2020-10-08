@@ -2,8 +2,8 @@
 
 mod custom;
 mod element;
+mod id;
 mod node;
-mod render;
 mod text;
 mod types;
 
@@ -15,4 +15,4 @@ pub use self::{
     types::{CowStr, FxIndexMap, FxIndexSet},
 };
 
-pub(crate) use self::render::Renderer;
+pub(crate) use self::id::NodeId;

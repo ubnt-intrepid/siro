@@ -1,10 +1,13 @@
-use super::{node::Id, types::CowStr};
-use std::{fmt, rc::Rc};
+use super::{
+    id::{NodeId, NodeIdAnchor},
+    types::CowStr,
+};
+use std::fmt;
 
 /// A virtual [`Text`](https://developer.mozilla.org/en-US/docs/Web/API/Text) node.
 #[non_exhaustive]
 pub struct VText {
-    rc: Rc<()>,
+    anchor: NodeIdAnchor,
     /// The content of this node.
     pub value: CowStr,
 }
@@ -24,14 +27,14 @@ impl VText {
     where
         S: Into<CowStr>,
     {
-        VText {
-            rc: Rc::new(()),
+        Self {
+            anchor: NodeIdAnchor::default(),
             value: value.into(),
         }
     }
 
-    pub(super) fn id(&self) -> Id {
-        Id::new(&self.rc)
+    pub(crate) fn id(&self) -> NodeId {
+        self.anchor.id()
     }
 }
 

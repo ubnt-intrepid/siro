@@ -1,19 +1,19 @@
 use super::{
-    node::{Id, VNode},
+    id::{NodeId, NodeIdAnchor},
+    node::VNode,
     types::{CowStr, FxIndexMap, FxIndexSet},
 };
 use gloo_events::EventListener;
 use std::{
     fmt,
     hash::{Hash, Hasher},
-    rc::Rc,
 };
 use wasm_bindgen::JsValue;
 
 /// A virtual [`Element`](https://developer.mozilla.org/en-US/docs/Web/API/Element) node.
 #[non_exhaustive]
 pub struct VElement {
-    rc: Rc<()>,
+    anchor: NodeIdAnchor,
     pub tag_name: CowStr,
     pub namespace_uri: Option<CowStr>,
     pub attributes: FxIndexMap<CowStr, Attribute>,
@@ -42,7 +42,7 @@ impl fmt::Debug for VElement {
 impl VElement {
     pub fn new(tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
         Self {
-            rc: Rc::new(()),
+            anchor: NodeIdAnchor::default(),
             tag_name,
             namespace_uri,
             attributes: FxIndexMap::default(),
@@ -54,8 +54,8 @@ impl VElement {
         }
     }
 
-    pub(super) fn id(&self) -> Id {
-        Id::new(&self.rc)
+    pub(crate) fn id(&self) -> NodeId {
+        self.anchor.id()
     }
 }
 
