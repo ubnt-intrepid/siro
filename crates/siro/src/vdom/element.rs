@@ -21,6 +21,7 @@ pub struct VElement {
     pub listeners: FxIndexSet<Box<dyn Listener>>,
     pub classes: FxIndexSet<CowStr>,
     pub styles: FxIndexMap<CowStr, CowStr>,
+    pub inner_html: Option<CowStr>,
     pub children: Vec<VNode>,
 }
 
@@ -34,6 +35,7 @@ impl fmt::Debug for VElement {
             .field("listeners", &self.listeners)
             .field("classes", &self.classes)
             .field("styles", &self.styles)
+            .field("inner_html", &self.inner_html)
             .field("children", &self.children)
             .finish()
     }
@@ -50,6 +52,7 @@ impl VElement {
             listeners: FxIndexSet::default(),
             classes: FxIndexSet::default(),
             styles: FxIndexMap::default(),
+            inner_html: None,
             children: vec![],
         }
     }

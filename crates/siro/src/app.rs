@@ -155,7 +155,6 @@ impl Renderer {
         let dom: web::Node = match node {
             VNode::Element(e) => self.render_element(e)?.into(),
             VNode::Text(t) => self.document.create_text_node(&*t.value).into(),
-            VNode::Custom(n) => n.render(&self.document)?,
         };
         self.cached_nodes.insert(node.id(), dom.clone());
         Ok(dom)
@@ -202,9 +201,13 @@ impl Renderer {
             }
         }
 
-        for child in &e.children {
-            let child_element = self.render(child)?;
-            element.append_child(&child_element)?;
+        if let Some(inner_html) = &e.inner_html {
+            element.set_inner_html(&*inner_html);
+        } else {
+            for child in &e.children {
+                let child_element = self.render(child)?;
+                element.append_child(&child_element)?;
+            }
         }
 
         Ok(element)
@@ -345,22 +348,49 @@ impl Renderer {
             }
         }
 
-        for e in zip_longest(&old.children, &new.children) {
-            match e {
-                EitherOrBoth::Left(old) => {
-                    let current = self
-                        .cached_nodes
-                        .remove(&old.id())
-                        .expect_throw("cache does not exist");
-                    node.remove_child(&current)?;
+        match (&old.inner_html, &new.inner_html) {
+            (None, None) => {
+                for e in zip_longest(&old.children, &new.children) {
+                    match e {
+                        EitherOrBoth::Left(old) => {
+                            let current = self
+                                .cached_nodes
+                                .remove(&old.id())
+                                .expect_throw("cache does not exist");
+                            node.remove_child(&current)?;
+                        }
+                        EitherOrBoth::Right(new) => {
+                            let to_append = self.render(new)?;
+                            node.append_child(&to_append)?;
+                        }
+                        EitherOrBoth::Both(old, new) => {
+                            self.diff(old, new)?;
+                        }
+                    }
                 }
-                EitherOrBoth::Right(new) => {
-                    let to_append = self.render(new)?;
-                    node.append_child(&to_append)?;
+            }
+
+            (Some(old_html), Some(new_html)) => {
+                if old_html != new_html {
+                    node.set_inner_html(&*new_html);
                 }
-                EitherOrBoth::Both(old, new) => {
-                    self.diff(old, new)?;
+            }
+
+            (Some(..), None) => {
+                crate::util::remove_children(&node)?;
+                for child in &new.children {
+                    let child_element = self.render(child)?;
+                    node.append_child(&child_element)?;
                 }
+            }
+
+            (None, Some(new_html)) => {
+                for child in &old.children {
+                    let child_id = child.id();
+                    self.cached_nodes.remove(&child_id);
+                    self.cached_listeners.remove(&child_id);
+                }
+                node.set_inner_html(&*new_html);
             }
         }
 

@@ -1,11 +1,9 @@
 mod children;
 mod element;
-mod raw;
 mod text;
 
 pub use children::{iter, Children, Iter};
 pub use element::{element, Element};
-pub use raw::{raw, Raw};
 pub use text::{text, Text};
 
 use crate::{

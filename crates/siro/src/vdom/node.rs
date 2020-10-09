@@ -1,11 +1,10 @@
-use super::{custom::CustomNode, element::VElement, id::NodeId, text::VText, types::CowStr};
+use super::{element::VElement, id::NodeId, text::VText, types::CowStr};
 use std::fmt;
 
 #[non_exhaustive]
 pub enum VNode {
     Element(VElement),
     Text(VText),
-    Custom(CustomNode),
 }
 
 impl fmt::Debug for VNode {
@@ -13,7 +12,6 @@ impl fmt::Debug for VNode {
         match self {
             Self::Element(e) => e.fmt(f),
             Self::Text(t) => t.fmt(f),
-            Self::Custom(c) => c.fmt(f),
         }
     }
 }
@@ -27,12 +25,6 @@ impl From<VElement> for VNode {
 impl From<VText> for VNode {
     fn from(text: VText) -> Self {
         Self::Text(text)
-    }
-}
-
-impl From<CustomNode> for VNode {
-    fn from(custom: CustomNode) -> Self {
-        Self::Custom(custom)
     }
 }
 
@@ -53,7 +45,6 @@ impl VNode {
         match self {
             VNode::Element(e) => e.id(),
             VNode::Text(t) => t.id(),
-            VNode::Custom(n) => n.id(),
         }
     }
 }

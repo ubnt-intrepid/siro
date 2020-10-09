@@ -1,5 +1,5 @@
 use siro::prelude::*;
-use siro::{event, view::raw, App};
+use siro::{attr::inner_html, event, App};
 use siro_html as html;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -28,12 +28,12 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
         html::attr::id("editor"),
         (
             html::textarea(event::on_input(Msg::Edit), ()),
-            raw(markdown_preview(&model.input)),
+            view_markdown_preview(&model.input),
         ),
     )
 }
 
-fn markdown_preview(input: &str) -> String {
+fn view_markdown_preview(input: &str) -> impl View<Msg = Msg> {
     use pulldown_cmark::{Options, Parser};
 
     let parser = Parser::new_ext(
@@ -46,7 +46,9 @@ fn markdown_preview(input: &str) -> String {
 
     let mut sanitizer = ammonia::Builder::new();
     sanitizer.add_allowed_classes("code", &["language-rust"]);
-    sanitizer.clean(&output).to_string()
+    output = sanitizer.clean(&output).to_string();
+
+    html::div(inner_html(output), ())
 }
 
 #[wasm_bindgen(start)]
