@@ -41,7 +41,7 @@ macro_rules! impl_from_strs {
 impl_from_strs!(&'static str, String, CowStr);
 
 impl VNode {
-    pub(crate) fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> &NodeId {
         match self {
             VNode::Element(e) => e.id(),
             VNode::Text(t) => t.id(),

@@ -3,13 +3,22 @@ use std::{
     rc::{Rc, Weak},
 };
 
-#[derive(Debug, Default)]
-pub(super) struct NodeIdAnchor(Rc<()>);
+#[derive(Debug)]
+pub(super) struct NodeIdAnchor {
+    rc: Rc<()>,
+    id: NodeId,
+}
 
 impl NodeIdAnchor {
+    pub(super) fn new() -> Self {
+        let rc = Rc::new(());
+        let id = NodeId(Rc::downgrade(&rc));
+        Self { rc, id }
+    }
+
     #[inline]
-    pub(super) fn id(&self) -> NodeId {
-        NodeId(Rc::downgrade(&self.0))
+    pub(super) fn id(&self) -> &NodeId {
+        &self.id
     }
 }
 

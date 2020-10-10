@@ -28,12 +28,12 @@ impl VText {
         S: Into<CowStr>,
     {
         Self {
-            anchor: NodeIdAnchor::default(),
+            anchor: NodeIdAnchor::new(),
             value: value.into(),
         }
     }
 
-    pub(crate) fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> &NodeId {
         self.anchor.id()
     }
 }

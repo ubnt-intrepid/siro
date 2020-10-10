@@ -44,7 +44,7 @@ impl fmt::Debug for VElement {
 impl VElement {
     pub fn new(tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
         Self {
-            anchor: NodeIdAnchor::default(),
+            anchor: NodeIdAnchor::new(),
             tag_name,
             namespace_uri,
             attributes: FxIndexMap::default(),
@@ -57,7 +57,7 @@ impl VElement {
         }
     }
 
-    pub(crate) fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> &NodeId {
         self.anchor.id()
     }
 }

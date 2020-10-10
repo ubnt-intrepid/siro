@@ -156,7 +156,7 @@ impl Renderer {
             VNode::Element(e) => self.render_element(e)?.into(),
             VNode::Text(t) => self.document.create_text_node(&*t.value).into(),
         };
-        self.cached_nodes.insert(node.id(), dom.clone());
+        self.cached_nodes.insert(node.id().clone(), dom.clone());
         Ok(dom)
     }
 
@@ -176,7 +176,7 @@ impl Renderer {
         }
 
         if !e.listeners.is_empty() {
-            let caches = self.cached_listeners.entry(e.id()).or_default();
+            let caches = self.cached_listeners.entry(e.id().clone()).or_default();
 
             for listener in &e.listeners {
                 caches.insert(listener.event_type(), listener.attach(element.as_ref()));
@@ -214,15 +214,12 @@ impl Renderer {
     }
 
     pub(crate) fn diff(&mut self, old: &VNode, new: &VNode) -> Result<(), JsValue> {
-        let old_key = old.id();
-        let new_key = new.id();
-
-        if old_key == new_key {
+        if old.id() == new.id() {
             // Same nodes.
             return Ok(());
         }
 
-        let node = self.replant_caches(&old_key, &new_key);
+        let node = self.replant_caches(old.id(), new.id());
 
         match (old, new) {
             (VNode::Element(old), VNode::Element(new)) if old.tag_name == new.tag_name => {
@@ -305,7 +302,7 @@ impl Renderer {
         }
 
         {
-            let caches = self.cached_listeners.entry(new.id()).or_default();
+            let caches = self.cached_listeners.entry(new.id().clone()).or_default();
 
             caches.clear();
 
@@ -355,7 +352,7 @@ impl Renderer {
                         EitherOrBoth::Left(old) => {
                             let current = self
                                 .cached_nodes
-                                .remove(&old.id())
+                                .remove(old.id())
                                 .expect_throw("cache does not exist");
                             node.remove_child(&current)?;
                         }
@@ -386,9 +383,8 @@ impl Renderer {
 
             (None, Some(new_html)) => {
                 for child in &old.children {
-                    let child_id = child.id();
-                    self.cached_nodes.remove(&child_id);
-                    self.cached_listeners.remove(&child_id);
+                    self.cached_nodes.remove(child.id());
+                    self.cached_listeners.remove(child.id());
                 }
                 node.set_inner_html(&*new_html);
             }
