@@ -12,26 +12,19 @@ use renderer::Renderer;
 
 pub struct App<TMsg: 'static> {
     mountpoint: web::Node,
-    vnode: VNode,
     renderer: Renderer,
+    vnode: Option<VNode>,
     tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
 }
 
 impl<TMsg: 'static> App<TMsg> {
     pub fn mount(mountpoint: web::Node) -> Result<Self, JsValue> {
-        let mut renderer = Renderer::new()?;
-
-        let view: VNode = "Now rendering...".into();
-        let node = renderer.render(&view)?;
-        mountpoint.append_child(&node)?;
-
         let (tx, rx) = mpsc::unbounded();
-
         Ok(App {
             mountpoint,
-            vnode: view,
-            renderer,
+            renderer: Renderer::new()?,
+            vnode: None,
             tx,
             rx,
         })
@@ -58,10 +51,16 @@ impl<TMsg: 'static> App<TMsg> {
     where
         TView: View<Msg = TMsg>,
     {
-        let vnode = view.render(&*self);
+        let new = view.render(&*self);
 
-        self.renderer.diff(&self.vnode, &vnode)?;
-        self.vnode = vnode;
+        if let Some(old) = &self.vnode {
+            self.renderer.diff(old, &new)?;
+        } else {
+            let node = self.renderer.render(&new)?;
+            self.mountpoint.append_child(&node)?;
+        }
+
+        self.vnode.replace(new);
 
         Ok(())
     }
