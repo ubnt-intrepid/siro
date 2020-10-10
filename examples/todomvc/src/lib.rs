@@ -425,7 +425,8 @@ pub async fn main() -> Result<(), JsValue> {
     let mut model = restore_model(&storage).unwrap_or_default();
     model.visibility = current_visibility(&window);
 
-    let mut app = App::mount("#app")?;
+    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
+    let mut app = App::mount(mountpoint)?;
     app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {

@@ -85,7 +85,8 @@ fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl 
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = App::mount("#app")?;
+    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
+    let mut app = App::mount(mountpoint)?;
 
     let _guard = siro::subscription::animation_frames()
         .map(|_timestamp| Msg::Tick) //

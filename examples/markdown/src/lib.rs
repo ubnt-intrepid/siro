@@ -55,7 +55,7 @@ fn view_markdown_preview(input: &str) -> impl View<Msg = Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = App::mount("#app")?;
+    let mut app = App::mount_to_body()?;
 
     let mut model = Model::default();
     app.render(view(&model))?;

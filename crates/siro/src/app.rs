@@ -9,31 +9,6 @@ use itertools::{EitherOrBoth, Itertools as _};
 use rustc_hash::FxHashMap;
 use wasm_bindgen::{prelude::*, JsCast as _};
 
-pub trait Mountpoint {
-    fn get_node(&self, document: &web::Document) -> Result<web::Node, JsValue>;
-}
-
-impl Mountpoint for str {
-    fn get_node(&self, document: &web::Document) -> Result<web::Node, JsValue> {
-        document
-            .query_selector(self)?
-            .map(Into::into)
-            .ok_or(format!("cannot find mountpoint: {}", self).into())
-    }
-}
-
-impl Mountpoint for web::Node {
-    fn get_node(&self, _: &web::Document) -> Result<web::Node, JsValue> {
-        Ok(self.clone())
-    }
-}
-
-impl Mountpoint for web::Element {
-    fn get_node(&self, _: &web::Document) -> Result<web::Node, JsValue> {
-        Ok(self.clone().into())
-    }
-}
-
 pub struct App<TMsg: 'static> {
     mountpoint: web::Node,
     vnode: VNode,
@@ -43,10 +18,8 @@ pub struct App<TMsg: 'static> {
 }
 
 impl<TMsg: 'static> App<TMsg> {
-    pub fn mount(mountpoint: &(impl Mountpoint + ?Sized)) -> Result<Self, JsValue> {
+    pub fn mount(mountpoint: web::Node) -> Result<Self, JsValue> {
         let document = crate::util::document().ok_or("no Document exists in Window")?;
-        let mountpoint = mountpoint.get_node(&document)?;
-
         let mut renderer = Renderer::new(document);
 
         let view: VNode = "Now rendering...".into();
@@ -62,6 +35,15 @@ impl<TMsg: 'static> App<TMsg> {
             tx,
             rx,
         })
+    }
+
+    pub fn mount_to_body() -> Result<Self, JsValue> {
+        let body = crate::util::document()
+            .ok_or("no Document exists")?
+            .body()
+            .ok_or("missing body in document")?
+            .into();
+        Self::mount(body)
     }
 
     pub fn mountpoint(&self) -> &web::Node {
@@ -87,34 +69,30 @@ impl<TMsg: 'static> App<TMsg> {
 
 impl<TMsg: 'static> Mailbox for App<TMsg> {
     type Msg = TMsg;
-    type Sender = imp::AppSender<TMsg>;
+    type Sender = AppSender<TMsg>;
 
     fn send_message(&self, msg: TMsg) {
         self.tx.unbounded_send(msg).unwrap_throw();
     }
 
     fn sender(&self) -> Self::Sender {
-        imp::AppSender(self.tx.clone())
+        AppSender(self.tx.clone())
     }
 }
 
-mod imp {
-    use super::*;
+pub struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
 
-    pub struct AppSender<TMsg>(pub(super) mpsc::UnboundedSender<TMsg>);
-
-    impl<TMsg> Clone for AppSender<TMsg> {
-        fn clone(&self) -> Self {
-            Self(self.0.clone())
-        }
+impl<TMsg> Clone for AppSender<TMsg> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
+}
 
-    impl<TMsg: 'static> Sender for AppSender<TMsg> {
-        type Msg = TMsg;
+impl<TMsg: 'static> Sender for AppSender<TMsg> {
+    type Msg = TMsg;
 
-        fn send_message(&self, msg: TMsg) {
-            self.0.unbounded_send(msg).unwrap_throw();
-        }
+    fn send_message(&self, msg: TMsg) {
+        self.0.unbounded_send(msg).unwrap_throw();
     }
 }
 

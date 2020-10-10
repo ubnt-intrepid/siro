@@ -12,6 +12,10 @@ pub fn remove_children(element: &web::Element) -> Result<(), JsValue> {
     Ok(())
 }
 
+pub fn select(selector: &str) -> Option<web::Node> {
+    document()?.query_selector(selector).ok()?.map(Into::into)
+}
+
 pub fn if_then<T>(pred: bool, f: impl FnOnce() -> T) -> Option<T> {
     if pred {
         Some(f())

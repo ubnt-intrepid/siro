@@ -10,7 +10,8 @@ pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     // Mount a Siro application on the specified mountpoint.
-    let mut app = App::<()>::mount("#app")?;
+    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
+    let mut app = App::<()>::mount(mountpoint)?;
 
     // Draw the view.
     app.render(text("Hello from Rust!"))?;

@@ -10,7 +10,8 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = App::<()>::mount("#app")?;
+    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
+    let mut app = App::<()>::mount(mountpoint)?;
 
     app.render({
         svg::svg(

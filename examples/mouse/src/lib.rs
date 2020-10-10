@@ -70,7 +70,8 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = App::mount("#app")?;
+    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
+    let mut app = App::mount(mountpoint)?;
 
     let _mousedown = app.subscribe(
         siro::subscription::window_event("mousedown")

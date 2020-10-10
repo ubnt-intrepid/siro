@@ -1,4 +1,5 @@
-pub mod app;
+mod app;
+
 pub mod attr;
 pub mod event;
 pub mod mailbox;
