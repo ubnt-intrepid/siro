@@ -1,20 +1,22 @@
 use siro::prelude::*;
-use siro::{attr, event, util::if_else, App};
-use siro_html as html;
+use siro::App;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
-#[derive(Debug, Default)]
+// ==== model ====
+
+#[derive(Default)]
 struct Model {
     name: String,
     password: String,
     password_again: String,
 }
 
-#[derive(Debug)]
+// ==== update ====
+
 enum Msg {
     Name(String),
     Password(String),
@@ -29,38 +31,37 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
+// ==== view ====
+
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    html::div(
+    use siro::{attr::style, event::on_input, util::if_else};
+    use siro_html::{
+        attr::{placeholder, value},
+        div, input,
+    };
+
+    div(
         (),
         (
-            html::input(
-                (
-                    html::attr::placeholder("Name"),
-                    html::attr::value(model.name.clone()),
-                    event::on_input(Msg::Name),
-                ),
-                (),
-            ),
-            html::input::password(
-                (
-                    html::attr::placeholder("Password"),
-                    html::attr::value(model.password.clone()),
-                    event::on_input(Msg::Password),
-                ),
-                (),
-            ),
-            html::input::password(
-                (
-                    html::attr::placeholder("Re-enter Password"),
-                    html::attr::value(model.password_again.clone()),
-                    event::on_input(Msg::PasswordAgain),
-                ),
-                (),
-            ),
+            input::text((
+                placeholder("Name"),
+                value(model.name.clone()),
+                on_input(Msg::Name),
+            )),
+            input::password((
+                placeholder("Password"),
+                value(model.password.clone()),
+                on_input(Msg::Password),
+            )),
+            input::password((
+                placeholder("Re-enter Password"),
+                value(model.password_again.clone()),
+                on_input(Msg::PasswordAgain),
+            )),
             if_else(
                 model.password == model.password_again,
-                || html::div(attr::class("text-green"), "Ok"),
-                || html::div(attr::class("text-red"), "Password does not match!"),
+                || div(style("color", "green"), "Ok"),
+                || div(style("color", "red"), "Passwords do not match!"),
             ),
         ),
     )

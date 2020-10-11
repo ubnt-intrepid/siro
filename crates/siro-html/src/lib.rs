@@ -133,7 +133,7 @@ pub mod attr {
 pub mod input {
     use siro::{
         attr::{attribute, Attr},
-        view::{Children, View},
+        view::View,
     };
 
     macro_rules! input_elements {
@@ -141,11 +141,8 @@ pub mod input {
             paste::paste! {
                 #[doc = "Create a `View` of [`<input type=\"" $type_name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $type_name ") element."]
                 #[inline]
-                pub fn $type_name<TMsg: 'static>(
-                    attr: impl Attr<TMsg>,
-                    children: impl Children<TMsg>
-                ) -> impl View<Msg = TMsg> {
-                    super::input((attribute("type", stringify!($type_name)), attr), children)
+                pub fn $type_name<TMsg: 'static>(attr: impl Attr<TMsg>) -> impl View<Msg = TMsg> {
+                    super::input((attribute("type", stringify!($type_name)), attr), ())
                 }
             }
         )*};
@@ -158,10 +155,7 @@ pub mod input {
 
     /// Create a `View` of [`<input type="datetime-local">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/datetime-local) element.
     #[inline]
-    pub fn datetime_local<TMsg: 'static>(
-        attr: impl Attr<TMsg>,
-        children: impl Children<TMsg>,
-    ) -> impl View<Msg = TMsg> {
-        super::input((attribute("type", "datetime-local"), attr), children)
+    pub fn datetime_local<TMsg: 'static>(attr: impl Attr<TMsg>) -> impl View<Msg = TMsg> {
+        super::input((attribute("type", "datetime-local"), attr), ())
     }
 }

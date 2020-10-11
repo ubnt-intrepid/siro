@@ -201,15 +201,12 @@ fn view_main(model: &Model) -> impl View<Msg = Msg> + '_ {
     html::section(
         attr::class("main"),
         (
-            html::input::checkbox(
-                (
-                    attr::class("toggle-all"),
-                    html::attr::id("toggle-all"),
-                    html::attr::checked(all_completed),
-                    event::on("click", move |_| Msg::CheckAll(!all_completed)),
-                ),
-                (),
-            ),
+            html::input::checkbox((
+                attr::class("toggle-all"),
+                html::attr::id("toggle-all"),
+                html::attr::checked(all_completed),
+                event::on("click", move |_| Msg::CheckAll(!all_completed)),
+            )),
             html::label(html::attr::label_for("toggle-all"), "Mark all as complete"),
             html::ul(
                 attr::class("todo-list"),
@@ -249,14 +246,11 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
             html::div(
                 attr::class("view"),
                 (
-                    html::input::checkbox(
-                        (
-                            attr::class("toggle"),
-                            html::attr::checked(completed),
-                            event::on("click", move |_| Msg::Check(entry_id, !completed)),
-                        ),
-                        (),
-                    ),
+                    html::input::checkbox((
+                        attr::class("toggle"),
+                        html::attr::checked(completed),
+                        event::on("click", move |_| Msg::Check(entry_id, !completed)),
+                    )),
                     html::label(
                         event::on("dblclick", move |_| Msg::EditingEntry(entry_id, true)),
                         description.clone(),
@@ -271,18 +265,15 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
                 ),
             ),
             if_then(editing, || {
-                html::input::text(
-                    (
-                        attr::class("edit"),
-                        html::attr::name("title"),
-                        html::attr::id(input_id.clone()),
-                        html::attr::value(description.clone()),
-                        event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
-                        event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
-                        event::on_enter(move || Msg::EditingEntry(entry_id, false)),
-                    ),
-                    (),
-                )
+                html::input::text((
+                    attr::class("edit"),
+                    html::attr::name("title"),
+                    html::attr::id(input_id.clone()),
+                    html::attr::value(description.clone()),
+                    event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
+                    event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
+                    event::on_enter(move || Msg::EditingEntry(entry_id, false)),
+                ))
             }),
         ),
     )
