@@ -1,5 +1,5 @@
 use siro::prelude::*;
-use siro::App;
+use siro::{attr::style, App};
 use siro_svg as svg;
 use std::f32;
 use wasm_bindgen::prelude::*;
@@ -25,9 +25,15 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    let hour = model.date.get_hours() % 12;
+    let hour = model.date.get_hours() % 24;
     let minute = model.date.get_minutes() % 60;
     let second = model.date.get_seconds() % 60;
+
+    let second_turns = (second as f32) / 60.0;
+    let minute_turns = (minute as f32 + second_turns) / 60.0;
+    let hour_turns = ((hour % 12) as f32 + minute_turns) / 12.0;
+
+    let color = if hour >= 12 { "#F0A048" } else { "#1293D8" };
 
     svg::svg(
         (
@@ -41,20 +47,21 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
                     svg::attr::cx("200"),
                     svg::attr::cy("200"),
                     svg::attr::r("120"),
-                    svg::attr::fill("#1293D8"),
+                    svg::attr::fill(color),
                 ),
                 (),
             ),
-            view_hand("white", 6, 60.0, hour as f32 / 12.0),
-            view_hand("white", 6, 90.0, minute as f32 / 60.0),
-            view_hand("#ff3860", 3, 90.0, second as f32 / 60.0),
+            view_hand("white", 6, 60.0, hour_turns),
+            view_hand("white", 6, 90.0, minute_turns),
+            view_hand("#ff3860", 3, 90.0, second_turns),
             svg::text(
                 (
                     svg::attr::x("200"),
-                    svg::attr::y("260"),
+                    svg::attr::y("340"),
                     svg::attr::text_anchor("middle"),
                     svg::attr::dominant_baseline("central"),
-                    svg::attr::fill("white"),
+                    svg::attr::fill(color),
+                    style("fontWeight", "bold"),
                 ),
                 format!("{:02}:{:02}:{:02}", hour, minute, second),
             ),
