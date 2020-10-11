@@ -34,7 +34,7 @@ fn update(model: &mut Model, msg: Msg) {
 // ==== view ====
 
 fn view(model: &Model) -> impl View<Msg = Msg> {
-    use siro::{attr::style, event::on_input, util::if_else};
+    use siro::{attr::style, event::on_input};
     use siro_html::{
         attr::{placeholder, value},
         div, input,
@@ -58,11 +58,11 @@ fn view(model: &Model) -> impl View<Msg = Msg> {
                 value(model.password_again.clone()),
                 on_input(Msg::PasswordAgain),
             )),
-            if_else(
-                model.password == model.password_again,
-                || div(style("color", "green"), "Ok"),
-                || div(style("color", "red"), "Passwords do not match!"),
-            ),
+            if model.password == model.password_again {
+                div(style("color", "green"), "Ok")
+            } else {
+                div(style("color", "red"), "Passwords do not match!")
+            },
         ),
     )
 }
