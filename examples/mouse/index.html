@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Mouse</title>
+    <script type="module">
+        import wasm from './pkg/index.js'
+        wasm()
+    </script>
 </head>
 <body>
     <div id="app"></div>
-    <script type="module">
-        import wasm from './pkg/index.js'
-        wasm();
-    </script>
 </body>
 </html>
