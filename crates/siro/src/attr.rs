@@ -10,22 +10,42 @@ pub use inner_html::{inner_html, InnerHtml};
 pub use property::{property, Property};
 pub use style::{style, Style};
 
-use crate::{mailbox::Mailbox, vdom::VElement};
+use crate::vdom::{self, CowStr};
 use either::Either;
+use wasm_bindgen::JsValue;
+
+pub trait Context {
+    type Msg: 'static;
+
+    fn set_attribute(&mut self, name: CowStr, value: vdom::Attribute) -> Result<(), JsValue>;
+
+    fn set_property(&mut self, name: CowStr, value: vdom::Property) -> Result<(), JsValue>;
+
+    fn set_listener<F>(&mut self, event_type: &'static str, f: F) -> Result<(), JsValue>
+    where
+        F: Fn(&web::Event) -> Option<Self::Msg> + 'static;
+
+    fn add_class(&mut self, name: CowStr) -> Result<(), JsValue>;
+
+    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), JsValue>;
+
+    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), JsValue>;
+}
 
 /// The modifier of a `View` that annotates one or more attribute values.
 pub trait Attr<TMsg: 'static> {
     /// Apply itself to specified `VElement`.
-    fn apply<M: ?Sized>(self, element: &mut VElement, mailbox: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>;
+        Ctx: Context<Msg = TMsg>;
 }
 
 impl<TMsg: 'static> Attr<TMsg> for () {
-    fn apply<M: ?Sized>(self, _: &mut VElement, _: &M)
+    fn apply<Ctx: ?Sized>(self, _: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
+        Ok(())
     }
 }
 
@@ -36,14 +56,15 @@ macro_rules! impl_modifier_for_tuples {
             $H: Attr<TMsg>,
             $( $T: Attr<TMsg>, )*
         {
-            fn apply<M:?Sized>(self, element: &mut VElement, mailbox: &M)
+            fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
             where
-                M: Mailbox<Msg = TMsg>,
+                Ctx: Context<Msg = TMsg>,
             {
                 #[allow(non_snake_case)]
                 let ($H, $( $T ),*) = self;
-                $H.apply(element, mailbox);
-                $( $T.apply(element, mailbox); )*
+                $H.apply(ctx)?;
+                $( $T.apply(ctx)?; )*
+                Ok(())
             }
         }
 
@@ -55,11 +76,12 @@ macro_rules! impl_modifier_for_tuples {
         where
             $T: Attr<TMsg>,
         {
-            fn apply<M: ?Sized>(self, element: &mut VElement, mailbox: &M)
+            fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
             where
-                M: Mailbox<Msg = TMsg>,
+                Ctx: Context<Msg = TMsg>,
             {
-                self.0.apply(element, mailbox);
+                self.0.apply(ctx)?;
+                Ok(())
             }
         }
     };
@@ -74,12 +96,13 @@ impl<TMsg: 'static, T> Attr<TMsg> for Option<T>
 where
     T: Attr<TMsg>,
 {
-    fn apply<M: ?Sized>(self, element: &mut VElement, mailbox: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
-        if let Some(m) = self {
-            m.apply(element, mailbox);
+        match self {
+            Some(m) => m.apply(ctx),
+            None => Ok(()),
         }
     }
 }
@@ -89,13 +112,13 @@ where
     M1: Attr<TMsg>,
     M2: Attr<TMsg>,
 {
-    fn apply<M: ?Sized>(self, element: &mut VElement, mailbox: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         match self {
-            Either::Left(l) => l.apply(element, mailbox),
-            Either::Right(r) => r.apply(element, mailbox),
+            Either::Left(l) => Attr::apply(l, ctx),
+            Either::Right(r) => Attr::apply(r, ctx),
         }
     }
 }

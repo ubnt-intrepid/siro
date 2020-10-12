@@ -1,16 +1,35 @@
-mod children;
 mod element;
+mod map;
 mod text;
 
-pub use children::{iter, Children, Iter};
 pub use element::{element, Element};
+pub use map::Map;
 pub use text::{text, Text};
 
-use crate::{
-    attr::Attr,
-    mailbox::{Mailbox, MailboxExt as _},
-    vdom::VNode,
-};
+use crate::vdom::{CowStr, VElement, VNode, VText};
+use gloo_events::EventListener;
+use wasm_bindgen::JsValue;
+
+pub trait Context {
+    type Msg: 'static;
+
+    fn create_element(
+        &mut self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+    ) -> Result<VElement, JsValue>;
+
+    fn create_text_node(&mut self, data: CowStr) -> Result<VText, JsValue>;
+
+    fn create_listener<F>(
+        &mut self,
+        target: &web::EventTarget,
+        event_type: &'static str,
+        callback: F,
+    ) -> EventListener
+    where
+        F: Fn(&web::Event) -> Option<Self::Msg> + 'static;
+}
 
 /// The view object that renders virtual DOM.
 pub trait View {
@@ -18,31 +37,17 @@ pub trait View {
     type Msg: 'static;
 
     /// Render the virtual DOM.
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
+    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<VNode, JsValue>
     where
-        M: Mailbox<Msg = Self::Msg>;
+        Ctx: Context<Msg = Self::Msg>;
+
+    /// Calculate diff with the old `VNode`.
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut VNode) -> Result<(), JsValue>
+    where
+        Ctx: Context<Msg = Self::Msg>;
 }
 
 pub trait ViewExt: View {
-    fn attr<A>(self, attr: A) -> WithAttr<Self, A>
-    where
-        Self: Sized,
-        A: Attr<Self::Msg>,
-    {
-        WithAttr { view: self, attr }
-    }
-
-    fn children<C>(self, children: C) -> WithChildren<Self, C>
-    where
-        Self: Sized,
-        C: Children<Self::Msg>,
-    {
-        WithChildren {
-            view: self,
-            children,
-        }
-    }
-
     fn map<F, TMsg: 'static>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
@@ -53,78 +58,3 @@ pub trait ViewExt: View {
 }
 
 impl<TView> ViewExt for TView where TView: View {}
-
-// ==== WithAttr ====
-
-pub struct WithAttr<TView, A> {
-    view: TView,
-    attr: A,
-}
-
-impl<TView, A> View for WithAttr<TView, A>
-where
-    TView: View,
-    A: Attr<TView::Msg>,
-{
-    type Msg = TView::Msg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
-    where
-        M: Mailbox<Msg = Self::Msg>,
-    {
-        let mut vnode = self.view.render(mailbox);
-        if let VNode::Element(element) = &mut vnode {
-            self.attr.apply(element, mailbox);
-        }
-        vnode
-    }
-}
-
-// ==== WithChildren ====
-
-pub struct WithChildren<TView, C> {
-    view: TView,
-    children: C,
-}
-
-impl<TView, C> View for WithChildren<TView, C>
-where
-    TView: View,
-    C: Children<TView::Msg>,
-{
-    type Msg = TView::Msg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
-    where
-        M: Mailbox<Msg = Self::Msg>,
-    {
-        let mut vnode = self.view.render(mailbox);
-        if let VNode::Element(element) = &mut vnode {
-            self.children.append(element, mailbox);
-        }
-        vnode
-    }
-}
-
-// ==== Map ====
-
-pub struct Map<TView, F> {
-    view: TView,
-    f: F,
-}
-
-impl<TView, F, TMsg> View for Map<TView, F>
-where
-    TView: View,
-    F: Fn(TView::Msg) -> TMsg + Clone + 'static,
-    TMsg: 'static,
-{
-    type Msg = TMsg;
-
-    fn render<M: ?Sized>(self, mailbox: &M) -> VNode
-    where
-        M: Mailbox<Msg = Self::Msg>,
-    {
-        self.view.render(&mailbox.map(self.f))
-    }
-}

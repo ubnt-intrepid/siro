@@ -97,7 +97,7 @@ pub async fn main() -> Result<(), JsValue> {
 
     let _guard = siro::subscription::animation_frames()
         .map(|_timestamp| Msg::Tick) //
-        .subscribe(&app)?;
+        .subscribe(&app.mailbox())?;
 
     let mut model = Model {
         date: js_sys::Date::new_0(),

@@ -1,15 +1,9 @@
-use crate::{
-    attr::Attr,
-    mailbox::{Mailbox, Sender},
-    vdom::{Listener, VElement},
-};
-use gloo_events::EventListener;
-use std::rc::Rc;
+use crate::attr::{self, Attr};
 use wasm_bindgen::JsValue;
 
 pub fn on_event<TMsg: 'static>(
     event_type: &'static str,
-    f: impl Fn(&web::Event) -> Option<TMsg> + Clone + 'static,
+    f: impl Fn(&web::Event) -> Option<TMsg> + 'static,
 ) -> impl Attr<TMsg> {
     OnEvent { event_type, f }
 }
@@ -21,48 +15,15 @@ struct OnEvent<F> {
 
 impl<F, TMsg> Attr<TMsg> for OnEvent<F>
 where
-    F: Fn(&web::Event) -> Option<TMsg> + Clone + 'static,
-    TMsg: 'static,
-{
-    fn apply<M: ?Sized>(self, element: &mut VElement, mailbox: &M)
-    where
-        M: Mailbox<Msg = TMsg>,
-    {
-        element
-            .listeners
-            .replace(Box::new(OnEventListener(Rc::new(Inner {
-                event_type: self.event_type,
-                f: self.f,
-                sender: mailbox.sender(),
-            }))));
-    }
-}
-
-struct OnEventListener<F, S>(Rc<Inner<F, S>>);
-
-struct Inner<F, S> {
-    event_type: &'static str,
-    f: F,
-    sender: S,
-}
-
-impl<F, S, TMsg> Listener for OnEventListener<F, S>
-where
     F: Fn(&web::Event) -> Option<TMsg> + 'static,
-    S: Sender<Msg = TMsg>,
     TMsg: 'static,
 {
-    fn event_type(&self) -> &'static str {
-        self.0.event_type
-    }
-
-    fn attach(&self, target: &web::EventTarget) -> EventListener {
-        let inner = self.0.clone();
-        EventListener::new(target, self.event_type(), move |e| {
-            if let Some(msg) = (inner.f)(e) {
-                inner.sender.send_message(msg);
-            }
-        })
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
+    where
+        Ctx: attr::Context<Msg = TMsg>,
+    {
+        ctx.set_listener(self.event_type, self.f)?;
+        Ok(())
     }
 }
 

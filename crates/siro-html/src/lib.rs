@@ -2,7 +2,8 @@
 
 use siro::{
     attr::Attr,
-    view::{element, Children, View, ViewExt as _},
+    children::Children,
+    view::{element, View},
 };
 
 macro_rules! html_elements {
@@ -14,9 +15,7 @@ macro_rules! html_elements {
                 attr: impl Attr<TMsg>,
                 children: impl Children<TMsg>
             ) -> impl View<Msg = TMsg> {
-                element(stringify!($tag_name), None)
-                    .attr(attr)
-                    .children(children)
+                element(stringify!($tag_name), None, attr, children)
             }
         }
     )*};

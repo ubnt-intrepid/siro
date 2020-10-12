@@ -1,8 +1,6 @@
-use super::Attr;
-use crate::{
-    mailbox::Mailbox,
-    vdom::{CowStr, VElement},
-};
+use super::{Attr, Context};
+use crate::vdom::CowStr;
+use wasm_bindgen::JsValue;
 
 /// Create an `Attr` that specify a CSS class name.
 pub fn class(class_name: impl Into<CowStr>) -> Class {
@@ -16,10 +14,11 @@ pub struct Class {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for Class {
-    fn apply<M: ?Sized>(self, element: &mut VElement, _: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
-        element.classes.insert(self.class_name);
+        ctx.add_class(self.class_name)?;
+        Ok(())
     }
 }

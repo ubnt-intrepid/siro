@@ -1,8 +1,6 @@
-use super::Attr;
-use crate::{
-    mailbox::Mailbox,
-    vdom::{CowStr, VElement},
-};
+use super::{Attr, Context};
+use crate::vdom::CowStr;
+use wasm_bindgen::JsValue;
 
 /// Create an `Attr` that specifies the inner HTML content of the element.
 pub fn inner_html(inner_html: impl Into<CowStr>) -> InnerHtml {
@@ -16,10 +14,11 @@ pub struct InnerHtml {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for InnerHtml {
-    fn apply<M: ?Sized>(self, element: &mut VElement, _: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
-        element.inner_html = Some(self.inner_html);
+        ctx.set_inner_html(self.inner_html)?;
+        Ok(())
     }
 }

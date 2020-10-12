@@ -59,7 +59,7 @@ fn update(model: &mut Model, msg: Msg) {
 fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
     html::div(
         (),
-        siro::view::iter(
+        siro::children::iter(
             model
                 .iter() //
                 .enumerate()

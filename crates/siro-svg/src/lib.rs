@@ -2,7 +2,8 @@
 
 use siro::{
     attr::Attr,
-    view::{element, Children, View, ViewExt as _},
+    children::Children,
+    view::{element, View},
 };
 
 // TODO: implement missing elements and attributes.
@@ -18,9 +19,7 @@ macro_rules! svg_elements {
                 attr: impl Attr<TMsg>,
                 children: impl Children<TMsg>,
             ) -> impl View<Msg = TMsg> {
-                element(stringify!($tag_name), Some(SVG_NAMESPACE_URI.into()))
-                    .attr(attr)
-                    .children(children)
+                element(stringify!($tag_name), Some(SVG_NAMESPACE_URI.into()), attr, children)
             }
         }
     )*};
