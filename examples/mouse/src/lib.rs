@@ -73,15 +73,15 @@ pub async fn main() -> Result<(), JsValue> {
     let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
     let mut app = App::mount(mountpoint)?;
 
-    let _mousedown = app.mailbox().subscribe(
+    let _mousedown = app.subscribe(
         siro::subscription::window_event("mousedown")
             .map(|event| Msg::MouseDown(event.unchecked_into())),
     )?;
-    let _mousemove = app.mailbox().subscribe(
+    let _mousemove = app.subscribe(
         siro::subscription::window_event("mousemove")
             .map(|event| Msg::MouseMove(event.unchecked_into())),
     )?;
-    let _mouseup = app.mailbox().subscribe(
+    let _mouseup = app.subscribe(
         siro::subscription::window_event("mouseup")
             .map(|event| Msg::MouseUp(event.unchecked_into())),
     )?;

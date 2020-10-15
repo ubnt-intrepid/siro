@@ -95,9 +95,10 @@ pub async fn main() -> Result<(), JsValue> {
     let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
     let mut app = App::mount(mountpoint)?;
 
-    let _guard = siro::subscription::animation_frames()
-        .map(|_timestamp| Msg::Tick) //
-        .subscribe(&app.mailbox())?;
+    let _guard = app.subscribe(
+        siro::subscription::animation_frames() //
+            .map(|_timestamp| Msg::Tick),
+    )?;
 
     let mut model = Model {
         date: js_sys::Date::new_0(),

@@ -40,10 +40,6 @@ impl<TMsg: 'static> App<TMsg> {
         &self.mountpoint
     }
 
-    pub fn mailbox(&self) -> &impl Mailbox<Msg = TMsg> {
-        &self.mailbox
-    }
-
     pub async fn next_message(&mut self) -> Option<TMsg> {
         self.rx.next().await
     }
@@ -52,19 +48,15 @@ impl<TMsg: 'static> App<TMsg> {
     where
         TView: View<Msg = TMsg>,
     {
+        let mut ctx = RootContext {
+            document: &self.document,
+            mailbox: &self.mailbox,
+        };
+
         if let Some(old) = &mut self.vnode {
-            view.diff(
-                &mut RootContext {
-                    document: &self.document,
-                    mailbox: &self.mailbox,
-                },
-                old,
-            )?;
+            view.diff(&mut ctx, old)?;
         } else {
-            let vnode = view.render(&mut RootContext {
-                document: &self.document,
-                mailbox: &self.mailbox,
-            })?;
+            let vnode = view.render(&mut ctx)?;
             self.mountpoint.append_child(vnode.as_node())?;
             self.vnode.replace(vnode);
         }
@@ -132,7 +124,7 @@ impl<TMsg: 'static> Mailbox for AppMailbox<TMsg> {
     }
 }
 
-struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
+pub struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
 
 impl<TMsg> Clone for AppSender<TMsg> {
     fn clone(&self) -> Self {
@@ -145,5 +137,18 @@ impl<TMsg: 'static> Sender for AppSender<TMsg> {
 
     fn send_message(&self, msg: TMsg) {
         self.0.unbounded_send(msg).unwrap_throw();
+    }
+}
+
+impl<TMsg: 'static> Mailbox for App<TMsg> {
+    type Msg = TMsg;
+    type Sender = AppSender<TMsg>;
+
+    fn send_message(&self, msg: Self::Msg) {
+        self.mailbox.send_message(msg);
+    }
+
+    fn sender(&self) -> Self::Sender {
+        self.mailbox.sender()
     }
 }
