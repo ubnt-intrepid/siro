@@ -3,7 +3,7 @@
 use siro::{
     attr::Attr,
     children::Children,
-    view::{element, View},
+    vdom::{element, Node},
 };
 
 // TODO: implement missing elements and attributes.
@@ -18,7 +18,7 @@ macro_rules! svg_elements {
             pub fn $tag_name<TMsg: 'static>(
                 attr: impl Attr<TMsg>,
                 children: impl Children<TMsg>,
-            ) -> impl View<Msg = TMsg> {
+            ) -> impl Node<Msg = TMsg> {
                 element(stringify!($tag_name), Some(SVG_NAMESPACE_URI.into()), attr, children)
             }
         }

@@ -33,7 +33,7 @@ fn update(model: &mut Model, msg: Msg) {
 
 // ==== view ====
 
-fn view(model: &Model) -> impl View<Msg = Msg> {
+fn view(model: &Model) -> impl Node<Msg = Msg> {
     use siro::{attr::style, event::on_input};
     use siro_html::{
         attr::{placeholder, value},

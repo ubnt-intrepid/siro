@@ -1,18 +1,18 @@
-use super::{Context, View};
-use crate::vdom::{CowStr, VElement, VNode, VText};
+use super::{Context, Node, VNode};
 use gloo_events::EventListener;
 use std::marker::PhantomData;
 use wasm_bindgen::JsValue;
 
-pub struct Map<TView, F> {
-    pub(super) view: TView,
+/// A virtual node created by [`map`](./trait.Node.html#method.map).
+pub struct Map<TNode, F> {
+    pub(super) node: TNode,
     pub(super) f: F,
 }
 
-impl<TView, F, TMsg> View for Map<TView, F>
+impl<TNode, F, TMsg> Node for Map<TNode, F>
 where
-    TView: View,
-    F: Fn(TView::Msg) -> TMsg + Clone + 'static,
+    TNode: Node,
+    F: Fn(TNode::Msg) -> TMsg + Clone + 'static,
     TMsg: 'static,
 {
     type Msg = TMsg;
@@ -21,7 +21,7 @@ where
     where
         Ctx: Context<Msg = Self::Msg>,
     {
-        self.view.render(&mut MapContext {
+        self.node.render(&mut MapContext {
             ctx,
             f: &self.f,
             _marker: PhantomData,
@@ -32,7 +32,7 @@ where
     where
         Ctx: Context<Msg = Self::Msg>,
     {
-        self.view.diff(
+        self.node.diff(
             &mut MapContext {
                 ctx,
                 f: &self.f,
@@ -60,18 +60,18 @@ where
     #[inline]
     fn create_element(
         &mut self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-    ) -> Result<VElement, JsValue> {
+        tag_name: &str,
+        namespace_uri: Option<&str>,
+    ) -> Result<web::Element, JsValue> {
         self.ctx.create_element(tag_name, namespace_uri)
     }
 
     #[inline]
-    fn create_text_node(&mut self, value: CowStr) -> Result<VText, JsValue> {
+    fn create_text_node(&mut self, value: &str) -> Result<web::Text, JsValue> {
         self.ctx.create_text_node(value)
     }
 
-    fn create_listener<Callback>(
+    fn set_listener<Callback>(
         &mut self,
         target: &web::EventTarget,
         event_type: &'static str,
@@ -82,6 +82,6 @@ where
     {
         let f = self.f.clone();
         self.ctx
-            .create_listener(target, event_type, move |e| callback(e).map(&f))
+            .set_listener(target, event_type, move |e| callback(e).map(&f))
     }
 }

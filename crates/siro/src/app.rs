@@ -1,7 +1,6 @@
 use crate::{
     mailbox::{Mailbox, Sender},
-    vdom::{CowStr, VElement, VNode, VText},
-    view::{self, View},
+    vdom::{self, Node, VNode},
 };
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
@@ -44,9 +43,9 @@ impl<TMsg: 'static> App<TMsg> {
         self.rx.next().await
     }
 
-    pub fn render<TView>(&mut self, view: TView) -> Result<(), JsValue>
+    pub fn render<TNode>(&mut self, node: TNode) -> Result<(), JsValue>
     where
-        TView: View<Msg = TMsg>,
+        TNode: Node<Msg = TMsg>,
     {
         let mut ctx = RootContext {
             document: &self.document,
@@ -54,10 +53,10 @@ impl<TMsg: 'static> App<TMsg> {
         };
 
         if let Some(old) = &mut self.vnode {
-            view.diff(&mut ctx, old)?;
+            node.diff(&mut ctx, old)?;
         } else {
-            let vnode = view.render(&mut ctx)?;
-            self.mountpoint.append_child(vnode.as_node())?;
+            let vnode = node.render(&mut ctx)?;
+            self.mountpoint.append_child(vnode.as_ref())?;
             self.vnode.replace(vnode);
         }
         Ok(())
@@ -69,27 +68,25 @@ struct RootContext<'a, TMsg: 'static> {
     mailbox: &'a AppMailbox<TMsg>,
 }
 
-impl<TMsg: 'static> view::Context for RootContext<'_, TMsg> {
+impl<TMsg: 'static> vdom::Context for RootContext<'_, TMsg> {
     type Msg = TMsg;
 
     fn create_element(
         &mut self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-    ) -> Result<VElement, JsValue> {
-        let node = match &namespace_uri {
-            Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
-            None => self.document.create_element(&*tag_name)?,
-        };
-        Ok(VElement::new(node, tag_name, namespace_uri))
+        tag_name: &str,
+        namespace_uri: Option<&str>,
+    ) -> Result<web::Element, JsValue> {
+        match &namespace_uri {
+            Some(uri) => self.document.create_element_ns(Some(uri), tag_name),
+            None => self.document.create_element(tag_name),
+        }
     }
 
-    fn create_text_node(&mut self, value: CowStr) -> Result<VText, JsValue> {
-        let node = self.document.create_text_node(&*value);
-        Ok(VText { value, node })
+    fn create_text_node(&mut self, value: &str) -> Result<web::Text, JsValue> {
+        Ok(self.document.create_text_node(&*value))
     }
 
-    fn create_listener<F>(
+    fn set_listener<F>(
         &mut self,
         target: &web::EventTarget,
         event_type: &'static str,

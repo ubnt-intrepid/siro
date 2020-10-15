@@ -44,7 +44,7 @@ fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
     Ok(())
 }
 
-fn view(model: &Model) -> impl View<Msg = Msg> {
+fn view(model: &Model) -> impl Node<Msg = Msg> {
     svg::svg(
         (
             svg::attr::viewbox("-500 -500 1000 1000"),

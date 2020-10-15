@@ -1,4 +1,4 @@
-use siro::{view::text, App};
+use siro::{vdom::text, App};
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 

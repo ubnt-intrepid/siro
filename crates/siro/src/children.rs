@@ -2,16 +2,16 @@ mod iter;
 
 pub use iter::{iter, Iter};
 
-use crate::view::{text, View};
+use crate::vdom::{text, Node};
 use either::Either;
 use wasm_bindgen::JsValue;
 
 pub trait Context {
     type Msg: 'static;
 
-    fn append_child<TView>(&mut self, view: TView) -> Result<(), JsValue>
+    fn append_child<TNode>(&mut self, node: TNode) -> Result<(), JsValue>
     where
-        TView: View<Msg = Self::Msg>;
+        TNode: Node<Msg = Self::Msg>;
 }
 
 /// A trait that represents a set of child nodes.
@@ -50,7 +50,7 @@ impl<TMsg: 'static> Children<TMsg> for String {
 
 impl<TMsg: 'static, C> Children<TMsg> for C
 where
-    C: View<Msg = TMsg>,
+    C: Node<Msg = TMsg>,
 {
     fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where

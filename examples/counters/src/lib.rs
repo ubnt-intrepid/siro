@@ -31,7 +31,7 @@ mod counter {
         }
     }
 
-    pub fn view(model: &Model) -> impl View<Msg = Msg> {
+    pub fn view(model: &Model) -> impl Node<Msg = Msg> {
         html::div(
             (),
             (
@@ -56,7 +56,7 @@ fn update(model: &mut Model, msg: Msg) {
     counter::update(&mut model[i], msg);
 }
 
-fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
+fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
     html::div(
         (),
         siro::children::iter(

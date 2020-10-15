@@ -7,7 +7,6 @@ pub mod mailbox;
 pub mod subscription;
 pub mod util;
 pub mod vdom;
-pub mod view;
 
 #[doc(inline)]
 pub use crate::{
@@ -15,7 +14,7 @@ pub use crate::{
     children::Children,
     mailbox::Mailbox,
     subscription::Subscription,
-    view::View,
+    vdom::Node,
 };
 
 /// A *prelude* for end users.
@@ -26,6 +25,6 @@ pub mod prelude {
         children::Children,
         mailbox::{Mailbox, MailboxExt as _},
         subscription::{Subscription, SubscriptionExt as _},
-        view::{View, ViewExt as _},
+        vdom::Node,
     };
 }

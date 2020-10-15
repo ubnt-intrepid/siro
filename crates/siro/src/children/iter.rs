@@ -1,12 +1,12 @@
 use super::{Children, Context};
-use crate::view::View;
+use crate::vdom::Node;
 use wasm_bindgen::JsValue;
 
 /// Create a `Children` from an iterator.
 pub fn iter<I>(iter: I) -> Iter<I::IntoIter>
 where
     I: IntoIterator,
-    I::Item: View,
+    I::Item: Node,
 {
     Iter {
         iter: iter.into_iter(),
@@ -20,7 +20,7 @@ pub struct Iter<I> {
 impl<TMsg: 'static, I> Children<TMsg> for Iter<I>
 where
     I: Iterator,
-    I::Item: View<Msg = TMsg>,
+    I::Item: Node<Msg = TMsg>,
 {
     fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where

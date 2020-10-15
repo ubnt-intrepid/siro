@@ -157,7 +157,7 @@ fn update(
 
 // ==== view ====
 
-fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
+fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
     html::div(
         attr::class("todomvc-wrapper"),
         (
@@ -178,7 +178,7 @@ fn view(model: &Model) -> impl View<Msg = Msg> + '_ {
     )
 }
 
-fn view_header(model: &Model) -> impl View<Msg = Msg> {
+fn view_header(model: &Model) -> impl Node<Msg = Msg> {
     html::header(
         attr::class("header"),
         (
@@ -199,7 +199,7 @@ fn view_header(model: &Model) -> impl View<Msg = Msg> {
     )
 }
 
-fn view_main(model: &Model) -> impl View<Msg = Msg> + '_ {
+fn view_main(model: &Model) -> impl Node<Msg = Msg> + '_ {
     let all_completed = model.entries.values().all(|entry| entry.completed);
 
     html::section(
@@ -230,7 +230,7 @@ fn view_main(model: &Model) -> impl View<Msg = Msg> + '_ {
     )
 }
 
-fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
+fn view_entry(entry: &TodoEntry) -> impl Node<Msg = Msg> {
     let TodoEntry {
         id: entry_id,
         completed,
@@ -294,7 +294,7 @@ fn view_entry(entry: &TodoEntry) -> impl View<Msg = Msg> {
     )
 }
 
-fn view_controls(model: &Model) -> impl View<Msg = Msg> {
+fn view_controls(model: &Model) -> impl Node<Msg = Msg> {
     let has_completed = model.entries.values().any(|entry| entry.completed);
     let entries_left = model.entries.values().filter(|e| !e.completed).count();
 
@@ -345,7 +345,7 @@ fn view_visibility_swap(
     v: Visibility,
     text: &'static str,
     url: &'static str,
-) -> impl View<Msg = Msg> {
+) -> impl Node<Msg = Msg> {
     let selected = model.visibility.map_or(false, |vis| vis == v);
     html::li(
         event::on("click", move |_| Msg::ChangeVisibility(v)),
@@ -363,7 +363,7 @@ fn view_visibility_swap(
     )
 }
 
-fn view_info_footer() -> impl View<Msg = Msg> {
+fn view_info_footer() -> impl Node<Msg = Msg> {
     html::footer(
         attr::class("info"),
         (
