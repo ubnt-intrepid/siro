@@ -1,8 +1,6 @@
-use super::Attr;
-use crate::{
-    mailbox::Mailbox,
-    vdom::{self, CowStr, VElement},
-};
+use super::{Attr, Context};
+use crate::vdom::{self, CowStr};
+use wasm_bindgen::JsValue;
 
 /// Create an `Attr` that specifies an arbitrary property value, like `domNode.name = value`.
 pub fn property(name: impl Into<CowStr>, value: impl Into<vdom::Property>) -> Property {
@@ -18,10 +16,11 @@ pub struct Property {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for Property {
-    fn apply<M: ?Sized>(self, element: &mut VElement, _: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
-        element.properties.insert(self.name, self.value);
+        ctx.set_property(self.name, self.value)?;
+        Ok(())
     }
 }

@@ -1,8 +1,6 @@
-use super::Attr;
-use crate::{
-    mailbox::Mailbox,
-    vdom::{CowStr, VElement},
-};
+use super::{Attr, Context};
+use crate::vdom::CowStr;
+use wasm_bindgen::JsValue;
 
 /// Create an `Attr` that specify an inline style.
 pub fn style(name: impl Into<CowStr>, value: impl Into<CowStr>) -> Style {
@@ -18,10 +16,11 @@ pub struct Style {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for Style {
-    fn apply<M: ?Sized>(self, element: &mut VElement, _: &M)
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
     where
-        M: Mailbox<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
-        element.styles.insert(self.name, self.value);
+        ctx.add_style(self.name, self.value)?;
+        Ok(())
     }
 }

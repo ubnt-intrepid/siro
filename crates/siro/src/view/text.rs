@@ -1,29 +1,49 @@
-use super::View;
-use crate::{
-    mailbox::Mailbox,
-    vdom::{CowStr, VNode, VText},
-};
+use super::{Context, View};
+use crate::vdom::{CowStr, VNode, VText};
 use std::marker::PhantomData;
+use wasm_bindgen::JsValue;
 
-pub fn text<TMsg: 'static>(content: impl Into<CowStr>) -> Text<TMsg> {
+pub fn text<TMsg: 'static>(value: impl Into<CowStr>) -> Text<TMsg> {
     Text {
-        content: content.into(),
+        value: value.into(),
         _marker: PhantomData,
     }
 }
 
 pub struct Text<TMsg> {
-    content: CowStr,
+    value: CowStr,
     _marker: PhantomData<fn() -> TMsg>,
 }
 
 impl<TMsg: 'static> View for Text<TMsg> {
     type Msg = TMsg;
 
-    fn render<M: ?Sized>(self, _: &M) -> VNode
+    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<VNode, JsValue>
     where
-        M: Mailbox<Msg = Self::Msg>,
+        Ctx: Context<Msg = Self::Msg>,
     {
-        VNode::Text(VText::new(self.content))
+        Ok(ctx.create_text_node(self.value)?.into())
+    }
+
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut VNode) -> Result<(), JsValue>
+    where
+        Ctx: Context<Msg = Self::Msg>,
+    {
+        match old {
+            VNode::Text(VText { value, node, .. }) => {
+                if *value != self.value {
+                    *value = self.value;
+                    node.set_data(value);
+                }
+            }
+
+            _ => {
+                let new = self.render(ctx)?;
+                crate::util::replace_node(old.as_node(), new.as_node())?;
+                *old = new;
+            }
+        }
+
+        Ok(())
     }
 }

@@ -1,24 +1,20 @@
 use super::{
-    id::{NodeId, NodeIdAnchor},
     node::VNode,
     types::{CowStr, FxIndexMap, FxIndexSet},
 };
 use gloo_events::EventListener;
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
+use std::fmt;
 use wasm_bindgen::JsValue;
 
 /// A virtual [`Element`](https://developer.mozilla.org/en-US/docs/Web/API/Element) node.
 #[non_exhaustive]
 pub struct VElement {
-    anchor: NodeIdAnchor,
+    pub(crate) node: web::Element,
     pub tag_name: CowStr,
     pub namespace_uri: Option<CowStr>,
     pub attributes: FxIndexMap<CowStr, Attribute>,
     pub properties: FxIndexMap<CowStr, Property>,
-    pub listeners: FxIndexSet<Box<dyn Listener>>,
+    pub listeners: FxIndexMap<CowStr, EventListener>,
     pub classes: FxIndexSet<CowStr>,
     pub styles: FxIndexMap<CowStr, CowStr>,
     pub inner_html: Option<CowStr>,
@@ -42,23 +38,19 @@ impl fmt::Debug for VElement {
 }
 
 impl VElement {
-    pub fn new(tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
+    pub(crate) fn new(node: web::Element, tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
         Self {
-            anchor: NodeIdAnchor::new(),
+            node,
             tag_name,
             namespace_uri,
             attributes: FxIndexMap::default(),
             properties: FxIndexMap::default(),
-            listeners: FxIndexSet::default(),
+            listeners: FxIndexMap::default(),
             classes: FxIndexSet::default(),
             styles: FxIndexMap::default(),
             inner_html: None,
             children: vec![],
         }
-    }
-
-    pub(crate) fn id(&self) -> &NodeId {
-        self.anchor.id()
     }
 }
 
@@ -116,33 +108,5 @@ impl From<Property> for JsValue {
             Property::String(s) => s.into(),
             Property::Bool(b) => b.into(),
         }
-    }
-}
-
-pub trait Listener {
-    fn event_type(&self) -> &'static str;
-
-    fn attach(&self, target: &web::EventTarget) -> EventListener;
-}
-
-impl fmt::Debug for dyn Listener + '_ {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("dyn_Listener")
-            .field("event_type", &self.event_type())
-            .finish()
-    }
-}
-
-impl PartialEq for dyn Listener + '_ {
-    fn eq(&self, other: &Self) -> bool {
-        self.event_type() == other.event_type()
-    }
-}
-
-impl Eq for dyn Listener + '_ {}
-
-impl Hash for dyn Listener + '_ {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.event_type().hash(state)
     }
 }

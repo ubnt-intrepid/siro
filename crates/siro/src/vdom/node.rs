@@ -1,4 +1,4 @@
-use super::{element::VElement, id::NodeId, text::VText, types::CowStr};
+use super::{element::VElement, text::VText};
 use std::fmt;
 
 #[non_exhaustive]
@@ -28,23 +28,11 @@ impl From<VText> for VNode {
     }
 }
 
-macro_rules! impl_from_strs {
-    ($( $t:ty ),*) => {$(
-        impl From<$t> for VNode {
-            fn from(value: $t) -> Self {
-                Self::Text(VText::from(value))
-            }
-        }
-    )*};
-}
-
-impl_from_strs!(&'static str, String, CowStr);
-
 impl VNode {
-    pub(crate) fn id(&self) -> &NodeId {
+    pub(crate) fn as_node(&self) -> &web::Node {
         match self {
-            VNode::Element(e) => e.id(),
-            VNode::Text(t) => t.id(),
+            VNode::Element(VElement { node, .. }) => node.as_ref(),
+            VNode::Text(VText { node, .. }) => node.as_ref(),
         }
     }
 }
