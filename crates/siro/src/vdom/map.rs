@@ -1,4 +1,4 @@
-use super::{Context, Node, VNode};
+use super::{Context, Node};
 use gloo_events::EventListener;
 use std::marker::PhantomData;
 use wasm_bindgen::JsValue;
@@ -16,8 +16,9 @@ where
     TMsg: 'static,
 {
     type Msg = TMsg;
+    type Cache = TNode::Cache;
 
-    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<VNode, JsValue>
+    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<Self::Cache, JsValue>
     where
         Ctx: Context<Msg = Self::Msg>,
     {
@@ -28,7 +29,7 @@ where
         })
     }
 
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut VNode) -> Result<(), JsValue>
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut Self::Cache) -> Result<(), JsValue>
     where
         Ctx: Context<Msg = Self::Msg>,
     {

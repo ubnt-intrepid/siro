@@ -1,4 +1,4 @@
-use super::{Context, CowStr, Node, VNode};
+use super::{Context, CowStr, Node};
 use std::marker::PhantomData;
 use wasm_bindgen::JsValue;
 
@@ -18,48 +18,37 @@ pub struct Text<TMsg> {
 
 impl<TMsg: 'static> Node for Text<TMsg> {
     type Msg = TMsg;
+    type Cache = TextCache;
 
-    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<VNode, JsValue>
+    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<Self::Cache, JsValue>
     where
         Ctx: Context<Msg = Self::Msg>,
     {
         let node = ctx.create_text_node(&*self.value)?;
-        Ok(VNode::Text(VText {
+        Ok(TextCache {
             node,
             value: self.value,
-        }))
+        })
     }
 
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut VNode) -> Result<(), JsValue>
+    fn diff<Ctx: ?Sized>(self, _: &mut Ctx, cache: &mut Self::Cache) -> Result<(), JsValue>
     where
         Ctx: Context<Msg = Self::Msg>,
     {
-        match old {
-            VNode::Text(VText { value, node, .. }) => {
-                if *value != self.value {
-                    *value = self.value;
-                    node.set_data(value);
-                }
-            }
-
-            _ => {
-                let new = self.render(ctx)?;
-                crate::util::replace_node(old.as_ref(), new.as_ref())?;
-                *old = new;
-            }
+        if cache.value != self.value {
+            cache.node.set_data(&*self.value);
+            cache.value = self.value;
         }
-
         Ok(())
     }
 }
 
-#[derive(Debug)]
-pub struct VText {
+pub struct TextCache {
     node: web::Text,
     value: CowStr,
 }
 
-impl AsRef<web::Node> for VText {
+impl AsRef<web::Node> for TextCache {
     fn as_ref(&self) -> &web::Node {
         self.node.as_ref()
     }

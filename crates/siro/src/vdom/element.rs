@@ -1,4 +1,4 @@
-use super::{Context, CowStr, Node, VNode};
+use super::{Context, CowStr, Node, NodeCache};
 use crate::{
     attr::{self, Attr},
     children::{self, Children},
@@ -48,8 +48,9 @@ where
     C: Children<TMsg>,
 {
     type Msg = TMsg;
+    type Cache = ElementCache;
 
-    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<VNode, JsValue>
+    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<Self::Cache, JsValue>
     where
         Ctx: Context<Msg = Self::Msg>,
     {
@@ -57,7 +58,18 @@ where
         let classes = node.class_list();
         let style = js_sys::Reflect::get(&node, &JsValue::from_str("style"))?;
 
-        let mut velement = VElement::new(node.clone(), self.tag_name, self.namespace_uri);
+        let mut velement = ElementCache {
+            node: node.clone(),
+            tag_name: self.tag_name,
+            namespace_uri: self.namespace_uri,
+            attributes: FxIndexMap::default(),
+            properties: FxIndexMap::default(),
+            listeners: FxIndexMap::default(),
+            classes: FxIndexSet::default(),
+            styles: FxIndexMap::default(),
+            inner_html: None,
+            children: vec![],
+        };
 
         self.attr.apply(&mut NewAttrs {
             ctx,
@@ -77,47 +89,44 @@ where
             })?;
         }
 
-        Ok(VNode::Element(velement))
+        Ok(velement)
     }
 
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut VNode) -> Result<(), JsValue>
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, cache: &mut Self::Cache) -> Result<(), JsValue>
     where
         Ctx: Context<Msg = Self::Msg>,
     {
-        match old {
-            VNode::Element(element)
-                if element.tag_name == self.tag_name
-                    && element.namespace_uri == self.namespace_uri =>
-            {
-                let classes = element.node.class_list();
-                let style = js_sys::Reflect::get(&element.node, &JsValue::from_str("style"))?;
+        if cache.tag_name != self.tag_name || cache.namespace_uri != self.namespace_uri {
+            let new = self.render(ctx)?;
+            crate::util::replace_node(cache.as_ref(), new.as_ref())?;
+            *cache = new;
+            return Ok(());
+        }
 
-                {
-                    let mut cx = DiffAttrs::new(&mut *ctx, element, &classes, &style);
-                    self.attr.apply(&mut cx)?;
-                    cx.finish()?;
-                }
+        {
+            let classes = cache.node.class_list();
+            let style = js_sys::Reflect::get(&cache.node, &JsValue::from_str("style"))?;
 
-                if let None = element.inner_html {
-                    let mut cursor = 0;
-                    self.children.diff(&mut AppendChildren {
-                        ctx,
-                        vnodes: &mut element.children,
-                        cursor: &mut cursor,
-                        parent: &element.node,
-                    })?;
-                    for child in element.children.drain(cursor..) {
-                        element.node.remove_child(child.as_ref())?;
-                    }
-                }
-            }
+            let mut cx = DiffAttrs::new(&mut *ctx, cache, &classes, &style);
+            self.attr.apply(&mut cx)?;
+            cx.finish()?;
+        }
 
-            _ => {
-                let new = Node::render(self, ctx)?;
-                crate::util::replace_node(old.as_ref(), new.as_ref())?;
-                *old = new;
+        if let None = cache.inner_html {
+            let mut cursor = 0;
+
+            self.children.diff(&mut AppendChildren {
+                ctx,
+                vnodes: &mut cache.children,
+                cursor: &mut cursor,
+                parent: &cache.node,
+            })?;
+
+            for child in cache.children.drain(cursor..) {
+                cache.node.remove_child((&*child).as_ref())?;
             }
         }
+
         Ok(())
     }
 }
@@ -126,7 +135,7 @@ where
 
 struct NewAttrs<'a, Ctx: ?Sized> {
     ctx: &'a mut Ctx,
-    velement: &'a mut VElement,
+    velement: &'a mut ElementCache,
     node: &'a web::Element,
     classes: &'a web::DomTokenList,
     style: &'a JsValue,
@@ -188,7 +197,7 @@ where
 
 struct DiffAttrs<'a, Ctx: ?Sized> {
     ctx: &'a mut Ctx,
-    old: &'a mut VElement,
+    old: &'a mut ElementCache,
     classes: &'a web::DomTokenList,
     style: &'a JsValue,
     new_attributes: FxIndexMap<CowStr, Attribute>,
@@ -204,7 +213,7 @@ where
 {
     fn new(
         ctx: &'a mut Ctx,
-        old: &'a mut VElement,
+        old: &'a mut ElementCache,
         classes: &'a web::DomTokenList,
         style: &'a JsValue,
     ) -> Self {
@@ -334,7 +343,7 @@ fn set_property(
 
 struct AppendChildren<'a, Ctx: ?Sized> {
     ctx: &'a mut Ctx,
-    vnodes: &'a mut Vec<VNode>,
+    vnodes: &'a mut Vec<Box<dyn NodeCache>>,
     cursor: &'a mut usize,
     parent: &'a web::Element,
 }
@@ -350,19 +359,18 @@ where
         TNode: Node<Msg = Self::Msg>,
     {
         if let Some(old) = self.vnodes.get_mut(*self.cursor) {
-            Node::diff(node, &mut *self.ctx, old)?;
+            super::diff(node, &mut *self.ctx, old)?;
         } else {
             let vnode = Node::render(node, &mut *self.ctx)?;
             self.parent.append_child(vnode.as_ref())?;
-            self.vnodes.push(vnode);
+            self.vnodes.push(Box::new(vnode));
         }
         *self.cursor += 1;
         Ok(())
     }
 }
 
-#[derive(Debug)]
-pub struct VElement {
+pub struct ElementCache {
     node: web::Element,
     tag_name: CowStr,
     namespace_uri: Option<CowStr>,
@@ -372,29 +380,12 @@ pub struct VElement {
     classes: FxIndexSet<CowStr>,
     styles: FxIndexMap<CowStr, CowStr>,
     inner_html: Option<CowStr>,
-    children: Vec<VNode>,
+    children: Vec<Box<dyn NodeCache>>,
 }
 
-impl AsRef<web::Node> for VElement {
+impl AsRef<web::Node> for ElementCache {
     fn as_ref(&self) -> &web::Node {
         self.node.as_ref()
-    }
-}
-
-impl VElement {
-    fn new(node: web::Element, tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
-        Self {
-            node,
-            tag_name,
-            namespace_uri,
-            attributes: FxIndexMap::default(),
-            properties: FxIndexMap::default(),
-            listeners: FxIndexMap::default(),
-            classes: FxIndexSet::default(),
-            styles: FxIndexMap::default(),
-            inner_html: None,
-            children: vec![],
-        }
     }
 }
 

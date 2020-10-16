@@ -9,11 +9,8 @@ pub use map::Map;
 pub use text::{text, Text};
 
 use gloo_events::EventListener;
-use std::borrow::Cow;
+use std::{any::TypeId, borrow::Cow, fmt};
 use wasm_bindgen::JsValue;
-
-use element::VElement;
-use text::VText;
 
 pub type CowStr = Cow<'static, str>;
 
@@ -22,13 +19,16 @@ pub trait Node {
     /// The message type associated with this node.
     type Msg: 'static;
 
-    /// Render the node.
-    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<VNode, JsValue>
+    /// The cache for this node stored until the next rendering.
+    type Cache: NodeCache;
+
+    /// Render the node and obtain the cache value.
+    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<Self::Cache, JsValue>
     where
         Ctx: Context<Msg = Self::Msg>;
 
-    /// Calculate diff with the old `VNode`.
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, old: &mut VNode) -> Result<(), JsValue>
+    /// Calculate diff with the previous rendering and apply its result.
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, cache: &mut Self::Cache) -> Result<(), JsValue>
     where
         Ctx: Context<Msg = Self::Msg>;
 
@@ -39,23 +39,6 @@ pub trait Node {
         F: Fn(Self::Msg) -> TMsg + Clone + 'static,
     {
         Map { node: self, f }
-    }
-}
-
-/// The cached values of rendered virtual node.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum VNode {
-    Element(VElement),
-    Text(VText),
-}
-
-impl AsRef<web::Node> for VNode {
-    fn as_ref(&self) -> &web::Node {
-        match self {
-            VNode::Element(e) => e.as_ref(),
-            VNode::Text(t) => t.as_ref(),
-        }
     }
 }
 
@@ -83,4 +66,60 @@ pub trait Context {
     ) -> EventListener
     where
         F: Fn(&web::Event) -> Option<Self::Msg> + 'static;
+}
+
+/// The cached values for rendering virtual nodes.
+pub trait NodeCache: AsRef<web::Node> + 'static {
+    #[doc(hidden)] // private API
+    fn __private_type_id__(&self) -> TypeId;
+}
+
+impl<T> NodeCache for T
+where
+    T: AsRef<web::Node> + 'static,
+{
+    fn __private_type_id__(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
+}
+
+impl fmt::Debug for dyn NodeCache + '_ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("dyn_NodeCache").finish()
+    }
+}
+
+impl dyn NodeCache + '_ {
+    #[inline]
+    fn is<T: NodeCache>(&self) -> bool {
+        TypeId::of::<T>() == self.__private_type_id__()
+    }
+
+    #[inline]
+    fn downcast_mut<T: NodeCache>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            unsafe { Some(&mut *(self as *mut dyn NodeCache as *mut T)) }
+        } else {
+            None
+        }
+    }
+}
+
+pub(crate) fn diff<TNode, Ctx: ?Sized>(
+    node: TNode,
+    ctx: &mut Ctx,
+    cache: &mut Box<dyn NodeCache>,
+) -> Result<(), JsValue>
+where
+    TNode: Node,
+    Ctx: Context<Msg = TNode::Msg>,
+{
+    if let Some(old) = cache.downcast_mut::<TNode::Cache>() {
+        Node::diff(node, ctx, old)?;
+    } else {
+        let new = Node::render(node, ctx)?;
+        crate::util::replace_node((&**cache).as_ref(), new.as_ref())?;
+        *cache = Box::new(new);
+    }
+    Ok(())
 }

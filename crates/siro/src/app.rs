@@ -1,6 +1,6 @@
 use crate::{
     mailbox::{Mailbox, Sender},
-    vdom::{self, Node, VNode},
+    vdom::{self, Node, NodeCache},
 };
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 pub struct App<TMsg: 'static> {
     mountpoint: web::Node,
     document: web::Document,
-    vnode: Option<VNode>,
+    vnode: Option<Box<dyn NodeCache>>,
     mailbox: AppMailbox<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
 }
@@ -53,11 +53,11 @@ impl<TMsg: 'static> App<TMsg> {
         };
 
         if let Some(old) = &mut self.vnode {
-            node.diff(&mut ctx, old)?;
+            crate::vdom::diff(node, &mut ctx, old)?;
         } else {
             let vnode = node.render(&mut ctx)?;
             self.mountpoint.append_child(vnode.as_ref())?;
-            self.vnode.replace(vnode);
+            self.vnode.replace(Box::new(vnode));
         }
         Ok(())
     }
