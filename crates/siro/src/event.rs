@@ -1,4 +1,4 @@
-use crate::attr::{self, Attr};
+use crate::vdom::{Attr, ElementContext};
 use wasm_bindgen::JsValue;
 
 pub fn on_event<TMsg: 'static>(
@@ -18,9 +18,9 @@ where
     F: Fn(&web::Event) -> Option<TMsg> + 'static,
     TMsg: 'static,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        Ctx: attr::Context<Msg = TMsg>,
+        Ctx: ElementContext<Msg = TMsg>,
     {
         ctx.set_listener(self.event_type, self.f)?;
         Ok(())

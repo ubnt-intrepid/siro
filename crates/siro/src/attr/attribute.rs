@@ -1,6 +1,4 @@
-use super::{Attr, Context};
-use crate::vdom::{self, CowStr};
-use wasm_bindgen::JsValue;
+use crate::vdom::{self, Attr, CowStr, ElementContext};
 
 /// Create an `Attr` that specifies an arbitrary attribute value, like `domNode.setAttribute(name, value)`.
 pub fn attribute(name: impl Into<CowStr>, value: impl Into<vdom::Attribute>) -> Attribute {
@@ -16,9 +14,9 @@ pub struct Attribute {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for Attribute {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        Ctx: Context<Msg = TMsg>,
+        Ctx: ElementContext<Msg = TMsg>,
     {
         ctx.set_attribute(self.name, self.value)?;
         Ok(())

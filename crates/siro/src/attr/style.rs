@@ -1,6 +1,4 @@
-use super::{Attr, Context};
-use crate::vdom::CowStr;
-use wasm_bindgen::JsValue;
+use crate::vdom::{Attr, CowStr, ElementContext};
 
 /// Create an `Attr` that specify an inline style.
 pub fn style(name: impl Into<CowStr>, value: impl Into<CowStr>) -> Style {
@@ -16,9 +14,9 @@ pub struct Style {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for Style {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        Ctx: Context<Msg = TMsg>,
+        Ctx: ElementContext<Msg = TMsg>,
     {
         ctx.add_style(self.name, self.value)?;
         Ok(())

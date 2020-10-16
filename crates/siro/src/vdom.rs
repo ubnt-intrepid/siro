@@ -3,32 +3,20 @@
 mod element;
 mod map;
 mod text;
+mod types;
 
-pub use element::{element, Attribute, Element, Property};
+pub use element::{element, Attr, Children};
 pub use map::Map;
-pub use text::{text, Text};
+pub use text::text;
+pub use types::{Attribute, CowStr, Property};
 
-use gloo_events::EventListener;
-use std::{any::TypeId, borrow::Cow, fmt};
-use wasm_bindgen::JsValue;
-
-pub type CowStr = Cow<'static, str>;
-
-/// A virtual DOM node.
+/// A data structure that represents a virtual DOM node.
 pub trait Node {
     /// The message type associated with this node.
     type Msg: 'static;
 
-    /// The cache for this node stored until the next rendering.
-    type Cache: NodeCache;
-
-    /// Render the node and obtain the cache value.
-    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<Self::Cache, JsValue>
-    where
-        Ctx: Context<Msg = Self::Msg>;
-
-    /// Calculate diff with the previous rendering and apply its result.
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, cache: &mut Self::Cache) -> Result<(), JsValue>
+    /// Render this node using the given context.
+    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
         Ctx: Context<Msg = Self::Msg>;
 
@@ -42,84 +30,85 @@ pub trait Node {
     }
 }
 
-/// The context for rendering virtual nodes.
+impl<T> Node for &T
+where
+    T: Node + Clone,
+{
+    type Msg = T::Msg;
+
+    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    where
+        Ctx: Context<Msg = Self::Msg>,
+    {
+        T::clone(self).render(ctx)
+    }
+}
+
+/// The context for rendering virtual DOM nodes.
 pub trait Context {
     /// The message type associated with this context.
     type Msg: 'static;
 
-    /// Create an `Element` node.
-    fn create_element(
-        &mut self,
-        tag_name: &str,
-        namespace_uri: Option<&str>,
-    ) -> Result<web::Element, JsValue>;
+    /// The output type when the rendering completes successfully.
+    type Ok;
 
-    /// Create a `Text` node.
-    fn create_text_node(&mut self, data: &str) -> Result<web::Text, JsValue>;
+    /// The error type on rendering.
+    type Error;
 
-    /// Attach an event listener to the specified target.
-    fn set_listener<F>(
-        &mut self,
-        target: &web::EventTarget,
-        event_type: &'static str,
-        callback: F,
-    ) -> EventListener
+    /// The context type for rendering an element node.
+    ///
+    /// The value of this type is returned from `element_node`.
+    type Element: ElementContext<
+        Msg = Self::Msg, //
+        Ok = Self::Ok,
+        Error = Self::Error,
+    >;
+
+    /// Start rendering an `Element` node.
+    fn element_node(
+        self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+    ) -> Result<Self::Element, Self::Error>;
+
+    /// Render a `Text` node.
+    fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error>;
+}
+
+/// The context for rendering an element node.
+pub trait ElementContext {
+    type Msg: 'static;
+    type Ok;
+    type Error;
+
+    /// Set an attribute to this element, corresponding to `domNode.setAttribute(name, value)`.
+    fn set_attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error>;
+
+    /// Set a property to this element, corresponding to `domNode.name = value`.
+    fn set_property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error>;
+
+    /// Set an event listener to this element.
+    fn set_listener<F>(&mut self, event_type: &'static str, callback: F) -> Result<(), Self::Error>
     where
         F: Fn(&web::Event) -> Option<Self::Msg> + 'static;
-}
 
-/// The cached values for rendering virtual nodes.
-pub trait NodeCache: AsRef<web::Node> + 'static {
-    #[doc(hidden)] // private API
-    fn __private_type_id__(&self) -> TypeId;
-}
+    /// Add a class to this element.
+    fn add_class(&mut self, class_name: CowStr) -> Result<(), Self::Error>;
 
-impl<T> NodeCache for T
-where
-    T: AsRef<web::Node> + 'static,
-{
-    fn __private_type_id__(&self) -> TypeId {
-        TypeId::of::<T>()
-    }
-}
+    /// Apply an inline style to this element.
+    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error>;
 
-impl fmt::Debug for dyn NodeCache + '_ {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("dyn_NodeCache").finish()
-    }
-}
+    /// Set the content of inner HTML.
+    ///
+    /// When this method is called, the additions of child nodes by `append_child`
+    /// should be ignored.
+    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error>;
 
-impl dyn NodeCache + '_ {
-    #[inline]
-    fn is<T: NodeCache>(&self) -> bool {
-        TypeId::of::<T>() == self.__private_type_id__()
-    }
+    /// Append a child `Node` to this element.
+    fn append_child<T>(&mut self, node: T) -> Result<(), Self::Error>
+    where
+        T: Node<Msg = Self::Msg>;
 
-    #[inline]
-    fn downcast_mut<T: NodeCache>(&mut self) -> Option<&mut T> {
-        if self.is::<T>() {
-            unsafe { Some(&mut *(self as *mut dyn NodeCache as *mut T)) }
-        } else {
-            None
-        }
-    }
-}
-
-pub(crate) fn diff<TNode, Ctx: ?Sized>(
-    node: TNode,
-    ctx: &mut Ctx,
-    cache: &mut Box<dyn NodeCache>,
-) -> Result<(), JsValue>
-where
-    TNode: Node,
-    Ctx: Context<Msg = TNode::Msg>,
-{
-    if let Some(old) = cache.downcast_mut::<TNode::Cache>() {
-        Node::diff(node, ctx, old)?;
-    } else {
-        let new = Node::render(node, ctx)?;
-        crate::util::replace_node((&**cache).as_ref(), new.as_ref())?;
-        *cache = Box::new(new);
-    }
-    Ok(())
+    /// Complete the rendering of this element.
+    fn end(self) -> Result<Self::Ok, Self::Error>;
 }

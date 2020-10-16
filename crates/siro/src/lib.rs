@@ -11,7 +11,6 @@ pub mod vdom;
 #[doc(inline)]
 pub use crate::{
     app::App, //
-    children::Children,
     mailbox::Mailbox,
     subscription::Subscription,
     vdom::Node,
@@ -21,10 +20,8 @@ pub use crate::{
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        attr::Attr,
-        children::Children,
         mailbox::{Mailbox, MailboxExt as _},
         subscription::{Subscription, SubscriptionExt as _},
-        vdom::Node,
+        vdom::{Attr, Children, Node},
     };
 }

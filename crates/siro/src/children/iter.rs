@@ -1,6 +1,4 @@
-use super::{Children, Context};
-use crate::vdom::Node;
-use wasm_bindgen::JsValue;
+use crate::vdom::{Children, ElementContext, Node};
 
 /// Create a `Children` from an iterator.
 pub fn iter<I>(iter: I) -> Iter<I::IntoIter>
@@ -22,9 +20,9 @@ where
     I: Iterator,
     I::Item: Node<Msg = TMsg>,
 {
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        Ctx: Context<Msg = TMsg>,
+        Ctx: ElementContext<Msg = TMsg>,
     {
         for child in self.iter {
             ctx.append_child(child)?;

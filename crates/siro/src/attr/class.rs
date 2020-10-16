@@ -1,6 +1,4 @@
-use super::{Attr, Context};
-use crate::vdom::CowStr;
-use wasm_bindgen::JsValue;
+use crate::vdom::{Attr, CowStr, ElementContext};
 
 /// Create an `Attr` that specify a CSS class name.
 pub fn class(class_name: impl Into<CowStr>) -> Class {
@@ -14,9 +12,9 @@ pub struct Class {
 }
 
 impl<TMsg: 'static> Attr<TMsg> for Class {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), JsValue>
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        Ctx: Context<Msg = TMsg>,
+        Ctx: ElementContext<Msg = TMsg>,
     {
         ctx.add_class(self.class_name)?;
         Ok(())

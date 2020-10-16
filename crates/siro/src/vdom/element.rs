@@ -1,29 +1,14 @@
-use super::{Context, CowStr, Node, NodeCache};
-use crate::{
-    attr::{self, Attr},
-    children::{self, Children},
-};
-use gloo_events::EventListener;
-use rustc_hash::FxHasher;
-use std::{hash::BuildHasherDefault, marker::PhantomData};
-use wasm_bindgen::JsValue;
-
-type BuildFxHasher = BuildHasherDefault<FxHasher>;
-
-type FxIndexMap<K, V> = indexmap::IndexMap<K, V, BuildFxHasher>;
-type FxIndexSet<T> = indexmap::IndexSet<T, BuildFxHasher>;
+use super::{text::text, Context, CowStr, ElementContext, Node};
+use either::Either;
+use std::marker::PhantomData;
 
 /// Create a virtual node corresponding to an [`Element`](https://developer.mozilla.org/en-US/docs/Web/API/Element).
-pub fn element<TMsg: 'static, A, C>(
+pub fn element<TMsg: 'static>(
     tag_name: impl Into<CowStr>,
     namespace_uri: Option<CowStr>,
-    attr: A,
-    children: C,
-) -> Element<TMsg, A, C>
-where
-    A: Attr<TMsg>,
-    C: Children<TMsg>,
-{
+    attr: impl Attr<TMsg>,
+    children: impl Children<TMsg>,
+) -> impl Node<Msg = TMsg> {
     Element {
         tag_name: tag_name.into(),
         namespace_uri,
@@ -33,8 +18,7 @@ where
     }
 }
 
-/// A virtual node that will be rendered as an [`Element`](https://developer.mozilla.org/en-US/docs/Web/API/Element).
-pub struct Element<TMsg, A, C> {
+struct Element<TMsg, A, C> {
     tag_name: CowStr,
     namespace_uri: Option<CowStr>,
     attr: A,
@@ -48,400 +32,232 @@ where
     C: Children<TMsg>,
 {
     type Msg = TMsg;
-    type Cache = ElementCache;
 
-    fn render<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<Self::Cache, JsValue>
+    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
         Ctx: Context<Msg = Self::Msg>,
     {
-        let node = ctx.create_element(&*self.tag_name, self.namespace_uri.as_deref())?;
-        let classes = node.class_list();
-        let style = js_sys::Reflect::get(&node, &JsValue::from_str("style"))?;
-
-        let mut velement = ElementCache {
-            node: node.clone(),
-            tag_name: self.tag_name,
-            namespace_uri: self.namespace_uri,
-            attributes: FxIndexMap::default(),
-            properties: FxIndexMap::default(),
-            listeners: FxIndexMap::default(),
-            classes: FxIndexSet::default(),
-            styles: FxIndexMap::default(),
-            inner_html: None,
-            children: vec![],
-        };
-
-        self.attr.apply(&mut NewAttrs {
-            ctx,
-            velement: &mut velement,
-            node: &node,
-            classes: &classes,
-            style: &style,
-        })?;
-
-        if let None = velement.inner_html {
-            let mut cursor = 0;
-            self.children.diff(&mut AppendChildren {
-                ctx,
-                vnodes: &mut velement.children,
-                cursor: &mut cursor,
-                parent: &node,
-            })?;
-        }
-
-        Ok(velement)
+        let mut element = ctx.element_node(self.tag_name, self.namespace_uri)?;
+        self.attr.apply(&mut element)?;
+        self.children.diff(&mut element)?;
+        element.end()
     }
+}
 
-    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx, cache: &mut Self::Cache) -> Result<(), JsValue>
+// ==== Attr ====
+
+/// The modifier of a `View` that annotates one or more attribute values.
+pub trait Attr<TMsg: 'static> {
+    /// Apply itself to specified `VElement`.
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        Ctx: Context<Msg = Self::Msg>,
-    {
-        if cache.tag_name != self.tag_name || cache.namespace_uri != self.namespace_uri {
-            let new = self.render(ctx)?;
-            crate::util::replace_node(cache.as_ref(), new.as_ref())?;
-            *cache = new;
-            return Ok(());
-        }
+        Ctx: ElementContext<Msg = TMsg>;
+}
 
+impl<TMsg: 'static> Attr<TMsg> for () {
+    fn apply<Ctx: ?Sized>(self, _: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        Ok(())
+    }
+}
+
+macro_rules! impl_attr_for_tuples {
+    ( $H:ident, $( $T:ident ),* ) => {
+        impl<TMsg: 'static, $H, $( $T ),*> Attr<TMsg> for ($H, $( $T ),*)
+        where
+            $H: Attr<TMsg>,
+            $( $T: Attr<TMsg>, )*
         {
-            let classes = cache.node.class_list();
-            let style = js_sys::Reflect::get(&cache.node, &JsValue::from_str("style"))?;
-
-            let mut cx = DiffAttrs::new(&mut *ctx, cache, &classes, &style);
-            self.attr.apply(&mut cx)?;
-            cx.finish()?;
-        }
-
-        if let None = cache.inner_html {
-            let mut cursor = 0;
-
-            self.children.diff(&mut AppendChildren {
-                ctx,
-                vnodes: &mut cache.children,
-                cursor: &mut cursor,
-                parent: &cache.node,
-            })?;
-
-            for child in cache.children.drain(cursor..) {
-                cache.node.remove_child((&*child).as_ref())?;
+            fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+            where
+                Ctx: ElementContext<Msg = TMsg>,
+            {
+                #[allow(non_snake_case)]
+                let ($H, $( $T ),*) = self;
+                $H.apply(ctx)?;
+                $( $T.apply(ctx)?; )*
+                Ok(())
             }
         }
 
-        Ok(())
-    }
-}
+        impl_attr_for_tuples!($($T),*);
+    };
 
-// === context types ====
-
-struct NewAttrs<'a, Ctx: ?Sized> {
-    ctx: &'a mut Ctx,
-    velement: &'a mut ElementCache,
-    node: &'a web::Element,
-    classes: &'a web::DomTokenList,
-    style: &'a JsValue,
-}
-
-impl<Ctx: ?Sized> attr::Context for NewAttrs<'_, Ctx>
-where
-    Ctx: Context,
-{
-    type Msg = Ctx::Msg;
-
-    fn set_attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), JsValue> {
-        set_attribute(&self.node, &*name, &value)?;
-        self.velement.attributes.insert(name, value);
-        Ok(())
-    }
-
-    fn set_property(&mut self, name: CowStr, value: Property) -> Result<(), JsValue> {
-        set_property(&self.node, &*name, Some(value.clone()))?;
-        self.velement.properties.insert(name, value);
-        Ok(())
-    }
-
-    fn set_listener<F>(&mut self, event_type: &'static str, callback: F) -> Result<(), JsValue>
-    where
-        F: Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    {
-        let listener = self
-            .ctx
-            .set_listener(self.node.as_ref(), event_type, callback);
-        self.velement.listeners.insert(event_type.into(), listener);
-        Ok(())
-    }
-
-    fn add_class(&mut self, name: CowStr) -> Result<(), JsValue> {
-        self.classes.add_1(&*name)?;
-        self.velement.classes.replace(name);
-        Ok(())
-    }
-
-    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), JsValue> {
-        js_sys::Reflect::set(
-            &self.style,
-            &JsValue::from_str(&*name),
-            &JsValue::from_str(&*value),
-        )?;
-        self.velement.styles.insert(name, value);
-        Ok(())
-    }
-
-    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), JsValue> {
-        self.node.set_inner_html(&*inner_html);
-        self.velement.inner_html.replace(inner_html);
-        Ok(())
-    }
-}
-
-// FIXME: more efficient!
-
-struct DiffAttrs<'a, Ctx: ?Sized> {
-    ctx: &'a mut Ctx,
-    old: &'a mut ElementCache,
-    classes: &'a web::DomTokenList,
-    style: &'a JsValue,
-    new_attributes: FxIndexMap<CowStr, Attribute>,
-    new_properties: FxIndexMap<CowStr, Property>,
-    new_listeners: FxIndexMap<CowStr, EventListener>,
-    new_classes: FxIndexSet<CowStr>,
-    new_styles: FxIndexMap<CowStr, CowStr>,
-}
-
-impl<'a, Ctx: ?Sized> DiffAttrs<'a, Ctx>
-where
-    Ctx: Context,
-{
-    fn new(
-        ctx: &'a mut Ctx,
-        old: &'a mut ElementCache,
-        classes: &'a web::DomTokenList,
-        style: &'a JsValue,
-    ) -> Self {
-        Self {
-            ctx,
-            old,
-            classes,
-            style,
-            new_attributes: FxIndexMap::default(),
-            new_properties: FxIndexMap::default(),
-            new_listeners: FxIndexMap::default(),
-            new_classes: FxIndexSet::default(),
-            new_styles: FxIndexMap::default(),
-        }
-    }
-
-    fn finish(self) -> Result<(), JsValue> {
-        let old_attributes = std::mem::replace(&mut self.old.attributes, self.new_attributes);
-        for name in old_attributes.keys() {
-            self.old.node.remove_attribute(name)?;
-        }
-
-        let old_properties = std::mem::replace(&mut self.old.properties, self.new_properties);
-        for name in old_properties.keys() {
-            set_property(&self.old.node, name, None)?;
-        }
-
-        let _ = std::mem::replace(&mut self.old.listeners, self.new_listeners);
-
-        let old_classes = std::mem::replace(&mut self.old.classes, self.new_classes);
-        for class in old_classes {
-            self.classes.remove_1(&*class)?;
-        }
-
-        let old_styles = std::mem::replace(&mut self.old.styles, self.new_styles);
-        for style in old_styles.keys() {
-            js_sys::Reflect::set(&*self.style, &JsValue::from_str(style), &JsValue::UNDEFINED)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<Ctx: ?Sized> attr::Context for DiffAttrs<'_, Ctx>
-where
-    Ctx: Context,
-{
-    type Msg = Ctx::Msg;
-
-    fn set_attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), JsValue> {
-        match self.old.attributes.remove(&name) {
-            Some(old_value) if old_value == value => (),
-            _ => set_attribute(&self.old.node, &name, &value)?,
-        }
-        self.new_attributes.insert(name, value);
-        Ok(())
-    }
-
-    fn set_property(&mut self, name: CowStr, value: Property) -> Result<(), JsValue> {
-        match self.old.properties.remove(&name) {
-            Some(old_value) if old_value == value => (),
-            _ => set_property(&self.old.node, &name, Some(value.clone()))?,
-        }
-        self.new_properties.insert(name, value);
-        Ok(())
-    }
-
-    fn set_listener<F>(&mut self, event_type: &'static str, callback: F) -> Result<(), JsValue>
-    where
-        F: Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    {
-        let listener = self
-            .ctx
-            .set_listener(self.old.node.as_ref(), event_type, callback);
-        self.new_listeners.insert(event_type.into(), listener);
-        Ok(())
-    }
-
-    fn add_class(&mut self, name: CowStr) -> Result<(), JsValue> {
-        if !self.old.classes.remove(&name) {
-            self.classes.add_1(&name)?;
-        }
-        self.new_classes.replace(name);
-        Ok(())
-    }
-
-    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), JsValue> {
-        match self.old.styles.remove(&name) {
-            Some(old_value) if old_value == value => (),
-            _ => {
-                js_sys::Reflect::set(
-                    &self.style,
-                    &JsValue::from_str(&name),
-                    &JsValue::from_str(&value),
-                )?;
+    ( $T:ident ) => {
+        impl<TMsg: 'static, $T> Attr<TMsg> for ($T,)
+        where
+            $T: Attr<TMsg>,
+        {
+            fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+            where
+                Ctx: ElementContext<Msg = TMsg>,
+            {
+                self.0.apply(ctx)?;
+                Ok(())
             }
         }
-        self.new_styles.insert(name, value);
-        Ok(())
-    }
-
-    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), JsValue> {
-        self.old.node.set_inner_html(&*inner_html);
-        self.old.inner_html = Some(inner_html);
-        self.old.children.clear();
-        Ok(())
-    }
+    };
 }
 
-fn set_attribute(element: &web::Element, name: &str, value: &Attribute) -> Result<(), JsValue> {
-    match value {
-        Attribute::String(value) => element.set_attribute(name, value)?,
-        Attribute::Bool(true) => element.set_attribute(name, "")?,
-        Attribute::Bool(false) => element.remove_attribute(name)?,
-    }
-    Ok(())
-}
+impl_attr_for_tuples!(
+    M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, //
+    M11, M12, M13, M14, M15, M16, M17, M18, M19, M20
+);
 
-fn set_property(
-    element: &web::Element,
-    name: &str,
-    value: Option<Property>,
-) -> Result<(), JsValue> {
-    js_sys::Reflect::set(element, &JsValue::from_str(name), &value.into())?;
-    Ok(())
-}
-
-struct AppendChildren<'a, Ctx: ?Sized> {
-    ctx: &'a mut Ctx,
-    vnodes: &'a mut Vec<Box<dyn NodeCache>>,
-    cursor: &'a mut usize,
-    parent: &'a web::Element,
-}
-
-impl<Ctx: ?Sized> children::Context for AppendChildren<'_, Ctx>
+impl<TMsg: 'static, T> Attr<TMsg> for Option<T>
 where
-    Ctx: Context,
+    T: Attr<TMsg>,
 {
-    type Msg = Ctx::Msg;
-
-    fn append_child<TNode>(&mut self, node: TNode) -> Result<(), JsValue>
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
-        TNode: Node<Msg = Self::Msg>,
+        Ctx: ElementContext<Msg = TMsg>,
     {
-        if let Some(old) = self.vnodes.get_mut(*self.cursor) {
-            super::diff(node, &mut *self.ctx, old)?;
-        } else {
-            let vnode = Node::render(node, &mut *self.ctx)?;
-            self.parent.append_child(vnode.as_ref())?;
-            self.vnodes.push(Box::new(vnode));
+        match self {
+            Some(m) => m.apply(ctx),
+            None => Ok(()),
         }
-        *self.cursor += 1;
+    }
+}
+
+impl<TMsg: 'static, M1, M2> Attr<TMsg> for Either<M1, M2>
+where
+    M1: Attr<TMsg>,
+    M2: Attr<TMsg>,
+{
+    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        match self {
+            Either::Left(l) => Attr::apply(l, ctx),
+            Either::Right(r) => Attr::apply(r, ctx),
+        }
+    }
+}
+
+// ==== Children ====
+
+/// A trait that represents a set of child nodes.
+pub trait Children<TMsg: 'static> {
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>;
+}
+
+impl<TMsg: 'static> Children<TMsg> for () {
+    fn diff<Ctx: ?Sized>(self, _: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
         Ok(())
     }
 }
 
-pub struct ElementCache {
-    node: web::Element,
-    tag_name: CowStr,
-    namespace_uri: Option<CowStr>,
-    attributes: FxIndexMap<CowStr, Attribute>,
-    properties: FxIndexMap<CowStr, Property>,
-    listeners: FxIndexMap<CowStr, EventListener>,
-    classes: FxIndexSet<CowStr>,
-    styles: FxIndexMap<CowStr, CowStr>,
-    inner_html: Option<CowStr>,
-    children: Vec<Box<dyn NodeCache>>,
-}
-
-impl AsRef<web::Node> for ElementCache {
-    fn as_ref(&self) -> &web::Node {
-        self.node.as_ref()
+impl<TMsg: 'static> Children<TMsg> for &'static str {
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        Children::diff(text(self), ctx)
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Attribute {
-    String(CowStr),
-    Bool(bool),
-}
-
-impl From<&'static str> for Attribute {
-    fn from(s: &'static str) -> Self {
-        Attribute::String(s.into())
+impl<TMsg: 'static> Children<TMsg> for String {
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        Children::diff(text(self), ctx)
     }
 }
 
-impl From<String> for Attribute {
-    fn from(s: String) -> Self {
-        Attribute::String(s.into())
+impl<TMsg: 'static, C> Children<TMsg> for C
+where
+    C: Node<Msg = TMsg>,
+{
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        ctx.append_child(self)?;
+        Ok(())
     }
 }
 
-impl From<CowStr> for Attribute {
-    fn from(s: CowStr) -> Self {
-        Attribute::String(s)
+macro_rules! impl_children_for_tuples {
+    ( $H:ident, $($T:ident),+ ) => {
+        impl<TMsg: 'static, $H, $($T),+ > Children<TMsg> for ( $H, $($T),+ )
+        where
+            $H: Children<TMsg>,
+            $( $T: Children<TMsg>, )+
+        {
+            #[allow(non_snake_case)]
+            fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+            where
+                Ctx: ElementContext<Msg = TMsg>,
+            {
+                let ($H, $($T),+) = self;
+                Children::diff($H, ctx)?;
+                $( Children::diff($T, ctx)?; )+
+                Ok(())
+            }
+        }
+
+        impl_children_for_tuples!( $($T),+ );
+    };
+
+    ( $C:ident ) => {
+        impl<TMsg: 'static, $C > Children<TMsg> for ( $C, )
+        where
+            $C: Children<TMsg>,
+        {
+            #[allow(non_snake_case)]
+            fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+            where
+                Ctx: ElementContext<Msg = TMsg>,
+            {
+                let ($C,) = self;
+                Children::diff($C, ctx)?;
+                Ok(())
+            }
+        }
+    };
+}
+
+impl_children_for_tuples!(
+    C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, //
+    C11, C12, C13, C14, C15, C16, C17, C18, C19, C20
+);
+
+impl<TMsg: 'static, T> Children<TMsg> for Option<T>
+where
+    T: Children<TMsg>,
+{
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        match self {
+            Some(ch) => Children::diff(ch, ctx),
+            None => Ok(()),
+        }
     }
 }
 
-impl From<bool> for Attribute {
-    fn from(b: bool) -> Self {
-        Attribute::Bool(b)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Property {
-    String(String),
-    Bool(bool),
-}
-
-impl From<String> for Property {
-    fn from(s: String) -> Self {
-        Property::String(s)
-    }
-}
-
-impl From<bool> for Property {
-    fn from(b: bool) -> Self {
-        Property::Bool(b)
-    }
-}
-
-impl From<Property> for JsValue {
-    fn from(property: Property) -> Self {
-        match property {
-            Property::String(s) => s.into(),
-            Property::Bool(b) => b.into(),
+impl<TMsg: 'static, M1, M2> Children<TMsg> for Either<M1, M2>
+where
+    M1: Children<TMsg>,
+    M2: Children<TMsg>,
+{
+    fn diff<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    where
+        Ctx: ElementContext<Msg = TMsg>,
+    {
+        match self {
+            Either::Left(l) => Children::diff(l, ctx),
+            Either::Right(r) => Children::diff(r, ctx),
         }
     }
 }

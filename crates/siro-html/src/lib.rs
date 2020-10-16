@@ -1,10 +1,6 @@
 //! HTML directives.
 
-use siro::{
-    attr::Attr,
-    children::Children,
-    vdom::{element, Node},
-};
+use siro::vdom::{element, Attr, Children, Node};
 
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
@@ -131,8 +127,8 @@ pub mod attr {
 /// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
 pub mod input {
     use siro::{
-        attr::{attribute, Attr},
-        vdom::Node,
+        attr::attribute,
+        vdom::{Attr, Node},
     };
 
     macro_rules! input_elements {

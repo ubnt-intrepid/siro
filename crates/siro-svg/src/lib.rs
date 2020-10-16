@@ -1,10 +1,6 @@
 //! SVG directives.
 
-use siro::{
-    attr::Attr,
-    children::Children,
-    vdom::{element, Node},
-};
+use siro::vdom::{element, Attr, Children, Node};
 
 // TODO: implement missing elements and attributes.
 
