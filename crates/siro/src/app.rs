@@ -1,6 +1,6 @@
 use crate::{
     mailbox::{Mailbox, Sender},
-    vdom::{self, Attribute, CowStr, Node, Property},
+    vdom::{self, Attribute, CowStr, EventHandler, Node, Property},
 };
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
@@ -326,14 +326,13 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn event(
-        &mut self,
-        event_type: &'static str,
-        callback: impl Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    ) -> Result<(), Self::Error> {
+    fn event<H>(&mut self, event_type: &'static str, handler: H) -> Result<(), Self::Error>
+    where
+        H: EventHandler<Msg = Self::Msg> + 'static,
+    {
         let sender = self.mailbox.sender();
         let listener = EventListener::new(self.node, event_type, move |e| {
-            if let Some(msg) = callback(e) {
+            if let Some(msg) = handler.handle_event(e) {
                 sender.send_message(msg);
             }
         });

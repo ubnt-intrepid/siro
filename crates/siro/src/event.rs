@@ -1,4 +1,4 @@
-use crate::vdom::{Attr, ElementContext};
+use crate::vdom::{Attr, ElementContext, EventHandler};
 use wasm_bindgen::JsValue;
 
 pub fn on_event<TMsg: 'static>(
@@ -22,8 +22,24 @@ where
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.event(self.event_type, self.f)?;
+        ctx.event(self.event_type, OnEventHandler { f: self.f })?;
         Ok(())
+    }
+}
+
+struct OnEventHandler<F> {
+    f: F,
+}
+
+impl<F, TMsg: 'static> EventHandler for OnEventHandler<F>
+where
+    F: Fn(&web::Event) -> Option<TMsg>,
+{
+    type Msg = TMsg;
+
+    #[inline]
+    fn handle_event(&self, event: &web::Event) -> Option<Self::Msg> {
+        (self.f)(event)
     }
 }
 

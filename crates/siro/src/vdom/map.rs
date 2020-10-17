@@ -1,6 +1,6 @@
 use super::{
     types::{Attribute, CowStr, Property},
-    Context, ElementContext, Node,
+    Context, ElementContext, EventHandler, Node,
 };
 use std::marker::PhantomData;
 
@@ -94,13 +94,17 @@ where
     }
 
     #[inline]
-    fn event(
-        &mut self,
-        event_type: &'static str,
-        callback: impl Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    ) -> Result<(), Self::Error> {
-        let f = self.f.clone();
-        self.element.event(event_type, move |e| callback(e).map(&f))
+    fn event<H>(&mut self, event_type: &'static str, handler: H) -> Result<(), Self::Error>
+    where
+        H: EventHandler<Msg = Self::Msg> + 'static,
+    {
+        self.element.event(
+            event_type,
+            MapEventHandler {
+                handler,
+                f: self.f.clone(),
+            },
+        )
     }
 
     #[inline]
@@ -129,5 +133,22 @@ where
     #[inline]
     fn end(self) -> Result<Self::Ok, Self::Error> {
         self.element.end()
+    }
+}
+
+struct MapEventHandler<H, F> {
+    handler: H,
+    f: F,
+}
+
+impl<H, F, TMsg: 'static> EventHandler for MapEventHandler<H, F>
+where
+    H: EventHandler,
+    F: Fn(H::Msg) -> TMsg,
+{
+    type Msg = TMsg;
+
+    fn handle_event(&self, event: &web::Event) -> Option<Self::Msg> {
+        self.handler.handle_event(event).map(&self.f)
     }
 }

@@ -88,11 +88,9 @@ pub trait ElementContext {
     fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error>;
 
     /// Register an event callback to this element.
-    fn event(
-        &mut self,
-        event_type: &'static str,
-        callback: impl Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    ) -> Result<(), Self::Error>;
+    fn event<H>(&mut self, event_type: &'static str, handler: H) -> Result<(), Self::Error>
+    where
+        H: EventHandler<Msg = Self::Msg> + 'static;
 
     /// Add a class to this element.
     fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error>;
@@ -113,4 +111,10 @@ pub trait ElementContext {
 
     /// Complete the rendering of this element.
     fn end(self) -> Result<Self::Ok, Self::Error>;
+}
+
+pub trait EventHandler {
+    type Msg: 'static;
+
+    fn handle_event(&self, event: &web::Event) -> Option<Self::Msg>;
 }
