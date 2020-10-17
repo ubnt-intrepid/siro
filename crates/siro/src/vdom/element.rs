@@ -181,7 +181,7 @@ where
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.append_child(self)?;
+        ctx.child(self)?;
         Ok(())
     }
 }

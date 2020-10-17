@@ -18,7 +18,7 @@ impl<TMsg: 'static> Attr<TMsg> for Attribute {
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.set_attribute(self.name, self.value)?;
+        ctx.attribute(self.name, self.value)?;
         Ok(())
     }
 }

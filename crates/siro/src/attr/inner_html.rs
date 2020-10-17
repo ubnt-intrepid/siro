@@ -16,7 +16,7 @@ impl<TMsg: 'static> Attr<TMsg> for InnerHtml {
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.set_inner_html(self.inner_html)?;
+        ctx.inner_html(self.inner_html)?;
         Ok(())
     }
 }

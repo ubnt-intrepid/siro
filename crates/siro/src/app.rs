@@ -290,7 +290,7 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
     type Ok = ();
     type Error = JsValue;
 
-    fn set_attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
         match &mut self.op {
             RenderElementOp::Diff { new_attributes, .. } => {
                 match self.velement.attributes.remove(&*name) {
@@ -308,7 +308,7 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn set_property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
         match &mut self.op {
             RenderElementOp::Diff { new_properties, .. } => {
                 match self.velement.properties.remove(&*name) {
@@ -326,10 +326,11 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn set_listener<F>(&mut self, event_type: &'static str, callback: F) -> Result<(), Self::Error>
-    where
-        F: Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    {
+    fn event(
+        &mut self,
+        event_type: &'static str,
+        callback: impl Fn(&web::Event) -> Option<Self::Msg> + 'static,
+    ) -> Result<(), Self::Error> {
         let sender = self.mailbox.sender();
         let listener = EventListener::new(self.node, event_type, move |e| {
             if let Some(msg) = callback(e) {
@@ -349,7 +350,7 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn add_class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
         self.class_list.add_1(&*class_name)?;
         match &mut self.op {
             RenderElementOp::Diff {
@@ -365,7 +366,7 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
         js_sys::Reflect::set(&self.style, &JsValue::from(&*name), &JsValue::from(&*value))?;
 
         match &mut self.op {
@@ -381,7 +382,7 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
         match &mut self.op {
             RenderElementOp::Diff { new_inner_html, .. } => {
                 self.node.set_inner_html(&*inner_html);
@@ -396,7 +397,7 @@ impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn append_child<T>(&mut self, child: T) -> Result<(), Self::Error>
+    fn child<T>(&mut self, child: T) -> Result<(), Self::Error>
     where
         T: Node<Msg = Self::Msg>,
     {

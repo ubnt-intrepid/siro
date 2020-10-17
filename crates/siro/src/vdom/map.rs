@@ -84,50 +84,46 @@ where
     type Error = E::Error;
 
     #[inline]
-    fn set_attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
-        self.element.set_attribute(name, value)
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+        self.element.attribute(name, value)
     }
 
     #[inline]
-    fn set_property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
-        self.element.set_property(name, value)
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+        self.element.property(name, value)
     }
 
     #[inline]
-    fn set_listener<Callback>(
+    fn event(
         &mut self,
         event_type: &'static str,
-        callback: Callback,
-    ) -> Result<(), Self::Error>
-    where
-        Callback: Fn(&web::Event) -> Option<Self::Msg> + 'static,
-    {
+        callback: impl Fn(&web::Event) -> Option<Self::Msg> + 'static,
+    ) -> Result<(), Self::Error> {
         let f = self.f.clone();
-        self.element
-            .set_listener(event_type, move |e| callback(e).map(&f))
+        self.element.event(event_type, move |e| callback(e).map(&f))
     }
 
     #[inline]
-    fn add_class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
-        self.element.add_class(class_name)
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+        self.element.class(class_name)
     }
 
     #[inline]
-    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
-        self.element.add_style(name, value)
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+        self.element.style(name, value)
     }
 
     #[inline]
-    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
-        self.element.set_inner_html(inner_html)
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+        self.element.inner_html(inner_html)
     }
 
     #[inline]
-    fn append_child<T>(&mut self, node: T) -> Result<(), Self::Error>
+    fn child<T>(&mut self, node: T) -> Result<(), Self::Error>
     where
         T: Node<Msg = Self::Msg>,
     {
-        self.element.append_child(node.map(self.f.clone()))
+        self.element.child(node.map(self.f.clone()))
     }
 
     #[inline]

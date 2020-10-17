@@ -81,31 +81,33 @@ pub trait ElementContext {
     type Ok;
     type Error;
 
-    /// Set an attribute to this element, corresponding to `domNode.setAttribute(name, value)`.
-    fn set_attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error>;
+    /// Add an attribute to this element, corresponding to `domNode.setAttribute(name, value)`.
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error>;
 
-    /// Set a property to this element, corresponding to `domNode.name = value`.
-    fn set_property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error>;
+    /// Add a property to this element, corresponding to `domNode.name = value`.
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error>;
 
-    /// Set an event listener to this element.
-    fn set_listener<F>(&mut self, event_type: &'static str, callback: F) -> Result<(), Self::Error>
-    where
-        F: Fn(&web::Event) -> Option<Self::Msg> + 'static;
+    /// Register an event callback to this element.
+    fn event(
+        &mut self,
+        event_type: &'static str,
+        callback: impl Fn(&web::Event) -> Option<Self::Msg> + 'static,
+    ) -> Result<(), Self::Error>;
 
     /// Add a class to this element.
-    fn add_class(&mut self, class_name: CowStr) -> Result<(), Self::Error>;
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error>;
 
     /// Apply an inline style to this element.
-    fn add_style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error>;
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error>;
 
     /// Set the content of inner HTML.
     ///
     /// When this method is called, the additions of child nodes by `append_child`
     /// should be ignored.
-    fn set_inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error>;
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error>;
 
     /// Append a child `Node` to this element.
-    fn append_child<T>(&mut self, node: T) -> Result<(), Self::Error>
+    fn child<T>(&mut self, node: T) -> Result<(), Self::Error>
     where
         T: Node<Msg = Self::Msg>;
 

@@ -18,7 +18,7 @@ impl<TMsg: 'static> Attr<TMsg> for Style {
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.add_style(self.name, self.value)?;
+        ctx.style(self.name, self.value)?;
         Ok(())
     }
 }

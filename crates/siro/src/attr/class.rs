@@ -16,7 +16,7 @@ impl<TMsg: 'static> Attr<TMsg> for Class {
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.add_class(self.class_name)?;
+        ctx.class(self.class_name)?;
         Ok(())
     }
 }

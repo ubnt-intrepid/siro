@@ -25,7 +25,7 @@ where
         Ctx: ElementContext<Msg = TMsg>,
     {
         for child in self.iter {
-            ctx.append_child(child)?;
+            ctx.child(child)?;
         }
         Ok(())
     }

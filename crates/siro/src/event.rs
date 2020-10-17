@@ -22,7 +22,7 @@ where
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.set_listener(self.event_type, self.f)?;
+        ctx.event(self.event_type, self.f)?;
         Ok(())
     }
 }

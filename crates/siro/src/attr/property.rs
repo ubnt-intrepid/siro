@@ -18,7 +18,7 @@ impl<TMsg: 'static> Attr<TMsg> for Property {
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.set_property(self.name, self.value)?;
+        ctx.property(self.name, self.value)?;
         Ok(())
     }
 }
