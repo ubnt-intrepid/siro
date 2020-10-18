@@ -1,8 +1,10 @@
 use crate::{
-    node::{ElementContext, EventHandler},
+    node::{ElementContext, Event, EventDecoder},
     types::{Attribute, CowStr, Property},
 };
 use either::Either;
+use serde::Deserialize;
+use std::marker::PhantomData;
 
 /// The modifier of a `View` that annotates one or more attribute values.
 pub trait Attr<TMsg: 'static> {
@@ -224,44 +226,66 @@ where
 
 /// Create an `Attr` that registers an event.
 #[inline]
-pub fn event<TMsg: 'static>(
+pub fn event<T, TMsg>(
     event_type: &'static str,
-    f: impl Fn(&web::Event) -> Option<TMsg> + 'static,
-) -> impl Attr<TMsg> {
-    OnEvent { event_type, f }
+    f: impl Fn(T) -> Option<TMsg> + 'static,
+) -> impl Attr<TMsg>
+where
+    T: for<'de> Deserialize<'de> + 'static,
+    TMsg: 'static,
+{
+    OnEvent {
+        event_type,
+        f,
+        _marker: PhantomData,
+    }
 }
 
-struct OnEvent<F> {
+struct OnEvent<F, T, TMsg> {
     event_type: &'static str,
     f: F,
+    _marker: PhantomData<fn(T) -> TMsg>,
 }
 
-impl<F, TMsg> Attr<TMsg> for OnEvent<F>
+impl<F, T, TMsg> Attr<TMsg> for OnEvent<F, T, TMsg>
 where
-    F: Fn(&web::Event) -> Option<TMsg> + 'static,
+    F: Fn(T) -> Option<TMsg> + 'static,
+    T: for<'de> Deserialize<'de> + 'static,
     TMsg: 'static,
 {
     fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
     where
         Ctx: ElementContext<Msg = TMsg>,
     {
-        ctx.event(self.event_type, OnEventHandler { f: self.f })?;
+        ctx.event(
+            self.event_type,
+            OnEventHandler {
+                f: self.f,
+                _marker: PhantomData,
+            },
+        )?;
         Ok(())
     }
 }
 
-struct OnEventHandler<F> {
+struct OnEventHandler<F, T, TMsg> {
     f: F,
+    _marker: PhantomData<fn(T) -> TMsg>,
 }
 
-impl<F, TMsg: 'static> EventHandler for OnEventHandler<F>
+impl<F, T, TMsg> EventDecoder for OnEventHandler<F, T, TMsg>
 where
-    F: Fn(&web::Event) -> Option<TMsg>,
+    F: Fn(T) -> Option<TMsg>,
+    T: for<'de> Deserialize<'de>,
+    TMsg: 'static,
 {
     type Msg = TMsg;
 
-    #[inline]
-    fn handle_event(&self, event: &web::Event) -> Option<Self::Msg> {
-        (self.f)(event)
+    fn decode_event<'e, E>(&self, event: E) -> Result<Option<Self::Msg>, E::Error>
+    where
+        E: Event<'e>,
+    {
+        let input = T::deserialize(event.into_deserializer())?;
+        Ok((self.f)(input))
     }
 }

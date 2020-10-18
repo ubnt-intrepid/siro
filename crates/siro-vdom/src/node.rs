@@ -86,9 +86,9 @@ pub trait ElementContext {
     fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error>;
 
     /// Register an event callback to this element.
-    fn event<H>(&mut self, event_type: &'static str, handler: H) -> Result<(), Self::Error>
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
     where
-        H: EventHandler<Msg = Self::Msg> + 'static;
+        D: EventDecoder<Msg = Self::Msg> + 'static;
 
     /// Add a class to this element.
     fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error>;
@@ -111,10 +111,19 @@ pub trait ElementContext {
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-pub trait EventHandler {
+pub trait EventDecoder {
     type Msg: 'static;
 
-    fn handle_event(&self, event: &web::Event) -> Option<Self::Msg>;
+    fn decode_event<'e, E>(&self, event: E) -> Result<Option<Self::Msg>, E::Error>
+    where
+        E: Event<'e>;
+}
+
+pub trait Event<'e> {
+    type Error: serde::de::Error;
+    type Deserializer: serde::de::Deserializer<'e, Error = Self::Error>;
+
+    fn into_deserializer(self) -> Self::Deserializer;
 }
 
 pub trait IntoNode<TMsg: 'static> {

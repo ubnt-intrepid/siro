@@ -8,8 +8,4 @@ edition = "2018"
 
 [dependencies]
 either = "1"
-
-[dependencies.web]
-package = "web-sys"
-version = "0.3"
-features = [ "Event" ]
+serde = "1"

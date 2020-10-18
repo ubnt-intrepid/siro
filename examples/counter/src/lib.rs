@@ -30,13 +30,13 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
     html::div(
         (),
         (
-            html::button(html::event::on("click", |_| Msg::Decrement), "-"),
+            html::button(html::event::on_click(|| Msg::Decrement), "-"),
             " ",
             model.value.to_string(),
             " ",
-            html::button(html::event::on("click", |_| Msg::Increment), "+"),
+            html::button(html::event::on_click(|| Msg::Increment), "+"),
             " ",
-            html::button(html::event::on("click", |_| Msg::Reset), "Reset"),
+            html::button(html::event::on_click(|| Msg::Reset), "Reset"),
         ),
     )
 }

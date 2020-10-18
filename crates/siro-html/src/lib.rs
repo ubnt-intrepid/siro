@@ -160,36 +160,63 @@ pub mod input {
 }
 
 pub mod event {
+    use serde::{de::IgnoredAny, Deserialize};
     use siro_vdom::attr::{event, Attr};
-    use wasm_bindgen::JsValue;
 
-    pub fn on<TMsg: 'static>(
-        event_type: &'static str,
-        f: impl Fn(&web_sys::Event) -> TMsg + Clone + 'static,
-    ) -> impl Attr<TMsg> {
+    pub fn on<T, TMsg>(event_type: &'static str, f: impl Fn(T) -> TMsg + 'static) -> impl Attr<TMsg>
+    where
+        T: for<'de> Deserialize<'de> + 'static,
+        TMsg: 'static,
+    {
         event(event_type, move |event| Some(f(event)))
     }
 
-    pub fn on_input<TMsg: 'static>(
-        f: impl Fn(String) -> TMsg + Clone + 'static,
-    ) -> impl Attr<TMsg> {
-        event("input", move |e| {
-            let value = js_sys::Reflect::get(&&e.target()?, &JsValue::from_str("value"))
-                .ok()?
-                .as_string()?;
-            Some(f(value))
-        })
+    macro_rules! define_events {
+        ( $( $name:ident => $event_type:expr ),* $(,)? ) => {$(
+            paste::paste! {
+                #[inline]
+                pub fn [< on_ $name >] <TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attr<TMsg> {
+                    on($event_type, move |_: IgnoredAny| f())
+                }
+            }
+        )*};
     }
 
-    pub fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
-        event("keydown", move |e: &web_sys::Event| {
-            let key = js_sys::Reflect::get(e.as_ref(), &JsValue::from_str("key"))
-                .ok()?
-                .as_string()?;
-            match &*key {
-                "Enter" => Some(f()),
-                _ => None,
-            }
+    define_events! {
+        click => "click",
+        double_click => "dblclick",
+        focus => "focus",
+        blur => "blur",
+    }
+
+    #[derive(Deserialize)]
+    struct InputEvent {
+        target: InputTarget,
+    }
+
+    #[derive(Deserialize)]
+    struct InputTarget {
+        value: Option<String>,
+        checked: Option<bool>,
+    }
+
+    pub fn on_input<TMsg: 'static>(f: impl Fn(String) -> TMsg + 'static) -> impl Attr<TMsg> {
+        event("input", move |e: InputEvent| Some(f(e.target.value?)))
+    }
+
+    pub fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + 'static) -> impl Attr<TMsg> {
+        event("input", move |e: InputEvent| Some(f(e.target.checked?)))
+    }
+
+    #[derive(Deserialize)]
+    struct KeyEvent {
+        key: String,
+    }
+
+    pub fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attr<TMsg> {
+        event("keydown", move |e: KeyEvent| match &*e.key {
+            "Enter" => Some(f()),
+            _ => None,
         })
     }
 }

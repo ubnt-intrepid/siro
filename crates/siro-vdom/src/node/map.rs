@@ -1,4 +1,4 @@
-use super::{Context, ElementContext, EventHandler, Node};
+use super::{Context, ElementContext, Event, EventDecoder, Node};
 use crate::types::{Attribute, CowStr, Property};
 use std::marker::PhantomData;
 
@@ -92,14 +92,14 @@ where
     }
 
     #[inline]
-    fn event<H>(&mut self, event_type: &'static str, handler: H) -> Result<(), Self::Error>
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
     where
-        H: EventHandler<Msg = Self::Msg> + 'static,
+        D: EventDecoder<Msg = Self::Msg> + 'static,
     {
         self.element.event(
             event_type,
-            MapEventHandler {
-                handler,
+            MapEventDecoder {
+                decoder,
                 f: self.f.clone(),
             },
         )
@@ -134,19 +134,22 @@ where
     }
 }
 
-struct MapEventHandler<H, F> {
-    handler: H,
+struct MapEventDecoder<D, F> {
+    decoder: D,
     f: F,
 }
 
-impl<H, F, TMsg: 'static> EventHandler for MapEventHandler<H, F>
+impl<D, F, TMsg: 'static> EventDecoder for MapEventDecoder<D, F>
 where
-    H: EventHandler,
-    F: Fn(H::Msg) -> TMsg,
+    D: EventDecoder,
+    F: Fn(D::Msg) -> TMsg,
 {
     type Msg = TMsg;
 
-    fn handle_event(&self, event: &web::Event) -> Option<Self::Msg> {
-        self.handler.handle_event(event).map(&self.f)
+    fn decode_event<'e, E>(&self, event: E) -> Result<Option<Self::Msg>, E::Error>
+    where
+        E: Event<'e>,
+    {
+        Ok(self.decoder.decode_event(event)?.map(&self.f))
     }
 }

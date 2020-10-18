@@ -2,7 +2,7 @@ use crate::mailbox::{Mailbox, Sender};
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use siro_vdom::{
-    node::{self, EventHandler, IntoNode, Node},
+    node::{self, EventDecoder, IntoNode, Node},
     types::{Attribute, CowStr, Property},
 };
 use wasm_bindgen::prelude::*;
@@ -328,13 +328,16 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
         Ok(())
     }
 
-    fn event<H>(&mut self, event_type: &'static str, handler: H) -> Result<(), Self::Error>
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
     where
-        H: EventHandler<Msg = Self::Msg> + 'static,
+        D: EventDecoder<Msg = Self::Msg> + 'static,
     {
         let sender = self.mailbox.sender();
-        let listener = EventListener::new(self.node, event_type, move |e| {
-            if let Some(msg) = handler.handle_event(e) {
+        let listener = EventListener::new(self.node, event_type, move |event| {
+            if let Some(msg) = decoder
+                .decode_event(AppEvent { event })
+                .expect_throw("failed to decode Event")
+            {
                 sender.send_message(msg);
             }
         });
@@ -510,6 +513,25 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
         }
 
         Ok(())
+    }
+}
+
+struct AppEvent<'a> {
+    event: &'a web::Event,
+}
+
+mod impl_app_event {
+    use super::*;
+    use siro_vdom::node::Event;
+
+    impl<'e> Event<'e> for AppEvent<'_> {
+        type Deserializer = serde_wasm_bindgen::Deserializer;
+        type Error = serde_wasm_bindgen::Error;
+
+        fn into_deserializer(self) -> Self::Deserializer {
+            let value: &JsValue = self.event.as_ref();
+            serde_wasm_bindgen::Deserializer::from(value.clone())
+        }
     }
 }
 
