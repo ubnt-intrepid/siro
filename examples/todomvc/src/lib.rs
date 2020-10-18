@@ -2,8 +2,14 @@ use futures::prelude::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use siro::prelude::*;
-use siro::{attr, App};
-use siro_html as html;
+use siro::{
+    attr::class,
+    html::{
+        self, attr,
+        event::{on_blur, on_click, on_double_click, on_enter, on_input},
+    },
+    App,
+};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
 use web_sys::Storage;
@@ -159,10 +165,10 @@ fn update(
 
 fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
     html::div(
-        attr::class("todomvc-wrapper"),
+        class("todomvc-wrapper"),
         (
             html::section(
-                attr::class("todoapp"),
+                class("todoapp"),
                 (
                     view_header(model),
                     view_main(model),
@@ -180,18 +186,18 @@ fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
 
 fn view_header(model: &Model) -> impl Node<Msg = Msg> {
     html::header(
-        attr::class("header"),
+        class("header"),
         (
             html::h1((), "todos"),
             html::input(
                 (
-                    attr::class("new-todo"),
-                    html::attr::placeholder("What needs to be done?"),
-                    html::attr::autofocus(true),
-                    html::attr::name("new_todo"),
-                    html::attr::value(model.input.clone()),
-                    html::event::on_input(Msg::UpdateField),
-                    html::event::on_enter(|| Msg::Add),
+                    class("new-todo"),
+                    attr::placeholder("What needs to be done?"),
+                    attr::autofocus(true),
+                    attr::name("new_todo"),
+                    attr::value(model.input.clone()),
+                    on_input(Msg::UpdateField),
+                    on_enter(|| Msg::Add),
                 ),
                 (),
             ),
@@ -203,17 +209,17 @@ fn view_main(model: &Model) -> impl Node<Msg = Msg> + '_ {
     let all_completed = model.entries.values().all(|entry| entry.completed);
 
     html::section(
-        attr::class("main"),
+        class("main"),
         (
             html::input::checkbox((
-                attr::class("toggle-all"),
-                html::attr::id("toggle-all"),
-                html::attr::checked(all_completed),
-                html::event::on_click(move || Msg::CheckAll(!all_completed)),
+                class("toggle-all"),
+                attr::id("toggle-all"),
+                attr::checked(all_completed),
+                on_click(move || Msg::CheckAll(!all_completed)),
             )),
-            html::label(html::attr::label_for("toggle-all"), "Mark all as complete"),
+            html::label(attr::label_for("toggle-all"), "Mark all as complete"),
             html::ul(
-                attr::class("todo-list"),
+                class("todo-list"),
                 siro::children::iter(
                     model
                         .entries
@@ -243,48 +249,37 @@ fn view_entry(entry: &TodoEntry) -> impl Node<Msg = Msg> {
 
     html::li(
         (
-            if completed {
-                attr::class("completed").into()
-            } else {
-                None
-            },
-            if editing {
-                attr::class("editing").into()
-            } else {
-                None
-            },
+            if_then(completed, || class("completed")),
+            if_then(editing, || class("editing")),
         ),
         (
             html::div(
-                attr::class("view"),
+                class("view"),
                 (
                     html::input::checkbox((
-                        attr::class("toggle"),
-                        html::attr::checked(completed),
-                        html::event::on_click(move || Msg::Check(entry_id, !completed)),
+                        class("toggle"),
+                        attr::checked(completed),
+                        on_click(move || Msg::Check(entry_id, !completed)),
                     )),
                     html::label(
-                        html::event::on_double_click(move || Msg::EditingEntry(entry_id, true)),
+                        on_double_click(move || Msg::EditingEntry(entry_id, true)),
                         description.clone(),
                     ),
                     html::button(
-                        (
-                            attr::class("destroy"),
-                            html::event::on_click(move || Msg::Delete(entry_id)),
-                        ),
+                        (class("destroy"), on_click(move || Msg::Delete(entry_id))),
                         (),
                     ),
                 ),
             ),
             if editing {
                 html::input::text((
-                    attr::class("edit"),
-                    html::attr::name("title"),
-                    html::attr::id(input_id.clone()),
-                    html::attr::value(description.clone()),
-                    html::event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
-                    html::event::on_blur(move || Msg::EditingEntry(entry_id, false)),
-                    html::event::on_enter(move || Msg::EditingEntry(entry_id, false)),
+                    class("edit"),
+                    attr::name("title"),
+                    attr::id(input_id.clone()),
+                    attr::value(description.clone()),
+                    on_input(move |input| Msg::UpdateEntry(entry_id, input)),
+                    on_blur(move || Msg::EditingEntry(entry_id, false)),
+                    on_enter(move || Msg::EditingEntry(entry_id, false)),
                 ))
                 .into()
             } else {
@@ -307,35 +302,29 @@ fn view_controls(model: &Model) -> impl Node<Msg = Msg> {
     }
 
     html::footer(
-        attr::class("footer"),
+        class("footer"),
         (
             html::span(
-                attr::class("todo-count"),
+                class("todo-count"),
                 (
                     html::strong((), entries_left.to_string()),
                     format!(" item{} left", plural_prefix(entries_left)),
                 ),
             ),
             html::ul(
-                attr::class("filters"),
+                class("filters"),
                 (
                     view_visibility_swap(model, Visibility::All, "All", "#/"),
                     view_visibility_swap(model, Visibility::Active, "Active", "#/active"),
                     view_visibility_swap(model, Visibility::Completed, "Completed", "#/completed"),
                 ),
             ),
-            if has_completed {
+            if_then(has_completed, || {
                 html::button(
-                    (
-                        attr::class("clear-completed"),
-                        html::event::on_click(|| Msg::DeleteCompleted),
-                    ),
+                    (class("clear-completed"), on_click(|| Msg::DeleteCompleted)),
                     "Clear completed",
                 )
-                .into()
-            } else {
-                None
-            },
+            }),
         ),
     )
 }
@@ -350,14 +339,7 @@ fn view_visibility_swap(
     html::li(
         html::event::on_click(move || Msg::ChangeVisibility(v)),
         html::a(
-            (
-                html::attr::href(url),
-                if selected {
-                    attr::class("selected").into()
-                } else {
-                    None
-                },
-            ),
+            (attr::href(url), if_then(selected, || class("selected"))),
             text,
         ),
     )
@@ -365,7 +347,7 @@ fn view_visibility_swap(
 
 fn view_info_footer() -> impl Node<Msg = Msg> {
     html::footer(
-        attr::class("info"),
+        class("info"),
         (
             html::p((), "Double-click to edit a todo"),
             html::p(
@@ -421,6 +403,14 @@ fn focus_input(id: TodoId) {
             let element: web_sys::HtmlElement = element.unchecked_into();
             let _ = element.focus();
         }
+    }
+}
+
+fn if_then<T>(pred: bool, f: impl FnOnce() -> T) -> Option<T> {
+    if pred {
+        Some(f())
+    } else {
+        None
     }
 }
 

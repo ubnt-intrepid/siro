@@ -1,6 +1,5 @@
 use siro::prelude::*;
-use siro::{attr::style, App};
-use siro_svg as svg;
+use siro::App;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
@@ -45,21 +44,29 @@ fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
 }
 
 fn view(model: &Model) -> impl Node<Msg = Msg> {
-    svg::svg(
+    use siro::{
+        attr::style,
+        svg::{
+            attr::{cx, cy, fill, height, r, viewbox, width},
+            circle, svg,
+        },
+    };
+
+    svg(
         (
-            svg::attr::viewbox("-500 -500 1000 1000"),
-            svg::attr::width("100%"),
-            svg::attr::height("100%"),
+            viewbox("-500 -500 1000 1000"),
+            width("100%"),
+            height("100%"),
             style("position", "fixed"),
             style("top", "0px"),
             style("left", "0px"),
         ),
-        svg::circle(
+        circle(
             (
-                svg::attr::r("20"),
-                svg::attr::cx(model.x.to_string()),
-                svg::attr::cy(model.y.to_string()),
-                svg::attr::fill(if model.clicked { "red" } else { "#ad7fa8" }),
+                r("20"),
+                cx(model.x.to_string()),
+                cy(model.y.to_string()),
+                fill(if model.clicked { "red" } else { "#ad7fa8" }),
             ),
             (),
         ),

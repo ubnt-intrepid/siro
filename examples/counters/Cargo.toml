@@ -10,10 +10,8 @@ doc = false
 
 [dependencies]
 siro = { path = "../../crates/siro" }
-siro-html = { path = "../../crates/siro-html" }
 
 console_error_panic_hook = "0.1"
-futures = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 wee_alloc = "0.4"

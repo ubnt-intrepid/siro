@@ -12,7 +12,11 @@ pub use crate::{
 };
 
 #[doc(no_inline)]
-pub use siro_vdom::{self as vdom, attr, children};
+pub use {
+    siro_html as html, //
+    siro_svg as svg,
+    siro_vdom::{self as vdom, attr, children},
+};
 
 /// A *prelude* for end users.
 pub mod prelude {

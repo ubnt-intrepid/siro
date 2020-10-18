@@ -1,6 +1,5 @@
 use siro::prelude::*;
 use siro::App;
-use siro_html as html;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -9,7 +8,6 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
     use siro::prelude::*;
-    use siro_html as html;
 
     #[derive(Default, Clone)]
     pub struct Model {
@@ -31,16 +29,18 @@ mod counter {
     }
 
     pub fn view(model: &Model) -> impl Node<Msg = Msg> {
-        html::div(
+        use siro::html::{button, div, event::on_click};
+
+        div(
             (),
             (
-                html::button(html::event::on_click(|| Msg::Decrement), "-"),
+                button(on_click(|| Msg::Decrement), "-"),
                 " ",
                 model.value.to_string(),
                 " ",
-                html::button(html::event::on_click(|| Msg::Increment), "+"),
+                button(on_click(|| Msg::Increment), "+"),
                 " ",
-                html::button(html::event::on_click(|| Msg::Reset), "Reset"),
+                button(on_click(|| Msg::Reset), "Reset"),
             ),
         )
     }
@@ -56,14 +56,17 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
-    html::div(
+    use siro::children::iter;
+    use siro::html::div;
+
+    div(
         (),
-        siro::children::iter(
+        iter(
             model
                 .iter() //
                 .enumerate()
                 .map(|(i, m)| {
-                    html::div(
+                    div(
                         (),
                         (
                             format!("{}: ", i),

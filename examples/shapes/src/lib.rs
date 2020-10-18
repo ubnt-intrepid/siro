@@ -1,5 +1,4 @@
 use siro::App;
-use siro_svg as svg;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -14,51 +13,53 @@ pub fn main() -> Result<(), JsValue> {
     let mut app = App::<()>::mount(mountpoint)?;
 
     app.render({
-        svg::svg(
+        use siro::svg::{self, attr, svg};
+
+        svg(
             (
-                svg::attr::viewbox("0 0 400 400"),
-                svg::attr::width("400"),
-                svg::attr::height("400"),
+                attr::viewbox("0 0 400 400"),
+                attr::width("400"),
+                attr::height("400"),
             ),
             (
                 svg::circle(
                     (
-                        svg::attr::cx("50"),
-                        svg::attr::cy("50"),
-                        svg::attr::r("40"),
-                        svg::attr::fill("red"),
-                        svg::attr::stroke("black"),
-                        svg::attr::stroke_width("3"),
+                        attr::cx("50"),
+                        attr::cy("50"),
+                        attr::r("40"),
+                        attr::fill("red"),
+                        attr::stroke("black"),
+                        attr::stroke_width("3"),
                     ),
                     (),
                 ),
                 svg::rect(
                     (
-                        svg::attr::x("100"),
-                        svg::attr::y("10"),
-                        svg::attr::width("40"),
-                        svg::attr::height("40"),
-                        svg::attr::fill("green"),
-                        svg::attr::stroke("black"),
-                        svg::attr::stroke_width("2"),
+                        attr::x("100"),
+                        attr::y("10"),
+                        attr::width("40"),
+                        attr::height("40"),
+                        attr::fill("green"),
+                        attr::stroke("black"),
+                        attr::stroke_width("2"),
                     ),
                     (),
                 ),
                 svg::line(
                     (
-                        svg::attr::x1("20"),
-                        svg::attr::y1("200"),
-                        svg::attr::x2("200"),
-                        svg::attr::y2("20"),
-                        svg::attr::stroke("blue"),
-                        svg::attr::stroke_width("10"),
-                        svg::attr::stroke_linecap("round"),
+                        attr::x1("20"),
+                        attr::y1("200"),
+                        attr::x2("200"),
+                        attr::y2("20"),
+                        attr::stroke("blue"),
+                        attr::stroke_width("10"),
+                        attr::stroke_linecap("round"),
                     ),
                     (),
                 ),
                 svg::polyline(
                     (
-                        svg::attr::points(
+                        attr::points(
                             "200,40 \
                              240,40 \
                              240,80 \
@@ -67,21 +68,21 @@ pub fn main() -> Result<(), JsValue> {
                              320,120 \
                              320,160",
                         ),
-                        svg::attr::fill("none"),
-                        svg::attr::stroke("red"),
-                        svg::attr::stroke_width("4"),
-                        svg::attr::stroke_dasharray("20,2"),
+                        attr::fill("none"),
+                        attr::stroke("red"),
+                        attr::stroke_width("4"),
+                        attr::stroke_dasharray("20,2"),
                     ),
                     (),
                 ),
                 svg::text(
                     (
-                        svg::attr::x("130"),
-                        svg::attr::y("130"),
-                        svg::attr::fill("black"),
-                        svg::attr::text_anchor("middle"),
-                        svg::attr::dominant_baseline("central"),
-                        svg::attr::transform("rotate(-45 130,130)"),
+                        attr::x("130"),
+                        attr::y("130"),
+                        attr::fill("black"),
+                        attr::text_anchor("middle"),
+                        attr::dominant_baseline("central"),
+                        attr::transform("rotate(-45 130,130)"),
                     ),
                     "Welcome to Shape Club",
                 ),
