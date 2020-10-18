@@ -1,5 +1,3 @@
-use wasm_bindgen::JsValue;
-
 pub type CowStr = std::borrow::Cow<'static, str>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -47,14 +45,5 @@ impl From<String> for Property {
 impl From<bool> for Property {
     fn from(b: bool) -> Self {
         Property::Bool(b)
-    }
-}
-
-impl From<Property> for JsValue {
-    fn from(property: Property) -> Self {
-        match property {
-            Property::String(s) => s.into(),
-            Property::Bool(b) => b.into(),
-        }
     }
 }

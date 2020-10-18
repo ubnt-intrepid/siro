@@ -1,4 +1,5 @@
-use crate::vdom::{Children, ElementContext, Node};
+use super::Children;
+use crate::node::{ElementContext, Node};
 
 /// Create a `Children` from an iterator.
 pub fn iter<I>(iter: I) -> Iter<I::IntoIter>

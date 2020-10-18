@@ -1,6 +1,10 @@
 //! SVG directives.
 
-use siro::vdom::{element, Attr, Children, Node};
+use siro_vdom::{
+    attr::Attr,
+    children::Children,
+    node::{element, Node},
+};
 
 // TODO: implement missing elements and attributes.
 
@@ -32,16 +36,16 @@ svg_elements! {
 
 /// SVG attributes.
 pub mod attr {
-    use siro::{
-        attr::{attribute, Attribute},
-        vdom::CowStr,
+    use siro_vdom::{
+        attr::{attribute, Attr},
+        types::CowStr,
     };
 
     macro_rules! svg_attributes {
         ( $( $name:ident => $attrname:expr, )* ) => {$(
             paste::paste! {
                 #[doc = "Create an `Attr` to specify [`" $attrname "`](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/" $attrname ") attribute."]
-                pub fn $name(val: impl Into<CowStr>) -> Attribute {
+                pub fn $name<TMsg: 'static>(val: impl Into<CowStr>) -> impl Attr<TMsg> {
                     attribute($attrname, val.into())
                 }
             }

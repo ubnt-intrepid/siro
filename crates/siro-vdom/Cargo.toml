@@ -1,0 +1,15 @@
+[package]
+name = "siro-vdom"
+version = "0.0.0-experimental.1"
+publish = false
+description = "Virtual DOM representation for siro"
+authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+either = "1"
+
+[dependencies.web]
+package = "web-sys"
+version = "0.3"
+features = [ "Event" ]

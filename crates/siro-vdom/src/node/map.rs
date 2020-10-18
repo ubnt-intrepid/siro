@@ -1,7 +1,5 @@
-use super::{
-    types::{Attribute, CowStr, Property},
-    Context, ElementContext, EventHandler, Node,
-};
+use super::{Context, ElementContext, EventHandler, Node};
+use crate::types::{Attribute, CowStr, Property};
 use std::marker::PhantomData;
 
 /// A virtual node created by [`map`](./trait.Node.html#method.map).

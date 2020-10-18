@@ -1,6 +1,10 @@
 //! HTML directives.
 
-use siro::vdom::{element, Attr, Children, Node};
+use siro_vdom::{
+    attr::Attr,
+    children::Children,
+    node::{element, Node},
+};
 
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
@@ -84,40 +88,40 @@ html_elements!(
 
 /// HTML attributes.
 pub mod attr {
-    use siro::{
-        attr::{attribute, property, Attribute, Property},
-        vdom,
+    use siro_vdom::{
+        attr::{attribute, property, Attr},
+        types::{CowStr, Property},
     };
 
-    pub fn autofocus(autofocus: bool) -> Attribute {
+    pub fn autofocus<TMsg: 'static>(autofocus: bool) -> impl Attr<TMsg> {
         attribute("autofocus", autofocus)
     }
 
-    pub fn href(url: impl Into<vdom::CowStr>) -> Attribute {
+    pub fn href<TMsg: 'static>(url: impl Into<CowStr>) -> impl Attr<TMsg> {
         attribute("href", url.into())
     }
 
-    pub fn id(id: impl Into<vdom::CowStr>) -> Attribute {
+    pub fn id<TMsg: 'static>(id: impl Into<CowStr>) -> impl Attr<TMsg> {
         attribute("id", id.into())
     }
 
-    pub fn label_for(target_id: impl Into<vdom::CowStr>) -> Attribute {
+    pub fn label_for<TMsg: 'static>(target_id: impl Into<CowStr>) -> impl Attr<TMsg> {
         attribute("for", target_id.into())
     }
 
-    pub fn name(name: impl Into<vdom::CowStr>) -> Attribute {
+    pub fn name<TMsg: 'static>(name: impl Into<CowStr>) -> impl Attr<TMsg> {
         attribute("name", name.into())
     }
 
-    pub fn placeholder(placeholder: impl Into<vdom::CowStr>) -> Attribute {
+    pub fn placeholder<TMsg: 'static>(placeholder: impl Into<CowStr>) -> impl Attr<TMsg> {
         attribute("placeholder", placeholder.into())
     }
 
-    pub fn checked(checked: bool) -> Property {
+    pub fn checked<TMsg: 'static>(checked: bool) -> impl Attr<TMsg> {
         property("checked", checked)
     }
 
-    pub fn value(value: impl Into<vdom::Property>) -> Property {
+    pub fn value<TMsg: 'static>(value: impl Into<Property>) -> impl Attr<TMsg> {
         property("value", value)
     }
 }
@@ -126,9 +130,9 @@ pub mod attr {
 ///
 /// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
 pub mod input {
-    use siro::{
-        attr::attribute,
-        vdom::{Attr, Node},
+    use siro_vdom::{
+        attr::{attribute, Attr},
+        node::Node,
     };
 
     macro_rules! input_elements {
@@ -152,5 +156,40 @@ pub mod input {
     #[inline]
     pub fn datetime_local<TMsg: 'static>(attr: impl Attr<TMsg>) -> impl Node<Msg = TMsg> {
         super::input((attribute("type", "datetime-local"), attr), ())
+    }
+}
+
+pub mod event {
+    use siro_vdom::attr::{event, Attr};
+    use wasm_bindgen::JsValue;
+
+    pub fn on<TMsg: 'static>(
+        event_type: &'static str,
+        f: impl Fn(&web_sys::Event) -> TMsg + Clone + 'static,
+    ) -> impl Attr<TMsg> {
+        event(event_type, move |event| Some(f(event)))
+    }
+
+    pub fn on_input<TMsg: 'static>(
+        f: impl Fn(String) -> TMsg + Clone + 'static,
+    ) -> impl Attr<TMsg> {
+        event("input", move |e| {
+            let value = js_sys::Reflect::get(&&e.target()?, &JsValue::from_str("value"))
+                .ok()?
+                .as_string()?;
+            Some(f(value))
+        })
+    }
+
+    pub fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + Clone + 'static) -> impl Attr<TMsg> {
+        event("keydown", move |e: &web_sys::Event| {
+            let key = js_sys::Reflect::get(e.as_ref(), &JsValue::from_str("key"))
+                .ok()?
+                .as_string()?;
+            match &*key {
+                "Enter" => Some(f()),
+                _ => None,
+            }
+        })
     }
 }

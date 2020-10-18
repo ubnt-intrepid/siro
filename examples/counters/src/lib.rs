@@ -8,7 +8,6 @@ use wee_alloc::WeeAlloc;
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 mod counter {
-    use siro::event;
     use siro::prelude::*;
     use siro_html as html;
 
@@ -35,13 +34,13 @@ mod counter {
         html::div(
             (),
             (
-                html::button(event::on("click", |_| Msg::Decrement), "-"),
+                html::button(html::event::on("click", |_| Msg::Decrement), "-"),
                 " ",
                 model.value.to_string(),
                 " ",
-                html::button(event::on("click", |_| Msg::Increment), "+"),
+                html::button(html::event::on("click", |_| Msg::Increment), "+"),
                 " ",
-                html::button(event::on("click", |_| Msg::Reset), "Reset"),
+                html::button(html::event::on("click", |_| Msg::Reset), "Reset"),
             ),
         )
     }

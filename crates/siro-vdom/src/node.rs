@@ -1,14 +1,12 @@
-//! A virtual DOM implementation in `siro`.
-
 mod element;
 mod map;
 mod text;
-mod types;
 
-pub use element::{element, Attr, Children};
+pub use element::{element, Element};
 pub use map::Map;
-pub use text::text;
-pub use types::{Attribute, CowStr, Property};
+pub use text::{text, Text};
+
+use crate::types::{Attribute, CowStr, Property};
 
 /// A data structure that represents a virtual DOM node.
 pub trait Node {
@@ -117,4 +115,40 @@ pub trait EventHandler {
     type Msg: 'static;
 
     fn handle_event(&self, event: &web::Event) -> Option<Self::Msg>;
+}
+
+pub trait IntoNode<TMsg: 'static> {
+    type Node: Node<Msg = TMsg>;
+
+    fn into_node(self) -> Self::Node;
+}
+
+impl<N, TMsg: 'static> IntoNode<TMsg> for N
+where
+    N: Node<Msg = TMsg>,
+{
+    type Node = Self;
+
+    #[inline]
+    fn into_node(self) -> Self::Node {
+        self
+    }
+}
+
+impl<TMsg: 'static> IntoNode<TMsg> for &'static str {
+    type Node = Text<TMsg>;
+
+    #[inline]
+    fn into_node(self) -> Self::Node {
+        text(self)
+    }
+}
+
+impl<TMsg: 'static> IntoNode<TMsg> for String {
+    type Node = Text<TMsg>;
+
+    #[inline]
+    fn into_node(self) -> Self::Node {
+        text(self)
+    }
 }

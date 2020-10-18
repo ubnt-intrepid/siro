@@ -9,6 +9,8 @@ repository = "https://github.com/ubnt-intrepid/siro.git"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+siro-vdom = { version = "0.0.0-experimental.1", path = "../siro-vdom" }
+
 either = "1"
 futures = "0.3"
 gloo-events = "0.1"

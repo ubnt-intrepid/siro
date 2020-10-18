@@ -1,5 +1,5 @@
 use siro::prelude::*;
-use siro::{attr::inner_html, event, App};
+use siro::{attr::inner_html, App};
 use siro_html as html;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -27,7 +27,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
     html::div(
         html::attr::id("editor"),
         (
-            html::textarea(event::on_input(Msg::Edit), ()),
+            html::textarea(html::event::on_input(Msg::Edit), ()),
             view_markdown_preview(&model.input),
         ),
     )

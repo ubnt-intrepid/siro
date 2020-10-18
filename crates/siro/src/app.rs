@@ -1,9 +1,10 @@
-use crate::{
-    mailbox::{Mailbox, Sender},
-    vdom::{self, Attribute, CowStr, EventHandler, Node, Property},
-};
+use crate::mailbox::{Mailbox, Sender};
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
+use siro_vdom::{
+    node::{self, EventHandler, IntoNode, Node},
+    types::{Attribute, CowStr, Property},
+};
 use wasm_bindgen::prelude::*;
 
 pub struct App<TMsg: 'static> {
@@ -43,10 +44,11 @@ impl<TMsg: 'static> App<TMsg> {
         self.rx.next().await
     }
 
-    pub fn render<TNode>(&mut self, node: TNode) -> Result<(), JsValue>
+    pub fn render<N>(&mut self, node: N) -> Result<(), JsValue>
     where
-        TNode: Node<Msg = TMsg>,
+        N: IntoNode<TMsg>,
     {
+        let node = node.into_node();
         node.render(RenderContext {
             document: &self.document,
             mailbox: &self.mailbox,
@@ -168,7 +170,7 @@ struct RenderContext<'a, TMsg: 'static> {
     vnode: &'a mut VNode,
 }
 
-impl<'a, TMsg: 'static> vdom::Context for RenderContext<'a, TMsg> {
+impl<'a, TMsg: 'static> node::Context for RenderContext<'a, TMsg> {
     type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
@@ -285,7 +287,7 @@ enum RenderElementOp {
     New,
 }
 
-impl<TMsg: 'static> vdom::ElementContext for RenderElement<'_, TMsg> {
+impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
     type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
@@ -523,7 +525,11 @@ fn set_attribute(element: &web::Element, name: &str, value: &Attribute) -> Resul
 }
 
 fn set_property(element: &web::Element, name: &str, value: &Property) -> Result<(), JsValue> {
-    js_sys::Reflect::set(element, &JsValue::from_str(name), &value.clone().into())?;
+    let value = match value.clone() {
+        Property::String(s) => s.into(),
+        Property::Bool(b) => b.into(),
+    };
+    js_sys::Reflect::set(element, &JsValue::from_str(name), &value)?;
     Ok(())
 }
 

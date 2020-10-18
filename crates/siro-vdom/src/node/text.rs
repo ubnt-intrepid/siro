@@ -1,15 +1,15 @@
 use super::{Context, CowStr, Node};
 use std::marker::PhantomData;
 
-/// Create a virtual node corresponding to an [`Text`](https://developer.mozilla.org/en-US/docs/Web/API/Text).
-pub fn text<TMsg: 'static>(value: impl Into<CowStr>) -> impl Node<Msg = TMsg> {
+/// Create a `Node` rendered as a text node.
+pub fn text<TMsg: 'static>(value: impl Into<CowStr>) -> Text<TMsg> {
     Text {
         value: value.into(),
         _marker: PhantomData,
     }
 }
 
-struct Text<TMsg> {
+pub struct Text<TMsg> {
     value: CowStr,
     _marker: PhantomData<fn() -> TMsg>,
 }

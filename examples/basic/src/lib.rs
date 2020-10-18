@@ -1,4 +1,4 @@
-use siro::{vdom::text, App};
+use siro::App;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -14,7 +14,7 @@ pub fn main() -> Result<(), JsValue> {
     let mut app = App::<()>::mount(mountpoint)?;
 
     // Draw the view.
-    app.render(text("Hello from Rust!"))?;
+    app.render("Hello from Rust!")?;
 
     Ok(())
 }

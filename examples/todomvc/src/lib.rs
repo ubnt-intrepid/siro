@@ -2,7 +2,7 @@ use futures::prelude::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use siro::prelude::*;
-use siro::{attr, event, App};
+use siro::{attr, App};
 use siro_html as html;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
@@ -190,8 +190,8 @@ fn view_header(model: &Model) -> impl Node<Msg = Msg> {
                     html::attr::autofocus(true),
                     html::attr::name("new_todo"),
                     html::attr::value(model.input.clone()),
-                    event::on_input(Msg::UpdateField),
-                    event::on_enter(|| Msg::Add),
+                    html::event::on_input(Msg::UpdateField),
+                    html::event::on_enter(|| Msg::Add),
                 ),
                 (),
             ),
@@ -209,7 +209,7 @@ fn view_main(model: &Model) -> impl Node<Msg = Msg> + '_ {
                 attr::class("toggle-all"),
                 html::attr::id("toggle-all"),
                 html::attr::checked(all_completed),
-                event::on("click", move |_| Msg::CheckAll(!all_completed)),
+                html::event::on("click", move |_| Msg::CheckAll(!all_completed)),
             )),
             html::label(html::attr::label_for("toggle-all"), "Mark all as complete"),
             html::ul(
@@ -261,16 +261,16 @@ fn view_entry(entry: &TodoEntry) -> impl Node<Msg = Msg> {
                     html::input::checkbox((
                         attr::class("toggle"),
                         html::attr::checked(completed),
-                        event::on("click", move |_| Msg::Check(entry_id, !completed)),
+                        html::event::on("click", move |_| Msg::Check(entry_id, !completed)),
                     )),
                     html::label(
-                        event::on("dblclick", move |_| Msg::EditingEntry(entry_id, true)),
+                        html::event::on("dblclick", move |_| Msg::EditingEntry(entry_id, true)),
                         description.clone(),
                     ),
                     html::button(
                         (
                             attr::class("destroy"),
-                            event::on("click", move |_| Msg::Delete(entry_id)),
+                            html::event::on("click", move |_| Msg::Delete(entry_id)),
                         ),
                         (),
                     ),
@@ -282,9 +282,9 @@ fn view_entry(entry: &TodoEntry) -> impl Node<Msg = Msg> {
                     html::attr::name("title"),
                     html::attr::id(input_id.clone()),
                     html::attr::value(description.clone()),
-                    event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
-                    event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
-                    event::on_enter(move || Msg::EditingEntry(entry_id, false)),
+                    html::event::on_input(move |input| Msg::UpdateEntry(entry_id, input)),
+                    html::event::on("blur", move |_| Msg::EditingEntry(entry_id, false)),
+                    html::event::on_enter(move || Msg::EditingEntry(entry_id, false)),
                 ))
                 .into()
             } else {
@@ -328,7 +328,7 @@ fn view_controls(model: &Model) -> impl Node<Msg = Msg> {
                 html::button(
                     (
                         attr::class("clear-completed"),
-                        event::on("click", |_| Msg::DeleteCompleted),
+                        html::event::on("click", |_| Msg::DeleteCompleted),
                     ),
                     "Clear completed",
                 )
@@ -348,7 +348,7 @@ fn view_visibility_swap(
 ) -> impl Node<Msg = Msg> {
     let selected = model.visibility.map_or(false, |vis| vis == v);
     html::li(
-        event::on("click", move |_| Msg::ChangeVisibility(v)),
+        html::event::on("click", move |_| Msg::ChangeVisibility(v)),
         html::a(
             (
                 html::attr::href(url),
