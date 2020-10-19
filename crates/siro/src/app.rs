@@ -1,4 +1,7 @@
-use crate::mailbox::{Mailbox, Sender};
+use crate::{
+    mailbox::{Mailbox, Sender},
+    subscription::Subscribe,
+};
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use siro_vdom::{
@@ -39,6 +42,14 @@ impl<TMsg: 'static> App<TMsg> {
 
     pub fn mountpoint(&self) -> &web::Node {
         &self.mountpoint
+    }
+
+    /// Register a `Subscribe`.
+    pub fn subscribe<S>(&self, s: S) -> Result<S::Subscription, S::Error>
+    where
+        S: Subscribe<Msg = TMsg>,
+    {
+        s.subscribe(self)
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {

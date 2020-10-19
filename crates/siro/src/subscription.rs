@@ -3,24 +3,22 @@ mod interval;
 mod map;
 mod window_event;
 
-pub use animation_frames::{animation_frames, AnimationFrames};
-pub use interval::{interval, Interval};
+pub use animation_frames::animation_frames;
+pub use interval::interval;
 pub use map::Map;
 pub use window_event::{window_event, WindowEvent};
 
 use crate::mailbox::Mailbox;
-use wasm_bindgen::prelude::*;
 
-pub trait Subscription {
+pub trait Subscribe {
     type Msg: 'static;
-    type Handle;
+    type Error;
+    type Subscription: Subscription<Error = Self::Error>;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
+    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
     where
         M: Mailbox<Msg = Self::Msg>;
-}
 
-pub trait SubscriptionExt: Subscription {
     fn map<F, TMsg>(self, f: F) -> Map<Self, F, TMsg>
     where
         Self: Sized,
@@ -31,4 +29,9 @@ pub trait SubscriptionExt: Subscription {
     }
 }
 
-impl<S: ?Sized> SubscriptionExt for S where S: Subscription {}
+pub trait Subscription {
+    type Msg: 'static;
+    type Error;
+
+    fn unsubscribe(&mut self) -> Result<(), Self::Error>;
+}

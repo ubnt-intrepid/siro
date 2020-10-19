@@ -1,20 +1,21 @@
-use super::Subscription;
+use super::{Subscribe, Subscription};
 use crate::mailbox::{Mailbox, Sender as _};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
-pub fn interval(timeout: i32) -> Interval {
-    Interval { timeout }
+pub fn interval(timeout: i32) -> impl Subscribe<Msg = (), Error = JsValue> {
+    SubscribeInterval { timeout }
 }
 
-pub struct Interval {
+struct SubscribeInterval {
     timeout: i32,
 }
 
-impl Subscription for Interval {
+impl Subscribe for SubscribeInterval {
     type Msg = ();
-    type Handle = Handle;
+    type Error = JsValue;
+    type Subscription = IntervalSubscription;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
+    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
     where
         M: Mailbox<Msg = Self::Msg>,
     {
@@ -33,22 +34,36 @@ impl Subscription for Interval {
             timeout,
         )?;
 
-        Ok(Handle {
+        Ok(IntervalSubscription(Some(Inner {
             window: window.clone(),
             id,
             _cb: cb,
-        })
+        })))
     }
 }
 
-pub struct Handle {
+struct IntervalSubscription(Option<Inner>);
+
+struct Inner {
     window: web::Window,
     id: i32,
     _cb: Closure<dyn FnMut()>,
 }
 
-impl Drop for Handle {
+impl Subscription for IntervalSubscription {
+    type Msg = ();
+    type Error = JsValue;
+
+    fn unsubscribe(&mut self) -> Result<(), Self::Error> {
+        if let Some(inner) = self.0.take() {
+            inner.window.clear_interval_with_handle(inner.id);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for IntervalSubscription {
     fn drop(&mut self) {
-        self.window.clear_interval_with_handle(self.id);
+        let _ = self.unsubscribe();
     }
 }

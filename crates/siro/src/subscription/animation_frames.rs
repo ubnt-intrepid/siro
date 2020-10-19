@@ -1,22 +1,23 @@
-use super::Subscription;
+use super::{Subscribe, Subscription};
 use crate::mailbox::{Mailbox, Sender as _};
 use once_cell::unsync::OnceCell;
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
-pub fn animation_frames() -> AnimationFrames {
-    AnimationFrames { _p: () }
+pub fn animation_frames() -> impl Subscribe<Msg = f64, Error = JsValue> {
+    SubscribeAnimationFrames { _p: () }
 }
 
-pub struct AnimationFrames {
+struct SubscribeAnimationFrames {
     _p: (),
 }
 
-impl Subscription for AnimationFrames {
+impl Subscribe for SubscribeAnimationFrames {
     type Msg = f64;
-    type Handle = Handle;
+    type Error = JsValue;
+    type Subscription = AnimationFramesSubscription;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
+    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
     where
         M: Mailbox<Msg = Self::Msg>,
     {
@@ -57,7 +58,7 @@ impl Subscription for AnimationFrames {
 
         scheduler.schedule(closure.get().expect_throw("closure is not set"));
 
-        Ok(Handle { scheduler, closure })
+        Ok(AnimationFramesSubscription { scheduler, closure })
     }
 }
 
@@ -90,15 +91,25 @@ impl Scheduler {
     }
 }
 
-pub struct Handle {
+struct AnimationFramesSubscription {
     scheduler: Rc<Scheduler>,
     closure: Rc<OnceCell<Closure<dyn Fn(f64)>>>,
 }
 
-impl Drop for Handle {
-    fn drop(&mut self) {
+impl Subscription for AnimationFramesSubscription {
+    type Msg = ();
+    type Error = JsValue;
+
+    fn unsubscribe(&mut self) -> Result<(), Self::Error> {
         if let Some(closure) = self.closure.get() {
             let _ = self.scheduler.cancel(closure);
         }
+        Ok(())
+    }
+}
+
+impl Drop for AnimationFramesSubscription {
+    fn drop(&mut self) {
+        let _ = self.unsubscribe();
     }
 }

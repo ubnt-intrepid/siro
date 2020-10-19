@@ -8,7 +8,7 @@ pub mod util;
 pub use crate::{
     app::App, //
     mailbox::Mailbox,
-    subscription::Subscription,
+    subscription::Subscribe,
 };
 
 #[doc(no_inline)]
@@ -21,10 +21,7 @@ pub use {
 /// A *prelude* for end users.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{
-        mailbox::{Mailbox, MailboxExt as _},
-        subscription::{Subscription, SubscriptionExt as _},
-    };
+    pub use crate::{mailbox::Mailbox, subscription::Subscribe};
 
     #[doc(no_inline)]
     pub use siro_vdom::{attr::Attr, children::Children, node::Node};

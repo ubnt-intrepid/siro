@@ -1,39 +1,38 @@
-use super::Subscription;
-use crate::mailbox::{Mailbox, MailboxExt as _};
+use super::Subscribe;
+use crate::mailbox::Mailbox;
 use std::marker::PhantomData;
-use wasm_bindgen::prelude::*;
 
 pub struct Map<S, F, TMsg> {
-    subscription: S,
+    subscribe: S,
     f: F,
     _marker: PhantomData<fn() -> TMsg>,
 }
 
 impl<S, F, TMsg> Map<S, F, TMsg> {
-    pub(super) fn new(subscription: S, f: F) -> Self {
+    pub(super) fn new(subscribe: S, f: F) -> Self {
         Self {
-            subscription,
+            subscribe,
             f,
             _marker: PhantomData,
         }
     }
 }
 
-impl<S, F, TMsg> Subscription for Map<S, F, TMsg>
+impl<S, F, TMsg> Subscribe for Map<S, F, TMsg>
 where
-    S: Subscription,
+    S: Subscribe,
     S::Msg: 'static,
     F: Fn(S::Msg) -> TMsg + Clone + 'static,
     TMsg: 'static,
 {
     type Msg = TMsg;
-    type Handle = S::Handle;
+    type Error = S::Error;
+    type Subscription = S::Subscription;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Handle, JsValue>
+    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
     where
         M: Mailbox<Msg = Self::Msg>,
     {
-        let mailbox = mailbox.map(self.f);
-        self.subscription.subscribe(&mailbox)
+        self.subscribe.subscribe(&mailbox.map(self.f))
     }
 }

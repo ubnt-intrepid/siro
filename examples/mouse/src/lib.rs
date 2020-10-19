@@ -1,4 +1,5 @@
 use siro::prelude::*;
+use siro::subscription::{window_event, WindowEvent};
 use siro::App;
 
 use wasm_bindgen::prelude::*;
@@ -17,23 +18,26 @@ struct Model {
 
 #[derive(Debug)]
 enum Msg {
-    MouseMove(web_sys::MouseEvent),
-    MouseDown(web_sys::MouseEvent),
-    MouseUp(web_sys::MouseEvent),
+    MouseMove(WindowEvent),
+    MouseDown(WindowEvent),
+    MouseUp(WindowEvent),
 }
 
 fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
     match msg {
         Msg::MouseMove(event) => {
+            let event: &web_sys::MouseEvent = event.unchecked_ref();
             model.x = event.client_x();
             model.y = event.client_y();
         }
         Msg::MouseDown(event) => {
+            let event: &web_sys::MouseEvent = event.unchecked_ref();
             model.x = event.client_x();
             model.y = event.client_y();
             model.clicked = true;
         }
         Msg::MouseUp(event) => {
+            let event: &web_sys::MouseEvent = event.unchecked_ref();
             model.x = event.client_x();
             model.y = event.client_y();
             model.clicked = false;
@@ -80,18 +84,9 @@ pub async fn main() -> Result<(), JsValue> {
     let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
     let mut app = App::mount(mountpoint)?;
 
-    let _mousedown = app.subscribe(
-        siro::subscription::window_event("mousedown")
-            .map(|event| Msg::MouseDown(event.unchecked_into())),
-    )?;
-    let _mousemove = app.subscribe(
-        siro::subscription::window_event("mousemove")
-            .map(|event| Msg::MouseMove(event.unchecked_into())),
-    )?;
-    let _mouseup = app.subscribe(
-        siro::subscription::window_event("mouseup")
-            .map(|event| Msg::MouseUp(event.unchecked_into())),
-    )?;
+    let _mousedown = app.subscribe(window_event("mousedown").map(Msg::MouseDown))?;
+    let _mousemove = app.subscribe(window_event("mousemove").map(Msg::MouseMove))?;
+    let _mouseup = app.subscribe(window_event("mouseup").map(Msg::MouseUp))?;
 
     let mut model = Model::default();
     app.render(view(&model))?;
