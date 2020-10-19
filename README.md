@@ -9,26 +9,7 @@
 
 <br />
 
-<div align="center">
-  <a href="https://crates.io/crates/siro">
-    <img src="https://img.shields.io/crates/v/siro.svg?style=flat-square"
-         alt="crates.io"
-    />
-  </a>
-  <!--<a href="https://blog.rust-lang.org/2019/12/19/Rust-1.40.0.html">
-    <img src="https://img.shields.io/badge/rust--toolchain-1.40.0-gray?style=flat-square"
-         alt="rust toolchain"
-    />
-  </a>-->
-  <a href="https://docs.rs/siro">
-    <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
-         alt="docs.rs" />
-  </a>
-</div>
-
-<br />
-
-`siro` is a library for building client side Web application with WebAssembly.
+A Rust library for building client side Web application.
 
 > This library is currently on experimental stage and not ready for production usage.
 

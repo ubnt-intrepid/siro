@@ -1,12 +1,15 @@
 [package]
 name = "siro-web"
-version = "0.0.0-experimental.1"
+version = "0.1.0"
 publish = false
 authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+description = "Browser runtime for siro using web-sys"
 edition = "2018"
+repository = "https://github.com/ubnt-intrepid/siro.git"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
-siro = { version = "0.0.0-experimental.1", path = "../siro" }
+siro = { version = "0.1.0", path = "../siro" }
 
 futures = "0.3"
 gloo-events = "0.1"

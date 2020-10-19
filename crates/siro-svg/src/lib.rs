@@ -1,4 +1,9 @@
-//! SVG directives.
+/*!
+SVG directives for siro.
+!*/
+
+#![doc(html_root_url = "https://docs.rs/siro-svg/0.1.0")]
+#![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 use siro::{
     attr::Attr,

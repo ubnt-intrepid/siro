@@ -1,6 +1,6 @@
 [package]
 name = "siro"
-version = "0.0.0-experimental.1"
+version = "0.1.0"
 publish = false
 edition = "2018"
 description = "A client side Web application library"

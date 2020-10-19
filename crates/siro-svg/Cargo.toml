@@ -1,10 +1,13 @@
 [package]
 name = "siro-svg"
-version = "0.0.0-experimental.1"
+version = "0.1.0"
 publish = false
 authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+description = "SVG directives for siro"
 edition = "2018"
+repository = "https://github.com/ubnt-intrepid/siro.git"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
-siro = { version = "0.0.0-experimental.1", path = "../siro" }
+siro = { version = "0.1.0", path = "../siro" }
 paste = "1"
