@@ -1,4 +1,3 @@
-use siro::App;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -10,8 +9,7 @@ pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     // Mount a Siro application on the specified mountpoint.
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::<()>::mount(mountpoint)?;
+    let mut app = siro_web::App::<()>::mount("#app")?;
 
     // Draw the view.
     app.render("Hello from Rust!")?;

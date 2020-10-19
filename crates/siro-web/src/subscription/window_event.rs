@@ -1,7 +1,9 @@
-use super::{Subscribe, Subscription};
-use crate::mailbox::{Mailbox, Sender as _};
 use gloo_events::EventListener;
-use siro_vdom::event::Event;
+use siro::{
+    event::Event,
+    mailbox::{Mailbox, Sender as _},
+    subscription::{Subscribe, Subscription},
+};
 use std::borrow::Cow;
 use wasm_bindgen::prelude::*;
 

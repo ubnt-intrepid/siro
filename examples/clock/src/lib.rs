@@ -1,5 +1,7 @@
+use siro::attr::style;
 use siro::prelude::*;
-use siro::{attr::style, svg, App};
+use siro_svg as svg;
+
 use std::f32;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -91,11 +93,10 @@ fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl 
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::mount(mountpoint)?;
+    let mut app = siro_web::App::mount("#app")?;
 
-    let _guard = app.subscribe(
-        siro::subscription::animation_frames() //
+    let _frames = app.subscribe(
+        siro_web::subscription::animation_frames() //
             .map(|_timestamp| Msg::Tick),
     )?;
 

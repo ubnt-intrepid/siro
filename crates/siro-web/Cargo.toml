@@ -1,0 +1,33 @@
+[package]
+name = "siro-web"
+version = "0.0.0-experimental.1"
+publish = false
+authors = ["Yusuke Sasaki <yusuke.sasaki.nuem@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+siro = { version = "0.0.0-experimental.1", path = "../siro" }
+
+futures = "0.3"
+gloo-events = "0.1"
+indexmap = "1.6"
+itertools = "0.9"
+js-sys = "0.3"
+once_cell = "1.4"
+rustc-hash = "1.1"
+serde-wasm-bindgen = "0.1"
+wasm-bindgen = "0.2"
+
+[dependencies.web]
+package = "web-sys"
+version = "0.3"
+features = [
+    "Document",
+    "DomTokenList",
+    "Element",
+    "Event",
+    "HtmlElement",
+    "Node",
+    "Text",
+    "Window",
+]

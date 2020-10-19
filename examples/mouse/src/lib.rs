@@ -1,6 +1,5 @@
 use siro::prelude::*;
-use siro::subscription::{window_event, WindowEvent};
-use siro::App;
+use siro_web::subscription::{window_event, WindowEvent};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
@@ -48,12 +47,10 @@ fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
 }
 
 fn view(model: &Model) -> impl Node<Msg = Msg> {
-    use siro::{
-        attr::style,
-        svg::{
-            attr::{cx, cy, fill, height, r, viewbox, width},
-            circle, svg,
-        },
+    use siro::attr::style;
+    use siro_svg::{
+        attr::{cx, cy, fill, height, r, viewbox, width},
+        circle, svg,
     };
 
     svg(
@@ -81,8 +78,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::mount(mountpoint)?;
+    let mut app = siro_web::App::mount("#app")?;
 
     let _mousedown = app.subscribe(window_event("mousedown").map(Msg::MouseDown))?;
     let _mousemove = app.subscribe(window_event("mousemove").map(Msg::MouseMove))?;

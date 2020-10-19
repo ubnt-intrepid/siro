@@ -10,6 +10,8 @@ doc = false
 
 [dependencies]
 siro = { path = "../../crates/siro" }
+siro-svg = { path = "../../crates/siro-svg" }
+siro-web = { path = "../../crates/siro-web" }
 
 console_error_panic_hook = "0.1"
 futures = "0.3"

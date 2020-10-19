@@ -1,6 +1,6 @@
 //! SVG directives.
 
-use siro_vdom::{
+use siro::{
     attr::Attr,
     children::Children,
     node::{element, Node},
@@ -36,7 +36,7 @@ svg_elements! {
 
 /// SVG attributes.
 pub mod attr {
-    use siro_vdom::{
+    use siro::{
         attr::{attribute, Attr},
         types::CowStr,
     };

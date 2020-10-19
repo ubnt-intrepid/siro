@@ -1,6 +1,6 @@
 //! HTML directives.
 
-use siro_vdom::{
+use siro::{
     attr::Attr,
     children::Children,
     node::{element, Node},
@@ -88,7 +88,7 @@ html_elements!(
 
 /// HTML attributes.
 pub mod attr {
-    use siro_vdom::{
+    use siro::{
         attr::{attribute, property, Attr},
         types::{CowStr, Property},
     };
@@ -130,7 +130,7 @@ pub mod attr {
 ///
 /// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
 pub mod input {
-    use siro_vdom::{
+    use siro::{
         attr::{attribute, Attr},
         node::Node,
     };
@@ -161,7 +161,7 @@ pub mod input {
 
 pub mod event {
     use serde::{de::IgnoredAny, Deserialize};
-    use siro_vdom::attr::{event, Attr};
+    use siro::attr::{event, Attr};
 
     pub fn on<T, TMsg>(event_type: &'static str, f: impl Fn(T) -> TMsg + 'static) -> impl Attr<TMsg>
     where
@@ -173,20 +173,18 @@ pub mod event {
 
     macro_rules! define_events {
         ( $( $name:ident => $event_type:expr ),* $(,)? ) => {$(
-            paste::paste! {
-                #[inline]
-                pub fn [< on_ $name >] <TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attr<TMsg> {
-                    on($event_type, move |_: IgnoredAny| f())
-                }
+            #[inline]
+            pub fn $name<TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attr<TMsg> {
+                on($event_type, move |_: IgnoredAny| f())
             }
         )*};
     }
 
     define_events! {
-        click => "click",
-        double_click => "dblclick",
-        focus => "focus",
-        blur => "blur",
+        on_click => "click",
+        on_double_click => "dblclick",
+        on_focus => "focus",
+        on_blur => "blur",
     }
 
     #[derive(Deserialize)]

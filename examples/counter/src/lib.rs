@@ -1,5 +1,6 @@
 use siro::prelude::*;
-use siro::{html, App};
+use siro_html as html;
+
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -44,8 +45,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::mount(mountpoint)?;
+    let mut app = siro_web::App::mount("#app")?;
 
     let mut model = Model { value: 0 };
     app.render(view(&model))?;

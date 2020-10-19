@@ -1,28 +1,18 @@
-mod app;
-
+pub mod attr;
+pub mod children;
+pub mod event;
 pub mod mailbox;
+pub mod node;
 pub mod subscription;
-pub mod util;
+pub mod types;
 
-#[doc(inline)]
-pub use crate::{
-    app::App, //
-    mailbox::Mailbox,
-    subscription::Subscribe,
-};
-
-#[doc(no_inline)]
-pub use {
-    siro_html as html, //
-    siro_svg as svg,
-    siro_vdom::{self as vdom, attr, children},
-};
-
-/// A *prelude* for end users.
 pub mod prelude {
-    #[doc(no_inline)]
-    pub use crate::{mailbox::Mailbox, subscription::Subscribe};
-
-    #[doc(no_inline)]
-    pub use siro_vdom::{attr::Attr, children::Children, node::Node};
+    pub use crate::{
+        attr::Attr,
+        children::Children,
+        event::{Event, EventDecoder},
+        mailbox::Mailbox,
+        node::{IntoNode, Node},
+        subscription::{Subscribe, Subscription},
+    };
 }

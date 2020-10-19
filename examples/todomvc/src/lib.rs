@@ -1,14 +1,11 @@
 use futures::prelude::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use siro::attr::class;
 use siro::prelude::*;
-use siro::{
-    attr::class,
-    html::{
-        self, attr,
-        event::{on_blur, on_click, on_double_click, on_enter, on_input},
-    },
-    App,
+use siro_html::{
+    self as html, attr,
+    event::{on_blur, on_click, on_double_click, on_enter, on_input},
 };
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
@@ -398,7 +395,7 @@ fn input_id(id: TodoId) -> String {
 
 fn focus_input(id: TodoId) {
     let input_id = input_id(id);
-    if let Some(document) = siro::util::document() {
+    if let Some(document) = web_sys::window().and_then(|w| w.document()) {
         if let Some(element) = document.get_element_by_id(&input_id) {
             let element: web_sys::HtmlElement = element.unchecked_into();
             let _ = element.focus();
@@ -428,8 +425,7 @@ pub async fn main() -> Result<(), JsValue> {
     let mut model = restore_model(&storage).unwrap_or_default();
     model.visibility = current_visibility(&window);
 
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::mount(mountpoint)?;
+    let mut app = siro_web::App::mount("#app")?;
     app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {

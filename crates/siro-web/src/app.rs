@@ -1,12 +1,10 @@
-use crate::{
-    mailbox::{Mailbox, Sender},
-    subscription::Subscribe,
-};
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
-use siro_vdom::{
+use siro::{
     event::EventDecoder,
+    mailbox::{Mailbox, Sender},
     node::{self, IntoNode, Node},
+    subscription::Subscribe,
     types::{Attribute, CowStr, Property},
 };
 use wasm_bindgen::prelude::*;
@@ -20,28 +18,31 @@ pub struct App<TMsg: 'static> {
 }
 
 impl<TMsg: 'static> App<TMsg> {
-    pub fn mount(mountpoint: web::Node) -> Result<Self, JsValue> {
+    fn new(mountpoint: web::Node, document: web::Document) -> Self {
         let (tx, rx) = mpsc::unbounded();
-        Ok(App {
+        Self {
             mountpoint,
-            document: crate::util::document().ok_or("no Document exists")?,
+            document,
             vnode: None,
             mailbox: AppMailbox { tx },
             rx,
-        })
+        }
+    }
+
+    pub fn mount(selector: &str) -> Result<Self, JsValue> {
+        let document = crate::document().ok_or("no Document exists")?;
+        let mountpoint = document.query_selector(selector)?.ok_or("missing node")?;
+        Ok(Self::new(mountpoint.into(), document))
     }
 
     pub fn mount_to_body() -> Result<Self, JsValue> {
-        let body = crate::util::document()
-            .ok_or("no Document exists")?
-            .body()
-            .ok_or("missing body in document")?
-            .into();
-        Self::mount(body)
+        let document = crate::document().ok_or("no Document exists")?;
+        let body = document.body().ok_or("missing body in document")?;
+        Ok(Self::new(body.into(), document))
     }
 
-    pub fn mountpoint(&self) -> &web::Node {
-        &self.mountpoint
+    pub fn mailbox(&self) -> &impl Mailbox<Msg = TMsg> {
+        &self.mailbox
     }
 
     /// Register a `Subscribe`.
@@ -49,7 +50,7 @@ impl<TMsg: 'static> App<TMsg> {
     where
         S: Subscribe<Msg = TMsg>,
     {
-        s.subscribe(self)
+        s.subscribe(&self.mailbox)
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {
@@ -88,7 +89,7 @@ impl<TMsg: 'static> Mailbox for AppMailbox<TMsg> {
     }
 }
 
-pub struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
+struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
 
 impl<TMsg> Clone for AppSender<TMsg> {
     fn clone(&self) -> Self {
@@ -101,19 +102,6 @@ impl<TMsg: 'static> Sender for AppSender<TMsg> {
 
     fn send_message(&self, msg: TMsg) {
         self.0.unbounded_send(msg).unwrap_throw();
-    }
-}
-
-impl<TMsg: 'static> Mailbox for App<TMsg> {
-    type Msg = TMsg;
-    type Sender = AppSender<TMsg>;
-
-    fn send_message(&self, msg: Self::Msg) {
-        self.mailbox.send_message(msg);
-    }
-
-    fn sender(&self) -> Self::Sender {
-        self.mailbox.sender()
     }
 }
 
@@ -534,7 +522,7 @@ struct AppEvent<'a> {
 
 mod impl_app_event {
     use super::*;
-    use siro_vdom::event::Event;
+    use siro::event::Event;
 
     impl<'e> Event<'e> for AppEvent<'_> {
         type Deserializer = serde_wasm_bindgen::Deserializer;

@@ -1,12 +1,6 @@
-mod animation_frames;
-mod interval;
 mod map;
-mod window_event;
 
-pub use animation_frames::animation_frames;
-pub use interval::interval;
 pub use map::Map;
-pub use window_event::{window_event, WindowEvent};
 
 use crate::mailbox::Mailbox;
 

@@ -1,5 +1,5 @@
 use siro::prelude::*;
-use siro::App;
+
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -29,7 +29,7 @@ mod counter {
     }
 
     pub fn view(model: &Model) -> impl Node<Msg = Msg> {
-        use siro::html::{button, div, event::on_click};
+        use siro_html::{button, div, event::on_click};
 
         div(
             (),
@@ -57,7 +57,7 @@ fn update(model: &mut Model, msg: Msg) {
 
 fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
     use siro::children::iter;
-    use siro::html::div;
+    use siro_html::div;
 
     div(
         (),
@@ -82,8 +82,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::mount(mountpoint)?;
+    let mut app = siro_web::App::mount("#app")?;
 
     let mut model = vec![counter::Model::default(); 10];
     app.render(view(&model))?;

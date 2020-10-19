@@ -1,4 +1,3 @@
-use siro::App;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -9,12 +8,11 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mountpoint = siro::util::select("#app").ok_or("missing #app")?;
-    let mut app = App::<()>::mount(mountpoint)?;
+    let mut app = siro_web::App::<()>::mount("#app")?;
 
     app.render({
         use siro::attr::style;
-        use siro::html::{div, span};
+        use siro_html::{div, span};
 
         div(
             (),

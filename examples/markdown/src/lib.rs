@@ -1,5 +1,4 @@
 use siro::prelude::*;
-use siro::App;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
 
@@ -23,7 +22,7 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl Node<Msg = Msg> {
-    use siro::html::{attr::id, div, event::on_input, textarea};
+    use siro_html::{attr::id, div, event::on_input, textarea};
 
     div(
         id("editor"),
@@ -36,7 +35,8 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
 
 fn view_markdown_preview(input: &str) -> impl Node<Msg = Msg> {
     use pulldown_cmark::{Options, Parser};
-    use siro::{attr::inner_html, html::div};
+    use siro::attr::inner_html;
+    use siro_html::div;
 
     let parser = Parser::new_ext(
         input,
@@ -57,7 +57,7 @@ fn view_markdown_preview(input: &str) -> impl Node<Msg = Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = App::mount_to_body()?;
+    let mut app = siro_web::App::mount_to_body()?;
 
     let mut model = Model::default();
     app.render(view(&model))?;

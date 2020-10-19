@@ -1,6 +1,8 @@
-use super::{Subscribe, Subscription};
-use crate::mailbox::{Mailbox, Sender as _};
 use once_cell::unsync::OnceCell;
+use siro::{
+    mailbox::{Mailbox, Sender as _},
+    subscription::{Subscribe, Subscription},
+};
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
