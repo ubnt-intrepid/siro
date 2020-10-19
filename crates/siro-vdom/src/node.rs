@@ -1,3 +1,5 @@
+//! Representation of DOM nodes.
+
 mod element;
 mod map;
 mod text;
@@ -6,7 +8,10 @@ pub use element::{element, Element};
 pub use map::Map;
 pub use text::{text, Text};
 
-use crate::types::{Attribute, CowStr, Property};
+use crate::{
+    event::EventDecoder,
+    types::{Attribute, CowStr, Property},
+};
 
 /// A data structure that represents a virtual DOM node.
 pub trait Node {
@@ -25,20 +30,6 @@ pub trait Node {
         F: Fn(Self::Msg) -> TMsg + Clone + 'static,
     {
         Map { node: self, f }
-    }
-}
-
-impl<T> Node for &T
-where
-    T: Node + Clone,
-{
-    type Msg = T::Msg;
-
-    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
-    where
-        Ctx: Context<Msg = Self::Msg>,
-    {
-        T::clone(self).render(ctx)
     }
 }
 
@@ -111,24 +102,12 @@ pub trait ElementContext {
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-pub trait EventDecoder {
-    type Msg: 'static;
-
-    fn decode_event<'e, E>(&self, event: E) -> Result<Option<Self::Msg>, E::Error>
-    where
-        E: Event<'e>;
-}
-
-pub trait Event<'e> {
-    type Error: serde::de::Error;
-    type Deserializer: serde::de::Deserializer<'e, Error = Self::Error>;
-
-    fn into_deserializer(self) -> Self::Deserializer;
-}
-
+/// Implemented by types that is converted to `Node`.
 pub trait IntoNode<TMsg: 'static> {
+    /// The type of `Node` to be converted.
     type Node: Node<Msg = TMsg>;
 
+    /// Convert itself into a `Node`.
     fn into_node(self) -> Self::Node;
 }
 

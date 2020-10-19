@@ -2,7 +2,8 @@ use crate::mailbox::{Mailbox, Sender};
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use siro_vdom::{
-    node::{self, EventDecoder, IntoNode, Node},
+    event::EventDecoder,
+    node::{self, IntoNode, Node},
     types::{Attribute, CowStr, Property},
 };
 use wasm_bindgen::prelude::*;
@@ -522,7 +523,7 @@ struct AppEvent<'a> {
 
 mod impl_app_event {
     use super::*;
-    use siro_vdom::node::Event;
+    use siro_vdom::event::Event;
 
     impl<'e> Event<'e> for AppEvent<'_> {
         type Deserializer = serde_wasm_bindgen::Deserializer;

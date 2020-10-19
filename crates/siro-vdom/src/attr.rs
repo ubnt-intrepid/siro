@@ -1,48 +1,117 @@
 use crate::{
-    node::{ElementContext, Event, EventDecoder},
+    event::{Event, EventDecoder},
     types::{Attribute, CowStr, Property},
 };
 use either::Either;
 use serde::Deserialize;
 use std::marker::PhantomData;
 
-/// The modifier of a `View` that annotates one or more attribute values.
+/// A collection of DOM attributes.
 pub trait Attr<TMsg: 'static> {
-    /// Apply itself to specified `VElement`.
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    /// Apply DOM attributes to specified context.
+    fn apply<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>;
+        Ctx: Context<Msg = TMsg>;
+}
+
+pub trait Context {
+    type Msg: 'static;
+    type Ok;
+    type Error;
+
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error>;
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error>;
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error>;
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error>;
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error>;
+
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
+    where
+        D: EventDecoder<Msg = Self::Msg> + 'static;
+
+    fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
 impl<TMsg: 'static> Attr<TMsg> for () {
-    fn apply<Ctx: ?Sized>(self, _: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
+        ctx.end()
+    }
+}
+
+struct TupleContext<'a, Ctx: ?Sized> {
+    ctx: &'a mut Ctx,
+}
+
+impl<Ctx: ?Sized> Context for TupleContext<'_, Ctx>
+where
+    Ctx: Context,
+{
+    type Msg = Ctx::Msg;
+    type Ok = ();
+    type Error = Ctx::Error;
+
+    #[inline]
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+        self.ctx.attribute(name, value)
+    }
+
+    #[inline]
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+        self.ctx.property(name, value)
+    }
+
+    #[inline]
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+        self.ctx.class(class_name)
+    }
+
+    #[inline]
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+        self.ctx.style(name, value)
+    }
+
+    #[inline]
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+        self.ctx.inner_html(inner_html)
+    }
+
+    #[inline]
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
+    where
+        D: EventDecoder<Msg = Self::Msg> + 'static,
+    {
+        self.ctx.event(event_type, decoder)
+    }
+
+    #[inline]
+    fn end(self) -> Result<Self::Ok, Self::Error> {
         Ok(())
     }
 }
 
 macro_rules! impl_attr_for_tuples {
     ( $H:ident, $( $T:ident ),* ) => {
+        impl_attr_for_tuples!($($T),*);
+
         impl<TMsg: 'static, $H, $( $T ),*> Attr<TMsg> for ($H, $( $T ),*)
         where
             $H: Attr<TMsg>,
             $( $T: Attr<TMsg>, )*
         {
-            fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+            fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
             where
-                Ctx: ElementContext<Msg = TMsg>,
+                Ctx: Context<Msg = TMsg>,
             {
                 #[allow(non_snake_case)]
                 let ($H, $( $T ),*) = self;
-                $H.apply(ctx)?;
-                $( $T.apply(ctx)?; )*
-                Ok(())
+                Attr::apply($H, TupleContext { ctx: &mut ctx })?;
+                $( Attr::apply($T, TupleContext { ctx: &mut ctx })?; )*
+                ctx.end()
             }
         }
-
-        impl_attr_for_tuples!($($T),*);
     };
 
     ( $T:ident ) => {
@@ -50,12 +119,11 @@ macro_rules! impl_attr_for_tuples {
         where
             $T: Attr<TMsg>,
         {
-            fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+            fn apply<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
             where
-                Ctx: ElementContext<Msg = TMsg>,
+                Ctx: Context<Msg = TMsg>,
             {
-                self.0.apply(ctx)?;
-                Ok(())
+                Attr::apply(self.0, ctx)
             }
         }
     };
@@ -70,13 +138,13 @@ impl<TMsg: 'static, T> Attr<TMsg> for Option<T>
 where
     T: Attr<TMsg>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         match self {
             Some(m) => m.apply(ctx),
-            None => Ok(()),
+            None => ctx.end(),
         }
     }
 }
@@ -86,9 +154,9 @@ where
     M1: Attr<TMsg>,
     M2: Attr<TMsg>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         match self {
             Either::Left(l) => Attr::apply(l, ctx),
@@ -116,12 +184,12 @@ where
     K: Into<CowStr>,
     V: Into<Attribute>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         ctx.attribute(self.name.into(), self.value.into())?;
-        Ok(())
+        ctx.end()
     }
 }
 
@@ -144,12 +212,12 @@ where
     K: Into<CowStr>,
     V: Into<Property>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         ctx.property(self.name.into(), self.value.into())?;
-        Ok(())
+        ctx.end()
     }
 }
 
@@ -167,12 +235,12 @@ impl<T, TMsg: 'static> Attr<TMsg> for SetClass<T>
 where
     T: Into<CowStr>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         ctx.class(self.class_name.into())?;
-        Ok(())
+        ctx.end()
     }
 }
 
@@ -192,12 +260,12 @@ where
     K: Into<CowStr>,
     V: Into<CowStr>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         ctx.style(self.name.into(), self.value.into())?;
-        Ok(())
+        ctx.end()
     }
 }
 
@@ -215,12 +283,12 @@ impl<T, TMsg: 'static> Attr<TMsg> for SetInnerHtml<T>
 where
     T: Into<CowStr>,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         ctx.inner_html(self.inner_html.into())?;
-        Ok(())
+        ctx.end()
     }
 }
 
@@ -253,9 +321,9 @@ where
     T: for<'de> Deserialize<'de> + 'static,
     TMsg: 'static,
 {
-    fn apply<Ctx: ?Sized>(self, ctx: &mut Ctx) -> Result<(), Ctx::Error>
+    fn apply<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
     where
-        Ctx: ElementContext<Msg = TMsg>,
+        Ctx: Context<Msg = TMsg>,
     {
         ctx.event(
             self.event_type,
@@ -264,7 +332,7 @@ where
                 _marker: PhantomData,
             },
         )?;
-        Ok(())
+        ctx.end()
     }
 }
 
