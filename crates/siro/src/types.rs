@@ -1,49 +1,70 @@
+//! Common types used in DOM representation.
+
+/// Clone-on-write string.
 pub type CowStr = std::borrow::Cow<'static, str>;
 
+/// The value of DOM attributes.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Attribute {
     String(CowStr),
     Bool(bool),
 }
 
-impl From<&'static str> for Attribute {
-    fn from(s: &'static str) -> Self {
-        Attribute::String(s.into())
-    }
+macro_rules! impl_attributes {
+    ($(
+        $Variant:ident => [ $($t:ty),* $(,)? ];
+    )*) => {$(
+        $(
+            impl From<$t> for Attribute {
+                fn from(val: $t) -> Self {
+                    Attribute::$Variant(val.into())
+                }
+            }
+        )*
+    )*};
 }
 
-impl From<String> for Attribute {
-    fn from(s: String) -> Self {
-        Attribute::String(s.into())
-    }
+impl_attributes! {
+    String => [
+        &'static str,
+        String,
+        CowStr,
+    ];
+    Bool => [bool];
 }
 
-impl From<CowStr> for Attribute {
-    fn from(s: CowStr) -> Self {
-        Attribute::String(s)
-    }
-}
-
-impl From<bool> for Attribute {
-    fn from(b: bool) -> Self {
-        Attribute::Bool(b)
-    }
-}
-
+/// The property values in DOM object.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Property {
-    String(String),
+    String(CowStr),
+    Number(f64),
     Bool(bool),
 }
 
-impl From<String> for Property {
-    fn from(s: String) -> Self {
-        Property::String(s)
-    }
+macro_rules! impl_properties {
+    ($(
+        $Variant:ident => [ $($t:ty),* $(,)? ];
+    )*) => {$(
+        $(
+            impl From<$t> for Property {
+                fn from(val: $t) -> Self {
+                    Property::$Variant(val.into())
+                }
+            }
+        )*
+    )*};
 }
 
-impl From<bool> for Property {
-    fn from(b: bool) -> Self {
-        Property::Bool(b)
-    }
+impl_properties! {
+    String => [
+        &'static str,
+        String,
+        CowStr,
+    ];
+    Number => [
+        f64, f32,
+        i8, i16, i32,
+        u8, u16, u32,
+    ];
+    Bool => [bool];
 }

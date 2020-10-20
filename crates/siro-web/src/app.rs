@@ -537,9 +537,10 @@ fn set_attribute(element: &web::Element, name: &str, value: &Attribute) -> Resul
 }
 
 fn set_property(element: &web::Element, name: &str, value: &Property) -> Result<(), JsValue> {
-    let value = match value.clone() {
-        Property::String(s) => s.into(),
-        Property::Bool(b) => b.into(),
+    let value = match value {
+        Property::String(s) => JsValue::from_str(&*s),
+        Property::Number(n) => JsValue::from_f64(*n),
+        Property::Bool(b) => JsValue::from_bool(*b),
     };
     js_sys::Reflect::set(element, &JsValue::from_str(name), &value)?;
     Ok(())
