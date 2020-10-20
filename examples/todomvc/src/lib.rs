@@ -1,4 +1,3 @@
-use futures::prelude::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use siro::attr::class;
@@ -60,6 +59,7 @@ impl std::str::FromStr for Visibility {
 // ==== update ====
 
 enum Msg {
+    Nop,
     UpdateField(String),
     Add,
     Check(TodoId, bool),
@@ -71,15 +71,10 @@ enum Msg {
     EditingEntry(TodoId, bool),
 }
 
-fn update(
-    model: &mut Model,
-    msg: Msg,
-    storage: &Storage,
-) -> Option<impl Future<Output = ()> + 'static> {
+fn update(model: &mut Model, msg: Msg, storage: &Storage, app: &mut siro_web::App<Msg>) {
     match msg {
         Msg::UpdateField(input) => {
             model.input = input;
-            None
         }
 
         Msg::Add => {
@@ -97,7 +92,6 @@ fn update(
                 );
                 save_model(model, storage);
             }
-            None
         }
 
         Msg::Check(id, completed) => {
@@ -105,7 +99,6 @@ fn update(
                 entry.completed = completed;
                 save_model(model, storage);
             }
-            None
         }
 
         Msg::CheckAll(completed) => {
@@ -113,25 +106,21 @@ fn update(
                 entry.completed = completed;
             }
             save_model(model, storage);
-            None
         }
 
         Msg::Delete(id) => {
             if let Some(..) = model.entries.remove(&id) {
                 save_model(model, storage);
             }
-            None
         }
 
         Msg::DeleteCompleted => {
             model.entries.retain(|_, entry| !entry.completed);
             save_model(model, storage);
-            None
         }
 
         Msg::ChangeVisibility(visibility) => {
             model.visibility.replace(visibility);
-            None
         }
 
         Msg::UpdateEntry(id, description) => {
@@ -139,7 +128,6 @@ fn update(
                 entry.description = description;
                 save_model(model, storage);
             }
-            None
         }
 
         Msg::EditingEntry(id, editing) => {
@@ -148,13 +136,14 @@ fn update(
             }
 
             if editing {
-                Some(async move {
+                app.spawn_local(async move {
                     focus_input(id);
-                })
-            } else {
-                None
+                    Msg::Nop
+                });
             }
         }
+
+        _ => (),
     }
 }
 
@@ -429,11 +418,8 @@ pub async fn main() -> Result<(), JsValue> {
     app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
-        let cmd = update(&mut model, msg, &storage);
+        update(&mut model, msg, &storage, &mut app);
         app.render(view(&model))?;
-        if let Some(cmd) = cmd {
-            wasm_bindgen_futures::spawn_local(cmd);
-        }
     }
 
     Ok(())

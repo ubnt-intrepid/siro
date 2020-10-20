@@ -1,4 +1,4 @@
-use futures::{channel::mpsc, prelude::*};
+use futures::{channel::mpsc, future::LocalBoxFuture, prelude::*, stream::FuturesUnordered};
 use gloo_events::EventListener;
 use siro::{
     event::{Event, EventDecoder},
@@ -14,6 +14,7 @@ pub struct App<TMsg: 'static> {
     vnode: Option<VNode>,
     tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
+    pending_tasks: FuturesUnordered<LocalBoxFuture<'static, TMsg>>,
 }
 
 impl<TMsg: 'static> App<TMsg> {
@@ -25,6 +26,7 @@ impl<TMsg: 'static> App<TMsg> {
             vnode: None,
             tx,
             rx,
+            pending_tasks: FuturesUnordered::new(),
         }
     }
 
@@ -48,8 +50,19 @@ impl<TMsg: 'static> App<TMsg> {
         subscription.subscribe(AppSubscriber { tx: &self.tx })
     }
 
+    pub fn spawn_local<Fut>(&mut self, future: Fut)
+    where
+        Fut: Future<Output = TMsg> + 'static,
+    {
+        self.pending_tasks.push(Box::pin(future));
+    }
+
     pub async fn next_message(&mut self) -> Option<TMsg> {
-        self.rx.next().await
+        futures::select! {
+            ret = self.rx.next() => ret,
+            msg = self.pending_tasks.select_next_some() => Some(msg),
+            complete => None,
+        }
     }
 
     pub fn render<N>(&mut self, node: N) -> Result<(), JsValue>
