@@ -18,12 +18,12 @@ pub trait Node {
     /// The message type associated with this node.
     type Msg: 'static;
 
-    /// Render this node using the given context.
-    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    /// Render this node using the given renderer.
+    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        Ctx: Context<Msg = Self::Msg>;
+        R: Renderer<Msg = Self::Msg>;
 
-    /// Map the message type of this node to another one.
+    /// Map the message type to another one.
     fn map<F, TMsg: 'static>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
@@ -33,8 +33,8 @@ pub trait Node {
     }
 }
 
-/// The context for rendering virtual DOM nodes.
-pub trait Context {
+/// The context for rendering a virtual DOM node.
+pub trait Renderer {
     /// The message type associated with this context.
     type Msg: 'static;
 
@@ -44,10 +44,8 @@ pub trait Context {
     /// The error type on rendering.
     type Error;
 
-    /// The context type for rendering an element node.
-    ///
-    /// The value of this type is returned from `element_node`.
-    type Element: ElementContext<
+    /// The renderer for an element node, returned from `element_node`.
+    type Element: ElementRenderer<
         Msg = Self::Msg, //
         Ok = Self::Ok,
         Error = Self::Error,
@@ -65,7 +63,7 @@ pub trait Context {
 }
 
 /// The context for rendering an element node.
-pub trait ElementContext {
+pub trait ElementRenderer {
     type Msg: 'static;
     type Ok;
     type Error;

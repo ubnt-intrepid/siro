@@ -1,4 +1,4 @@
-use super::{Context, ElementContext, EventDecoder, Node};
+use super::{ElementRenderer, EventDecoder, Node, Renderer};
 use crate::{
     attr::{self, Attr},
     children::{self, Children},
@@ -41,11 +41,11 @@ where
 {
     type Msg = TMsg;
 
-    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        Ctx: Context<Msg = Self::Msg>,
+        R: Renderer<Msg = Self::Msg>,
     {
-        let mut element = ctx.element_node(self.tag_name, self.namespace_uri)?;
+        let mut element = renderer.element_node(self.tag_name, self.namespace_uri)?;
 
         let has_inner_html = self.attr.apply(AttrContext {
             element: &mut element,
@@ -69,7 +69,7 @@ struct AttrContext<'a, Ctx: ?Sized> {
 
 impl<Ctx: ?Sized> attr::Context for AttrContext<'_, Ctx>
 where
-    Ctx: ElementContext,
+    Ctx: ElementRenderer,
 {
     type Msg = Ctx::Msg;
     type Ok = bool;
@@ -115,7 +115,7 @@ struct ChildrenContext<'a, Ctx: ?Sized> {
 
 impl<Ctx: ?Sized> children::Context for ChildrenContext<'_, Ctx>
 where
-    Ctx: ElementContext,
+    Ctx: ElementRenderer,
 {
     type Msg = Ctx::Msg;
     type Ok = ();

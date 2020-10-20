@@ -1,4 +1,4 @@
-use super::{Context, ElementContext, Node};
+use super::{ElementRenderer, Node, Renderer};
 use crate::{
     event::{Event, EventDecoder},
     types::{Attribute, CowStr, Property},
@@ -19,43 +19,43 @@ where
 {
     type Msg = TMsg;
 
-    fn render<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        Ctx: Context<Msg = Self::Msg>,
+        R: Renderer<Msg = Self::Msg>,
     {
-        self.node.render(MapContext {
-            ctx,
+        self.node.render(MapRenderer {
+            renderer,
             f: &self.f,
             _marker: PhantomData,
         })
     }
 }
 
-struct MapContext<'a, Ctx, F, TMsg> {
-    ctx: Ctx,
+struct MapRenderer<'a, R, F, TMsg> {
+    renderer: R,
     f: &'a F,
     _marker: PhantomData<fn(TMsg)>,
 }
 
-impl<'a, Ctx, F, TMsg> Context for MapContext<'a, Ctx, F, TMsg>
+impl<'a, R, F, TMsg> Renderer for MapRenderer<'a, R, F, TMsg>
 where
-    Ctx: Context,
-    F: Fn(TMsg) -> Ctx::Msg + Clone + 'static,
+    R: Renderer,
+    F: Fn(TMsg) -> R::Msg + Clone + 'static,
     TMsg: 'static,
 {
     type Msg = TMsg;
-    type Ok = Ctx::Ok;
-    type Error = Ctx::Error;
+    type Ok = R::Ok;
+    type Error = R::Error;
 
-    type Element = MapElementContext<'a, Ctx::Element, F, TMsg>;
+    type Element = MapElementRenderer<'a, R::Element, F, TMsg>;
 
     fn element_node(
         self,
         tag_name: CowStr,
         namespace_uri: Option<CowStr>,
     ) -> Result<Self::Element, Self::Error> {
-        let element = self.ctx.element_node(tag_name, namespace_uri)?;
-        Ok(MapElementContext {
+        let element = self.renderer.element_node(tag_name, namespace_uri)?;
+        Ok(MapElementRenderer {
             element,
             f: self.f,
             _marker: PhantomData,
@@ -64,19 +64,19 @@ where
 
     #[inline]
     fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
-        self.ctx.text_node(data)
+        self.renderer.text_node(data)
     }
 }
 
-pub struct MapElementContext<'a, E, F, TMsg> {
+pub struct MapElementRenderer<'a, E, F, TMsg> {
     element: E,
     f: &'a F,
     _marker: PhantomData<fn(TMsg)>,
 }
 
-impl<E, F, TMsg> ElementContext for MapElementContext<'_, E, F, TMsg>
+impl<E, F, TMsg> ElementRenderer for MapElementRenderer<'_, E, F, TMsg>
 where
-    E: ElementContext,
+    E: ElementRenderer,
     F: Fn(TMsg) -> E::Msg + Clone + 'static,
     TMsg: 'static,
 {

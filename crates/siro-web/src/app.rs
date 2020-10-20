@@ -2,7 +2,7 @@ use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use siro::{
     event::EventDecoder,
-    node::{self, IntoNode, Node},
+    node::{ElementRenderer, IntoNode, Node, Renderer},
     subscription::{Mailbox, Subscriber, Subscription},
     types::{Attribute, CowStr, Property},
 };
@@ -57,7 +57,7 @@ impl<TMsg: 'static> App<TMsg> {
         N: IntoNode<TMsg>,
     {
         let node = node.into_node();
-        node.render(RenderContext {
+        node.render(AppRenderer {
             document: &self.document,
             tx: &self.tx,
             parent: &self.mountpoint,
@@ -153,19 +153,19 @@ impl VElement {
     }
 }
 
-struct RenderContext<'a, TMsg: 'static> {
+struct AppRenderer<'a, TMsg: 'static> {
     document: &'a web::Document,
     tx: &'a mpsc::UnboundedSender<TMsg>,
     parent: &'a web::Node,
     vnode: &'a mut VNode,
 }
 
-impl<'a, TMsg: 'static> node::Context for RenderContext<'a, TMsg> {
+impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
     type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
 
-    type Element = RenderElement<'a, TMsg>;
+    type Element = AppElementRenderer<'a, TMsg>;
 
     fn element_node(
         self,
@@ -213,7 +213,7 @@ impl<'a, TMsg: 'static> node::Context for RenderContext<'a, TMsg> {
                 let class_list = node.class_list();
                 let style = js_sys::Reflect::get(&node, &JsValue::from_str("style"))?;
 
-                Ok(RenderElement {
+                Ok(AppElementRenderer {
                     document: self.document,
                     tx: self.tx,
                     velement,
@@ -254,7 +254,7 @@ impl<'a, TMsg: 'static> node::Context for RenderContext<'a, TMsg> {
     }
 }
 
-struct RenderElement<'a, TMsg: 'static> {
+struct AppElementRenderer<'a, TMsg: 'static> {
     document: &'a web::Document,
     tx: &'a mpsc::UnboundedSender<TMsg>,
     velement: &'a mut VElement,
@@ -277,7 +277,7 @@ enum RenderElementOp {
     New,
 }
 
-impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
+impl<TMsg: 'static> ElementRenderer for AppElementRenderer<'_, TMsg> {
     type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
@@ -405,7 +405,7 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
                     std::cmp::max(self.velement.children.len(), *cursor + 1),
                     || VNode::Null,
                 );
-                child.render(RenderContext {
+                child.render(AppRenderer {
                     document: &*self.document,
                     tx: &*self.tx,
                     parent: self.node.as_ref(),
@@ -416,7 +416,7 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
 
             RenderElementOp::New if self.velement.inner_html.is_none() => {
                 let mut vnode = VNode::Null;
-                child.render(RenderContext {
+                child.render(AppRenderer {
                     document: &*self.document,
                     tx: &*self.tx,
                     parent: self.node.as_ref(),
