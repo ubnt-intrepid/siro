@@ -1,26 +1,20 @@
 use super::{Mailbox, Subscriber, Subscription};
 use std::marker::PhantomData;
 
-pub struct Map<S, F, TMsg> {
-    subscribe: S,
+pub struct Map<S, F> {
+    subscription: S,
     f: F,
-    _marker: PhantomData<fn() -> TMsg>,
 }
 
-impl<S, F, TMsg> Map<S, F, TMsg> {
-    pub(super) fn new(subscribe: S, f: F) -> Self {
-        Self {
-            subscribe,
-            f,
-            _marker: PhantomData,
-        }
+impl<S, F> Map<S, F> {
+    pub(super) fn new(subscription: S, f: F) -> Self {
+        Self { subscription, f }
     }
 }
 
-impl<S, F, TMsg> Subscription for Map<S, F, TMsg>
+impl<S, F, TMsg> Subscription for Map<S, F>
 where
     S: Subscription,
-    S::Msg: 'static,
     F: Fn(S::Msg) -> TMsg + Clone + 'static,
     TMsg: 'static,
 {
@@ -32,7 +26,7 @@ where
     where
         T: Subscriber<Msg = Self::Msg>,
     {
-        self.subscribe.subscribe(MapSubscriber {
+        self.subscription.subscribe(MapSubscriber {
             subscriber,
             f: self.f,
             _marker: PhantomData,

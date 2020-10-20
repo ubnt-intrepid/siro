@@ -77,7 +77,6 @@ struct WindowEventSubscription {
 }
 
 impl Subscribe for WindowEventSubscription {
-    type Msg = WindowEvent;
     type Error = JsValue;
 
     fn unsubscribe(&mut self) -> Result<(), Self::Error> {

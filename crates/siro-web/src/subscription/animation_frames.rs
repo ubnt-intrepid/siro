@@ -96,7 +96,6 @@ struct AnimationFramesSubscription {
 }
 
 impl Subscribe for AnimationFramesSubscription {
-    type Msg = ();
     type Error = JsValue;
 
     fn unsubscribe(&mut self) -> Result<(), Self::Error> {

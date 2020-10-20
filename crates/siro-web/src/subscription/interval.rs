@@ -50,7 +50,6 @@ struct Inner {
 }
 
 impl Subscribe for IntervalSubscription {
-    type Msg = ();
     type Error = JsValue;
 
     fn unsubscribe(&mut self) -> Result<(), Self::Error> {

@@ -23,7 +23,7 @@ pub trait Subscription {
         S: Subscriber<Msg = Self::Msg>;
 
     /// Map the message type to another one.
-    fn map<F, TMsg>(self, f: F) -> Map<Self, F, TMsg>
+    fn map<F, TMsg>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
         F: Fn(Self::Msg) -> TMsg + Clone + 'static,
@@ -35,9 +35,6 @@ pub trait Subscription {
 
 /// The session until the end of subscription.
 pub trait Subscribe {
-    /// The message type of the subscription.
-    type Msg: 'static;
-
     /// The error type returned from `unsubscribe`.
     type Error;
 
