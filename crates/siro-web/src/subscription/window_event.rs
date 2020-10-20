@@ -1,8 +1,7 @@
 use gloo_events::EventListener;
 use siro::{
     event::Event,
-    mailbox::{Mailbox, Sender as _},
-    subscription::{Subscribe, Subscription},
+    subscription::{Mailbox as _, Subscribe, Subscriber, Subscription},
 };
 use std::borrow::Cow;
 use wasm_bindgen::prelude::*;
@@ -38,7 +37,7 @@ impl<'e> Event<'e> for WindowEvent {
 
 pub fn window_event(
     event_type: impl Into<Cow<'static, str>>,
-) -> impl Subscribe<Msg = WindowEvent, Error = JsValue> {
+) -> impl Subscription<Msg = WindowEvent, Error = JsValue> {
     SubscribeWindowEvent {
         event_type: event_type.into(),
     }
@@ -48,23 +47,23 @@ struct SubscribeWindowEvent {
     event_type: Cow<'static, str>,
 }
 
-impl Subscribe for SubscribeWindowEvent {
+impl Subscription for SubscribeWindowEvent {
     type Msg = WindowEvent;
-    type Subscription = WindowEventSubscription;
+    type Subscribe = WindowEventSubscription;
     type Error = JsValue;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
+    fn subscribe<Ctx>(self, ctx: Ctx) -> Result<Self::Subscribe, Self::Error>
     where
-        M: Mailbox<Msg = Self::Msg>,
+        Ctx: Subscriber<Msg = Self::Msg>,
     {
         let Self { event_type } = self;
 
-        let sender = mailbox.sender();
+        let mailbox = ctx.mailbox();
 
         let window = web::window().ok_or("no global `Window` exists")?;
 
         let listener = EventListener::new(&window, event_type, move |event| {
-            sender.send_message(WindowEvent(event.clone()));
+            mailbox.send_message(WindowEvent(event.clone()));
         });
 
         Ok(WindowEventSubscription {
@@ -77,7 +76,7 @@ struct WindowEventSubscription {
     listener: Option<EventListener>,
 }
 
-impl Subscription for WindowEventSubscription {
+impl Subscribe for WindowEventSubscription {
     type Msg = WindowEvent;
     type Error = JsValue;
 

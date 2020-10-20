@@ -1,5 +1,4 @@
-use super::Subscribe;
-use crate::mailbox::Mailbox;
+use super::{Mailbox, Subscriber, Subscription};
 use std::marker::PhantomData;
 
 pub struct Map<S, F, TMsg> {
@@ -18,21 +17,68 @@ impl<S, F, TMsg> Map<S, F, TMsg> {
     }
 }
 
-impl<S, F, TMsg> Subscribe for Map<S, F, TMsg>
+impl<S, F, TMsg> Subscription for Map<S, F, TMsg>
 where
-    S: Subscribe,
+    S: Subscription,
     S::Msg: 'static,
     F: Fn(S::Msg) -> TMsg + Clone + 'static,
     TMsg: 'static,
 {
     type Msg = TMsg;
     type Error = S::Error;
-    type Subscription = S::Subscription;
+    type Subscribe = S::Subscribe;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
+    fn subscribe<T>(self, subscriber: T) -> Result<Self::Subscribe, Self::Error>
     where
-        M: Mailbox<Msg = Self::Msg>,
+        T: Subscriber<Msg = Self::Msg>,
     {
-        self.subscribe.subscribe(&mailbox.map(self.f))
+        self.subscribe.subscribe(MapSubscriber {
+            subscriber,
+            f: self.f,
+            _marker: PhantomData,
+        })
+    }
+}
+
+struct MapSubscriber<S, F, TMsg> {
+    subscriber: S,
+    f: F,
+    _marker: PhantomData<fn(TMsg)>,
+}
+
+impl<S, F, TMsg> Subscriber for MapSubscriber<S, F, TMsg>
+where
+    S: Subscriber,
+    F: Fn(TMsg) -> S::Msg + Clone + 'static,
+    TMsg: 'static,
+{
+    type Msg = TMsg;
+    type Mailbox = MapMailbox<S::Mailbox, F, TMsg>;
+
+    fn mailbox(&self) -> Self::Mailbox {
+        MapMailbox {
+            mailbox: self.subscriber.mailbox(),
+            f: self.f.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+struct MapMailbox<M, F, TMsg> {
+    mailbox: M,
+    f: F,
+    _marker: PhantomData<fn(TMsg)>,
+}
+
+impl<M, F, TMsg> Mailbox for MapMailbox<M, F, TMsg>
+where
+    M: Mailbox,
+    F: Fn(TMsg) -> M::Msg + 'static,
+    TMsg: 'static,
+{
+    type Msg = TMsg;
+
+    fn send_message(&self, msg: Self::Msg) {
+        self.mailbox.send_message((self.f)(msg));
     }
 }

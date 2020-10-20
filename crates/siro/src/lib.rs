@@ -13,18 +13,17 @@ detail of runtime implementation.
 pub mod attr;
 pub mod children;
 pub mod event;
-pub mod mailbox;
 pub mod node;
 pub mod subscription;
 pub mod types;
 
+/// A *prelude* for end users.
 pub mod prelude {
+    #[doc(no_inline)]
     pub use crate::{
         attr::Attr,
         children::Children,
-        event::{Event, EventDecoder},
-        mailbox::Mailbox,
         node::{IntoNode, Node},
-        subscription::{Subscribe, Subscription},
+        subscription::Subscription,
     };
 }

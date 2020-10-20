@@ -1,12 +1,9 @@
 use once_cell::unsync::OnceCell;
-use siro::{
-    mailbox::{Mailbox, Sender as _},
-    subscription::{Subscribe, Subscription},
-};
+use siro::subscription::{Mailbox as _, Subscribe, Subscriber, Subscription};
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
-pub fn animation_frames() -> impl Subscribe<Msg = f64, Error = JsValue> {
+pub fn animation_frames() -> impl Subscription<Msg = f64, Error = JsValue> {
     SubscribeAnimationFrames { _p: () }
 }
 
@@ -14,16 +11,16 @@ struct SubscribeAnimationFrames {
     _p: (),
 }
 
-impl Subscribe for SubscribeAnimationFrames {
+impl Subscription for SubscribeAnimationFrames {
     type Msg = f64;
     type Error = JsValue;
-    type Subscription = AnimationFramesSubscription;
+    type Subscribe = AnimationFramesSubscription;
 
-    fn subscribe<M: ?Sized>(self, mailbox: &M) -> Result<Self::Subscription, Self::Error>
+    fn subscribe<Ctx>(self, ctx: Ctx) -> Result<Self::Subscribe, Self::Error>
     where
-        M: Mailbox<Msg = Self::Msg>,
+        Ctx: Subscriber<Msg = Self::Msg>,
     {
-        let sender = mailbox.sender();
+        let mailbox = ctx.mailbox();
 
         let scheduler = Rc::new(Scheduler {
             window: web::window().ok_or("no global `Window` exists")?,
@@ -41,7 +38,7 @@ impl Subscribe for SubscribeAnimationFrames {
                 let closure = closure2.take();
 
                 if scheduler2.running.get() {
-                    sender.send_message(timestamp);
+                    mailbox.send_message(timestamp);
 
                     scheduler2.schedule(
                         closure
@@ -98,7 +95,7 @@ struct AnimationFramesSubscription {
     closure: Rc<OnceCell<Closure<dyn Fn(f64)>>>,
 }
 
-impl Subscription for AnimationFramesSubscription {
+impl Subscribe for AnimationFramesSubscription {
     type Msg = ();
     type Error = JsValue;
 

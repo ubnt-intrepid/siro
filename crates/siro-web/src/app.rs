@@ -2,9 +2,8 @@ use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use siro::{
     event::EventDecoder,
-    mailbox::{Mailbox, Sender},
     node::{self, IntoNode, Node},
-    subscription::Subscribe,
+    subscription::{Mailbox, Subscriber, Subscription},
     types::{Attribute, CowStr, Property},
 };
 use wasm_bindgen::prelude::*;
@@ -13,7 +12,7 @@ pub struct App<TMsg: 'static> {
     mountpoint: web::Node,
     document: web::Document,
     vnode: Option<VNode>,
-    mailbox: AppMailbox<TMsg>,
+    tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
 }
 
@@ -24,7 +23,7 @@ impl<TMsg: 'static> App<TMsg> {
             mountpoint,
             document,
             vnode: None,
-            mailbox: AppMailbox { tx },
+            tx,
             rx,
         }
     }
@@ -41,16 +40,12 @@ impl<TMsg: 'static> App<TMsg> {
         Ok(Self::new(body.into(), document))
     }
 
-    pub fn mailbox(&self) -> &impl Mailbox<Msg = TMsg> {
-        &self.mailbox
-    }
-
-    /// Register a `Subscribe`.
-    pub fn subscribe<S>(&self, s: S) -> Result<S::Subscription, S::Error>
+    /// Register a `Subscription`.
+    pub fn subscribe<S>(&self, subscription: S) -> Result<S::Subscribe, S::Error>
     where
-        S: Subscribe<Msg = TMsg>,
+        S: Subscription<Msg = TMsg>,
     {
-        s.subscribe(&self.mailbox)
+        subscription.subscribe(AppSubscriber { tx: &self.tx })
     }
 
     pub async fn next_message(&mut self) -> Option<TMsg> {
@@ -64,7 +59,7 @@ impl<TMsg: 'static> App<TMsg> {
         let node = node.into_node();
         node.render(RenderContext {
             document: &self.document,
-            mailbox: &self.mailbox,
+            tx: &self.tx,
             parent: &self.mountpoint,
             vnode: self.vnode.get_or_insert(VNode::Null),
         })?;
@@ -72,36 +67,31 @@ impl<TMsg: 'static> App<TMsg> {
     }
 }
 
-struct AppMailbox<TMsg: 'static> {
+struct AppSubscriber<'a, TMsg: 'static> {
+    tx: &'a mpsc::UnboundedSender<TMsg>,
+}
+
+impl<TMsg: 'static> Subscriber for AppSubscriber<'_, TMsg> {
+    type Msg = TMsg;
+    type Mailbox = AppMailbox<TMsg>;
+
+    #[inline]
+    fn mailbox(&self) -> Self::Mailbox {
+        AppMailbox {
+            tx: self.tx.clone(),
+        }
+    }
+}
+
+struct AppMailbox<TMsg> {
     tx: mpsc::UnboundedSender<TMsg>,
 }
 
 impl<TMsg: 'static> Mailbox for AppMailbox<TMsg> {
     type Msg = TMsg;
-    type Sender = AppSender<TMsg>;
 
     fn send_message(&self, msg: TMsg) {
-        self.tx.unbounded_send(msg).unwrap_throw();
-    }
-
-    fn sender(&self) -> Self::Sender {
-        AppSender(self.tx.clone())
-    }
-}
-
-struct AppSender<TMsg>(mpsc::UnboundedSender<TMsg>);
-
-impl<TMsg> Clone for AppSender<TMsg> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<TMsg: 'static> Sender for AppSender<TMsg> {
-    type Msg = TMsg;
-
-    fn send_message(&self, msg: TMsg) {
-        self.0.unbounded_send(msg).unwrap_throw();
+        let _ = self.tx.unbounded_send(msg);
     }
 }
 
@@ -165,7 +155,7 @@ impl VElement {
 
 struct RenderContext<'a, TMsg: 'static> {
     document: &'a web::Document,
-    mailbox: &'a AppMailbox<TMsg>,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
     parent: &'a web::Node,
     vnode: &'a mut VNode,
 }
@@ -225,7 +215,7 @@ impl<'a, TMsg: 'static> node::Context for RenderContext<'a, TMsg> {
 
                 Ok(RenderElement {
                     document: self.document,
-                    mailbox: self.mailbox,
+                    tx: self.tx,
                     velement,
                     node,
                     class_list,
@@ -266,7 +256,7 @@ impl<'a, TMsg: 'static> node::Context for RenderContext<'a, TMsg> {
 
 struct RenderElement<'a, TMsg: 'static> {
     document: &'a web::Document,
-    mailbox: &'a AppMailbox<TMsg>,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
     velement: &'a mut VElement,
     node: &'a web::Element,
     class_list: web::DomTokenList,
@@ -332,13 +322,13 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
     where
         D: EventDecoder<Msg = Self::Msg> + 'static,
     {
-        let sender = self.mailbox.sender();
+        let tx = self.tx.clone();
         let listener = EventListener::new(self.node, event_type, move |event| {
             if let Some(msg) = decoder
                 .decode_event(AppEvent { event })
                 .expect_throw("failed to decode Event")
             {
-                sender.send_message(msg);
+                tx.unbounded_send(msg).unwrap_throw();
             }
         });
 
@@ -417,7 +407,7 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
                 );
                 child.render(RenderContext {
                     document: &*self.document,
-                    mailbox: &*self.mailbox,
+                    tx: &*self.tx,
                     parent: self.node.as_ref(),
                     vnode: &mut self.velement.children[*cursor],
                 })?;
@@ -428,7 +418,7 @@ impl<TMsg: 'static> node::ElementContext for RenderElement<'_, TMsg> {
                 let mut vnode = VNode::Null;
                 child.render(RenderContext {
                     document: &*self.document,
-                    mailbox: &*self.mailbox,
+                    tx: &*self.tx,
                     parent: self.node.as_ref(),
                     vnode: &mut vnode,
                 })?;
