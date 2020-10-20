@@ -1,54 +1,31 @@
 use gloo_events::EventListener;
-use siro::{
-    event::Event,
-    subscription::{Mailbox as _, Subscribe, Subscriber, Subscription},
-};
-use std::borrow::Cow;
+use serde::Deserialize;
+use siro::subscription::{Mailbox as _, Subscribe, Subscriber, Subscription};
+use std::{borrow::Cow, marker::PhantomData};
 use wasm_bindgen::prelude::*;
 
-#[derive(Debug)]
-pub struct WindowEvent(web::Event);
-
-impl AsRef<web::Event> for WindowEvent {
-    #[inline]
-    fn as_ref(&self) -> &web::Event {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for WindowEvent {
-    type Target = web::Event;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
-}
-
-impl<'e> Event<'e> for WindowEvent {
-    type Deserializer = serde_wasm_bindgen::Deserializer;
-    type Error = serde_wasm_bindgen::Error;
-
-    fn into_deserializer(self) -> Self::Deserializer {
-        let value: JsValue = self.0.into();
-        serde_wasm_bindgen::Deserializer::from(value)
-    }
-}
-
-pub fn window_event(
+pub fn window_event<T>(
     event_type: impl Into<Cow<'static, str>>,
-) -> impl Subscription<Msg = WindowEvent, Error = JsValue> {
+) -> impl Subscription<Msg = T, Error = JsValue>
+where
+    T: for<'de> Deserialize<'de> + 'static,
+{
     SubscribeWindowEvent {
         event_type: event_type.into(),
+        _marker: PhantomData,
     }
 }
 
-struct SubscribeWindowEvent {
+struct SubscribeWindowEvent<T> {
     event_type: Cow<'static, str>,
+    _marker: PhantomData<fn() -> T>,
 }
 
-impl Subscription for SubscribeWindowEvent {
-    type Msg = WindowEvent;
+impl<T> Subscription for SubscribeWindowEvent<T>
+where
+    T: for<'de> Deserialize<'de> + 'static,
+{
+    type Msg = T;
     type Subscribe = WindowEventSubscription;
     type Error = JsValue;
 
@@ -56,14 +33,18 @@ impl Subscription for SubscribeWindowEvent {
     where
         Ctx: Subscriber<Msg = Self::Msg>,
     {
-        let Self { event_type } = self;
+        let Self { event_type, .. } = self;
 
         let mailbox = ctx.mailbox();
 
         let window = web::window().ok_or("no global `Window` exists")?;
 
         let listener = EventListener::new(&window, event_type, move |event| {
-            mailbox.send_message(WindowEvent(event.clone()));
+            let event: &JsValue = event.as_ref();
+            let de = serde_wasm_bindgen::Deserializer::from(event.clone());
+            if let Ok(msg) = T::deserialize(de) {
+                mailbox.send_message(msg);
+            }
         });
 
         Ok(WindowEventSubscription {

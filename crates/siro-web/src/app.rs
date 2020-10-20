@@ -1,7 +1,7 @@
 use futures::{channel::mpsc, prelude::*};
 use gloo_events::EventListener;
 use siro::{
-    event::EventDecoder,
+    event::{Event, EventDecoder},
     node::{ElementRenderer, IntoNode, Node, Renderer},
     subscription::{Mailbox, Subscriber, Subscription},
     types::{Attribute, CowStr, Property},
@@ -510,18 +510,13 @@ struct AppEvent<'a> {
     event: &'a web::Event,
 }
 
-mod impl_app_event {
-    use super::*;
-    use siro::event::Event;
+impl Event for AppEvent<'_> {
+    type Deserializer = serde_wasm_bindgen::Deserializer;
+    type Error = serde_wasm_bindgen::Error;
 
-    impl<'e> Event<'e> for AppEvent<'_> {
-        type Deserializer = serde_wasm_bindgen::Deserializer;
-        type Error = serde_wasm_bindgen::Error;
-
-        fn into_deserializer(self) -> Self::Deserializer {
-            let value: &JsValue = self.event.as_ref();
-            serde_wasm_bindgen::Deserializer::from(value.clone())
-        }
+    fn into_deserializer(self) -> Self::Deserializer {
+        let value: &JsValue = self.event.as_ref();
+        serde_wasm_bindgen::Deserializer::from(value.clone())
     }
 }
 

@@ -349,9 +349,9 @@ where
 {
     type Msg = TMsg;
 
-    fn decode_event<'e, E>(&self, event: E) -> Result<Option<Self::Msg>, E::Error>
+    fn decode_event<E>(&self, event: E) -> Result<Option<Self::Msg>, E::Error>
     where
-        E: Event<'e>,
+        E: Event,
     {
         let input = T::deserialize(event.into_deserializer())?;
         Ok((self.f)(input))

@@ -1,46 +1,46 @@
 use siro::prelude::*;
-use siro_web::subscription::{window_event, WindowEvent};
+use siro_web::subscription::window_event;
 
+use serde::Deserialize;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast as _;
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct Model {
     x: i32,
     y: i32,
     clicked: bool,
 }
 
-#[derive(Debug)]
-enum Msg {
-    MouseMove(WindowEvent),
-    MouseDown(WindowEvent),
-    MouseUp(WindowEvent),
+struct Msg {
+    event: MouseEvent,
+    button: Option<Button>,
 }
 
-fn update(model: &mut Model, msg: Msg) -> Result<(), JsValue> {
-    match msg {
-        Msg::MouseMove(event) => {
-            let event: &web_sys::MouseEvent = event.unchecked_ref();
-            model.x = event.client_x();
-            model.y = event.client_y();
-        }
-        Msg::MouseDown(event) => {
-            let event: &web_sys::MouseEvent = event.unchecked_ref();
-            model.x = event.client_x();
-            model.y = event.client_y();
-            model.clicked = true;
-        }
-        Msg::MouseUp(event) => {
-            let event: &web_sys::MouseEvent = event.unchecked_ref();
-            model.x = event.client_x();
-            model.y = event.client_y();
-            model.clicked = false;
-        }
+#[derive(Deserialize)]
+struct MouseEvent {
+    #[serde(rename = "clientX")]
+    client_x: i32,
+    #[serde(rename = "clientY")]
+    client_y: i32,
+}
+
+enum Button {
+    Up,
+    Down,
+}
+
+fn update(model: &mut Model, Msg { event, button }: Msg) -> Result<(), JsValue> {
+    model.x = event.client_x;
+    model.y = event.client_y;
+
+    match button {
+        Some(Button::Down) => model.clicked = true,
+        Some(Button::Up) => model.clicked = false,
+        _ => (),
     }
 
     Ok(())
@@ -80,9 +80,18 @@ pub async fn main() -> Result<(), JsValue> {
 
     let mut app = siro_web::App::mount("#app")?;
 
-    let _mousedown = app.subscribe(window_event("mousedown").map(Msg::MouseDown))?;
-    let _mousemove = app.subscribe(window_event("mousemove").map(Msg::MouseMove))?;
-    let _mouseup = app.subscribe(window_event("mouseup").map(Msg::MouseUp))?;
+    let _mousedown = app.subscribe(window_event("mousedown").map(|event| Msg {
+        event,
+        button: Some(Button::Down),
+    }))?;
+    let _mousemove = app.subscribe(window_event("mousemove").map(|event| Msg {
+        event,
+        button: None,
+    }))?;
+    let _mouseup = app.subscribe(window_event("mouseup").map(|event| Msg {
+        event,
+        button: Some(Button::Up),
+    }))?;
 
     let mut model = Model::default();
     app.render(view(&model))?;
