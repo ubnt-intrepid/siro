@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 doc = false
 
 [dependencies]
-siro = { path = "../../crates/siro" }
+siro = { path = "../.." }
 siro-web = { path = "../../crates/siro-web" }
 
 console_error_panic_hook = "0.1"

@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 doc = false
 
 [dependencies]
-siro = { path = "../../crates/siro" }
+siro = { path = "../.." }
 siro-svg = { path = "../../crates/siro-svg" }
 siro-web = { path = "../../crates/siro-web" }
 
