@@ -59,7 +59,6 @@ impl std::str::FromStr for Visibility {
 // ==== update ====
 
 enum Msg {
-    Nop,
     UpdateField(String),
     Add,
     Check(TodoId, bool),
@@ -71,7 +70,13 @@ enum Msg {
     EditingEntry(TodoId, bool),
 }
 
-fn update(model: &mut Model, msg: Msg, storage: &Storage, app: &mut siro_web::App<Msg>) {
+enum Command {
+    SaveModel,
+    FocusTodo(TodoId),
+    Nop,
+}
+
+fn update(model: &mut Model, msg: Msg) -> Command {
     match msg {
         Msg::UpdateField(input) => {
             model.input = input;
@@ -90,14 +95,14 @@ fn update(model: &mut Model, msg: Msg, storage: &Storage, app: &mut siro_web::Ap
                         editing: false,
                     },
                 );
-                save_model(model, storage);
+                return Command::SaveModel;
             }
         }
 
         Msg::Check(id, completed) => {
             if let Some(entry) = model.entries.get_mut(&id) {
                 entry.completed = completed;
-                save_model(model, storage);
+                return Command::SaveModel;
             }
         }
 
@@ -105,18 +110,18 @@ fn update(model: &mut Model, msg: Msg, storage: &Storage, app: &mut siro_web::Ap
             for entry in model.entries.values_mut() {
                 entry.completed = completed;
             }
-            save_model(model, storage);
+            return Command::SaveModel;
         }
 
         Msg::Delete(id) => {
             if let Some(..) = model.entries.remove(&id) {
-                save_model(model, storage);
+                return Command::SaveModel;
             }
         }
 
         Msg::DeleteCompleted => {
             model.entries.retain(|_, entry| !entry.completed);
-            save_model(model, storage);
+            return Command::SaveModel;
         }
 
         Msg::ChangeVisibility(visibility) => {
@@ -126,7 +131,7 @@ fn update(model: &mut Model, msg: Msg, storage: &Storage, app: &mut siro_web::Ap
         Msg::UpdateEntry(id, description) => {
             if let Some(entry) = model.entries.get_mut(&id) {
                 entry.description = description;
-                save_model(model, storage);
+                return Command::SaveModel;
             }
         }
 
@@ -136,15 +141,12 @@ fn update(model: &mut Model, msg: Msg, storage: &Storage, app: &mut siro_web::Ap
             }
 
             if editing {
-                app.spawn_local(async move {
-                    focus_input(id);
-                    Msg::Nop
-                });
+                return Command::FocusTodo(id);
             }
         }
-
-        _ => (),
     }
+
+    Command::Nop
 }
 
 // ==== view ====
@@ -158,11 +160,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
                 (
                     view_header(model),
                     view_main(model),
-                    if !model.entries.is_empty() {
-                        view_controls(model).into()
-                    } else {
-                        None
-                    },
+                    if_then(!model.entries.is_empty(), || view_controls(model)),
                 ),
             ),
             view_info_footer(),
@@ -224,14 +222,12 @@ fn view_main(model: &Model) -> impl Node<Msg = Msg> + '_ {
 
 fn view_entry(entry: &TodoEntry) -> impl Node<Msg = Msg> {
     let TodoEntry {
-        id: entry_id,
+        id,
         completed,
         editing,
         ref description,
         ..
     } = *entry;
-
-    let input_id = input_id(entry_id);
 
     html::li(
         (
@@ -245,32 +241,26 @@ fn view_entry(entry: &TodoEntry) -> impl Node<Msg = Msg> {
                     html::input::checkbox((
                         class("toggle"),
                         attr::checked(completed),
-                        on_click(move || Msg::Check(entry_id, !completed)),
+                        on_click(move || Msg::Check(id, !completed)),
                     )),
                     html::label(
-                        on_double_click(move || Msg::EditingEntry(entry_id, true)),
+                        on_double_click(move || Msg::EditingEntry(id, true)),
                         description.clone(),
                     ),
-                    html::button(
-                        (class("destroy"), on_click(move || Msg::Delete(entry_id))),
-                        (),
-                    ),
+                    html::button((class("destroy"), on_click(move || Msg::Delete(id))), ()),
                 ),
             ),
-            if editing {
+            if_then(editing, || {
                 html::input::text((
                     class("edit"),
                     attr::name("title"),
-                    attr::id(input_id.clone()),
+                    attr::id(todo_edit_input_id(id)),
                     attr::value(description.clone()),
-                    on_input(move |input| Msg::UpdateEntry(entry_id, input)),
-                    on_blur(move || Msg::EditingEntry(entry_id, false)),
-                    on_enter(move || Msg::EditingEntry(entry_id, false)),
+                    on_input(move |input| Msg::UpdateEntry(id, input)),
+                    on_blur(move || Msg::EditingEntry(id, false)),
+                    on_enter(move || Msg::EditingEntry(id, false)),
                 ))
-                .into()
-            } else {
-                None
-            },
+            }),
         ),
     )
 }
@@ -378,18 +368,18 @@ fn current_visibility(window: &web_sys::Window) -> Option<Visibility> {
     hash.trim_start_matches("#/").parse().ok()
 }
 
-fn input_id(id: TodoId) -> String {
+fn todo_edit_input_id(id: TodoId) -> String {
     format!("todo-{}", id)
 }
 
-fn focus_input(id: TodoId) {
-    let input_id = input_id(id);
-    if let Some(document) = web_sys::window().and_then(|w| w.document()) {
-        if let Some(element) = document.get_element_by_id(&input_id) {
-            let element: web_sys::HtmlElement = element.unchecked_into();
-            let _ = element.focus();
-        }
-    }
+fn focus_todo(id: TodoId) -> Option<()> {
+    web_sys::window()?
+        .document()?
+        .get_element_by_id(&todo_edit_input_id(id))?
+        .dyn_into::<web_sys::HtmlElement>()
+        .ok()?
+        .focus()
+        .ok()
 }
 
 fn if_then<T>(pred: bool, f: impl FnOnce() -> T) -> Option<T> {
@@ -418,8 +408,18 @@ pub async fn main() -> Result<(), JsValue> {
     app.render(view(&model))?;
 
     while let Some(msg) = app.next_message().await {
-        update(&mut model, msg, &storage, &mut app);
+        let cmd = update(&mut model, msg);
         app.render(view(&model))?;
+
+        match cmd {
+            Command::FocusTodo(id) => {
+                let _ = focus_todo(id);
+            }
+            Command::SaveModel => {
+                let _ = save_model(&model, &storage);
+            }
+            Command::Nop => (),
+        }
     }
 
     Ok(())
