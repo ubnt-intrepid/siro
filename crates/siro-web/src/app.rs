@@ -70,12 +70,16 @@ impl<TMsg: 'static> App<TMsg> {
         N: IntoNode<TMsg>,
     {
         let node = node.into_node();
-        node.render(AppRenderer {
+
+        let vnode = node.render(AppRenderer {
             document: &self.document,
             tx: &self.tx,
+            vnode: self.vnode.take(),
             parent: &self.mountpoint,
-            vnode: self.vnode.get_or_insert(VNode::Null),
         })?;
+
+        self.vnode.replace(vnode);
+
         Ok(())
     }
 }
@@ -116,23 +120,23 @@ type FxIndexSet<T> = indexmap::IndexSet<T, BuildFxHasher>;
 
 #[derive(Debug)]
 enum VNode {
-    Text {
-        data: CowStr,
-        node: web::Text,
-    },
-    Element {
-        velement: VElement,
-        node: web::Element,
-    },
-    Null,
+    Text(VText),
+    Element(VElement),
+    Unknown,
+}
+
+impl Default for VNode {
+    fn default() -> Self {
+        Self::Unknown
+    }
 }
 
 impl VNode {
     fn as_node(&self) -> Option<&web::Node> {
         match self {
-            VNode::Text { node, .. } => Some(node.as_ref()),
-            VNode::Element { node, .. } => Some(node.as_ref()),
-            VNode::Null => None,
+            VNode::Text(VText { node, .. }) => Some(node.as_ref()),
+            VNode::Element(VElement { node, .. }) => Some(node.as_ref()),
+            VNode::Unknown => None,
         }
     }
 }
@@ -148,34 +152,25 @@ struct VElement {
     styles: FxIndexMap<CowStr, CowStr>,
     inner_html: Option<CowStr>,
     children: Vec<VNode>,
+    node: web::Element,
 }
 
-impl VElement {
-    fn new(tag_name: CowStr, namespace_uri: Option<CowStr>) -> Self {
-        Self {
-            tag_name,
-            namespace_uri,
-            attributes: FxIndexMap::default(),
-            properties: FxIndexMap::default(),
-            listeners: FxIndexMap::default(),
-            class_names: FxIndexSet::default(),
-            styles: FxIndexMap::default(),
-            inner_html: None,
-            children: vec![],
-        }
-    }
+#[derive(Debug)]
+struct VText {
+    data: CowStr,
+    node: web::Text,
 }
 
 struct AppRenderer<'a, TMsg: 'static> {
+    vnode: Option<VNode>,
     document: &'a web::Document,
-    tx: &'a mpsc::UnboundedSender<TMsg>,
     parent: &'a web::Node,
-    vnode: &'a mut VNode,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
 }
 
 impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
     type Msg = TMsg;
-    type Ok = ();
+    type Ok = VNode;
     type Error = JsValue;
 
     type Element = AppElementRenderer<'a, TMsg>;
@@ -185,11 +180,19 @@ impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
         tag_name: CowStr,
         namespace_uri: Option<CowStr>,
     ) -> Result<Self::Element, Self::Error> {
-        let op = match self.vnode {
-            VNode::Element { velement, .. }
+        match self.vnode {
+            Some(VNode::Element(velement))
                 if velement.tag_name == tag_name && velement.namespace_uri == namespace_uri =>
             {
-                RenderElementOp::Diff {
+                let class_list = velement.node.class_list();
+                let style = js_sys::Reflect::get(&velement.node, &JsValue::from_str("style"))?;
+
+                Ok(AppElementRenderer::Diff(DiffElement {
+                    document: self.document,
+                    tx: self.tx,
+                    velement,
+                    class_list,
+                    style,
                     new_attributes: FxIndexMap::default(),
                     new_properties: FxIndexMap::default(),
                     new_listeners: FxIndexMap::default(),
@@ -197,137 +200,177 @@ impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
                     new_styles: FxIndexMap::default(),
                     new_inner_html: None,
                     cursor: 0,
-                }
+                }))
             }
+
             _ => {
                 let node = match &namespace_uri {
                     Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
                     None => self.document.create_element(&*tag_name)?,
                 };
-                if let Some(old) = self.vnode.as_node() {
-                    self.parent.replace_child(node.as_ref(), old)?;
-                } else {
-                    self.parent.append_child(node.as_ref())?;
-                }
-                let _old = std::mem::replace(
-                    self.vnode,
-                    VNode::Element {
-                        node,
-                        velement: VElement::new(tag_name, namespace_uri),
-                    },
-                );
 
-                RenderElementOp::New
-            }
-        };
-
-        match self.vnode {
-            VNode::Element { node, velement, .. } => {
                 let class_list = node.class_list();
                 let style = js_sys::Reflect::get(&node, &JsValue::from_str("style"))?;
 
-                Ok(AppElementRenderer {
+                Ok(AppElementRenderer::New(NewElement {
+                    velement: VElement {
+                        node,
+                        tag_name,
+                        namespace_uri,
+                        attributes: FxIndexMap::default(),
+                        properties: FxIndexMap::default(),
+                        listeners: FxIndexMap::default(),
+                        class_names: FxIndexSet::default(),
+                        styles: FxIndexMap::default(),
+                        inner_html: None,
+                        children: vec![],
+                    },
                     document: self.document,
+                    parent: self.parent,
                     tx: self.tx,
-                    velement,
-                    node,
                     class_list,
                     style,
-                    op,
-                })
+                }))
             }
-
-            _ => unreachable!("unexpected condition"),
         }
     }
 
     fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
         match self.vnode {
-            VNode::Text {
-                data: old_data,
-                node,
-                ..
-            } => {
-                if *old_data != data {
-                    node.set_data(&*data);
-                    *old_data = data;
+            Some(VNode::Text(mut t)) => {
+                if t.data != data {
+                    t.node.set_data(&*data);
+                    t.data = data;
                 }
+                Ok(VNode::Text(t))
             }
             _ => {
                 let node = self.document.create_text_node(&*data);
-                if let Some(old) = self.vnode.as_node() {
-                    self.parent.replace_child(node.as_ref(), old)?;
-                } else {
-                    self.parent.append_child(node.as_ref())?;
-                }
-                *self.vnode = VNode::Text { node, data };
+                self.parent.append_child(&node)?;
+                Ok(VNode::Text(VText { node, data }))
             }
         }
-        Ok(())
     }
 }
 
-struct AppElementRenderer<'a, TMsg: 'static> {
-    document: &'a web::Document,
-    tx: &'a mpsc::UnboundedSender<TMsg>,
-    velement: &'a mut VElement,
-    node: &'a web::Element,
-    class_list: web::DomTokenList,
-    style: JsValue,
-    op: RenderElementOp,
-}
-
-enum RenderElementOp {
-    Diff {
-        new_attributes: FxIndexMap<CowStr, Attribute>,
-        new_properties: FxIndexMap<CowStr, Property>,
-        new_listeners: FxIndexMap<CowStr, EventListener>,
-        new_class_names: FxIndexSet<CowStr>,
-        new_styles: FxIndexMap<CowStr, CowStr>,
-        new_inner_html: Option<CowStr>,
-        cursor: usize,
-    },
-    New,
+enum AppElementRenderer<'a, TMsg: 'static> {
+    Diff(DiffElement<'a, TMsg>),
+    New(NewElement<'a, TMsg>),
 }
 
 impl<TMsg: 'static> ElementRenderer for AppElementRenderer<'_, TMsg> {
     type Msg = TMsg;
-    type Ok = ();
+    type Ok = VNode;
+    type Error = JsValue;
+
+    #[inline]
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+        match self {
+            Self::Diff(me) => me.attribute(name, value),
+            Self::New(me) => me.attribute(name, value),
+        }
+    }
+
+    #[inline]
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+        match self {
+            Self::Diff(me) => me.property(name, value),
+            Self::New(me) => me.property(name, value),
+        }
+    }
+
+    #[inline]
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
+    where
+        D: EventDecoder<Msg = Self::Msg> + 'static,
+    {
+        match self {
+            Self::Diff(me) => me.event(event_type, decoder),
+            Self::New(me) => me.event(event_type, decoder),
+        }
+    }
+
+    #[inline]
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+        match self {
+            Self::Diff(me) => me.class(class_name),
+            Self::New(me) => me.class(class_name),
+        }
+    }
+
+    #[inline]
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+        match self {
+            Self::Diff(me) => me.style(name, value),
+            Self::New(me) => me.style(name, value),
+        }
+    }
+
+    #[inline]
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+        match self {
+            Self::Diff(me) => me.inner_html(inner_html),
+            Self::New(me) => me.inner_html(inner_html),
+        }
+    }
+
+    #[inline]
+    fn child<T>(&mut self, child: T) -> Result<(), Self::Error>
+    where
+        T: Node<Msg = Self::Msg>,
+    {
+        match self {
+            Self::Diff(me) => me.child(child),
+            Self::New(me) => me.child(child),
+        }
+    }
+
+    #[inline]
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        match self {
+            Self::Diff(me) => me.end(),
+            Self::New(me) => me.end(),
+        }
+    }
+}
+
+// ==== DiffElement ====
+
+struct DiffElement<'a, TMsg: 'static> {
+    velement: VElement,
+    document: &'a web::Document,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
+    class_list: web::DomTokenList,
+    style: JsValue,
+    new_attributes: FxIndexMap<CowStr, Attribute>,
+    new_properties: FxIndexMap<CowStr, Property>,
+    new_listeners: FxIndexMap<CowStr, EventListener>,
+    new_class_names: FxIndexSet<CowStr>,
+    new_styles: FxIndexMap<CowStr, CowStr>,
+    new_inner_html: Option<CowStr>,
+    cursor: usize,
+}
+
+impl<TMsg: 'static> ElementRenderer for DiffElement<'_, TMsg> {
+    type Msg = TMsg;
+    type Ok = VNode;
     type Error = JsValue;
 
     fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
-        match &mut self.op {
-            RenderElementOp::Diff { new_attributes, .. } => {
-                match self.velement.attributes.remove(&*name) {
-                    Some(old_value) if old_value == value => (),
-                    _ => set_attribute(self.node, &*name, &value)?,
-                }
-                new_attributes.insert(name, value);
-            }
-
-            RenderElementOp::New => {
-                set_attribute(self.node, &*name, &value)?;
-                self.velement.attributes.insert(name, value);
-            }
+        match self.velement.attributes.remove(&*name) {
+            Some(old_value) if old_value == value => (),
+            _ => set_attribute(&self.velement.node, &*name, &value)?,
         }
+        self.new_attributes.insert(name, value);
         Ok(())
     }
 
     fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
-        match &mut self.op {
-            RenderElementOp::Diff { new_properties, .. } => {
-                match self.velement.properties.remove(&*name) {
-                    Some(old_value) if old_value == value => (),
-                    _ => set_property(self.node, &*name, &value)?,
-                }
-                new_properties.insert(name, value);
-            }
-
-            RenderElementOp::New => {
-                set_property(self.node, &*name, &value)?;
-                self.velement.properties.insert(name, value);
-            }
+        match self.velement.properties.remove(&*name) {
+            Some(old_value) if old_value == value => (),
+            _ => set_property(&self.velement.node, &*name, &value)?,
         }
+        self.new_properties.insert(name, value);
         Ok(())
     }
 
@@ -336,7 +379,137 @@ impl<TMsg: 'static> ElementRenderer for AppElementRenderer<'_, TMsg> {
         D: EventDecoder<Msg = Self::Msg> + 'static,
     {
         let tx = self.tx.clone();
-        let listener = EventListener::new(self.node, event_type, move |event| {
+        let listener = EventListener::new(&self.velement.node, event_type, move |event| {
+            if let Some(msg) = decoder
+                .decode_event(AppEvent { event })
+                .expect_throw("failed to decode Event")
+            {
+                tx.unbounded_send(msg).unwrap_throw();
+            }
+        });
+        self.new_listeners.insert(event_type.into(), listener);
+        Ok(())
+    }
+
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+        self.class_list.add_1(&*class_name)?;
+        self.velement.class_names.remove(&class_name);
+        self.new_class_names.insert(class_name);
+        Ok(())
+    }
+
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+        js_sys::Reflect::set(&self.style, &JsValue::from(&*name), &JsValue::from(&*value))?;
+        self.velement.styles.remove(&name);
+        self.new_styles.insert(name, value);
+        Ok(())
+    }
+
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+        self.velement.node.set_inner_html(&*inner_html);
+        self.new_inner_html.replace(inner_html);
+        Ok(())
+    }
+
+    fn child<T>(&mut self, child: T) -> Result<(), Self::Error>
+    where
+        T: Node<Msg = Self::Msg>,
+    {
+        if let Some(slot) = self.velement.children.get_mut(self.cursor) {
+            let vnode = child.render(AppRenderer {
+                document: &*self.document,
+                tx: &*self.tx,
+                vnode: Some(std::mem::take(slot)),
+                parent: &self.velement.node,
+            })?;
+            let _ = std::mem::replace(slot, vnode);
+        } else {
+            let vnode = child.render(AppRenderer {
+                vnode: None,
+                document: &*self.document,
+                tx: &*self.tx,
+                parent: &self.velement.node,
+            })?;
+            self.velement.children.push(vnode);
+        }
+        self.cursor += 1;
+        Ok(())
+    }
+
+    fn end(mut self) -> Result<Self::Ok, Self::Error> {
+        let old_attributes = std::mem::replace(&mut self.velement.attributes, self.new_attributes);
+        let old_properties = std::mem::replace(&mut self.velement.properties, self.new_properties);
+        let _ = std::mem::replace(&mut self.velement.listeners, self.new_listeners);
+        let old_class_names =
+            std::mem::replace(&mut self.velement.class_names, self.new_class_names);
+        let old_styles = std::mem::replace(&mut self.velement.styles, self.new_styles);
+        let _ = std::mem::replace(&mut self.velement.inner_html, self.new_inner_html);
+
+        for (name, _) in old_attributes {
+            self.velement.node.remove_attribute(&*name)?;
+        }
+        for (name, _) in old_properties {
+            remove_property(&self.velement.node, &*name)?;
+        }
+        for name in old_class_names {
+            self.class_list.remove_1(&*name)?;
+        }
+        for (name, _) in old_styles {
+            js_sys::Reflect::set(&self.style, &JsValue::from(&*name), &JsValue::UNDEFINED)?;
+        }
+
+        if let Some(..) = self.velement.inner_html {
+            for child in self.velement.children.drain(..) {
+                if let Some(child) = child.as_node() {
+                    self.velement.node.remove_child(child)?;
+                }
+            }
+        } else {
+            for child in self.velement.children.drain(self.cursor..) {
+                if let Some(child) = child.as_node() {
+                    self.velement.node.remove_child(child)?;
+                }
+            }
+        }
+
+        Ok(VNode::Element(self.velement))
+    }
+}
+
+// ==== NewElement ====
+
+struct NewElement<'a, TMsg: 'static> {
+    velement: VElement,
+    document: &'a web::Document,
+    parent: &'a web::Node,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
+    class_list: web::DomTokenList,
+    style: JsValue,
+}
+
+impl<TMsg: 'static> ElementRenderer for NewElement<'_, TMsg> {
+    type Msg = TMsg;
+    type Ok = VNode;
+    type Error = JsValue;
+
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+        set_attribute(&self.velement.node, &*name, &value)?;
+        self.velement.attributes.insert(name, value);
+        Ok(())
+    }
+
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+        set_property(&self.velement.node, &*name, &value)?;
+        self.velement.properties.insert(name, value);
+        Ok(())
+    }
+
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
+    where
+        D: EventDecoder<Msg = Self::Msg> + 'static,
+    {
+        let tx = self.tx.clone();
+        let listener = EventListener::new(&self.velement.node, event_type, move |event| {
             if let Some(msg) = decoder
                 .decode_event(AppEvent { event })
                 .expect_throw("failed to decode Event")
@@ -345,62 +518,26 @@ impl<TMsg: 'static> ElementRenderer for AppElementRenderer<'_, TMsg> {
             }
         });
 
-        match &mut self.op {
-            RenderElementOp::Diff { new_listeners, .. } => {
-                new_listeners.insert(event_type.into(), listener);
-            }
-            RenderElementOp::New => {
-                self.velement.listeners.insert(event_type.into(), listener);
-            }
-        };
+        self.velement.listeners.insert(event_type.into(), listener);
 
         Ok(())
     }
 
     fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
         self.class_list.add_1(&*class_name)?;
-        match &mut self.op {
-            RenderElementOp::Diff {
-                new_class_names, ..
-            } => {
-                self.velement.class_names.remove(&class_name);
-                new_class_names.insert(class_name);
-            }
-            RenderElementOp::New => {
-                self.velement.class_names.insert(class_name);
-            }
-        }
+        self.velement.class_names.insert(class_name);
         Ok(())
     }
 
     fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
         js_sys::Reflect::set(&self.style, &JsValue::from(&*name), &JsValue::from(&*value))?;
-
-        match &mut self.op {
-            RenderElementOp::Diff { new_styles, .. } => {
-                self.velement.styles.remove(&name);
-                new_styles.insert(name, value);
-            }
-            RenderElementOp::New => {
-                self.velement.styles.insert(name, value);
-            }
-        }
-
+        self.velement.styles.insert(name, value);
         Ok(())
     }
 
     fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
-        match &mut self.op {
-            RenderElementOp::Diff { new_inner_html, .. } => {
-                self.node.set_inner_html(&*inner_html);
-                new_inner_html.replace(inner_html);
-            }
-            RenderElementOp::New => {
-                self.node.set_inner_html(&*inner_html);
-                self.velement.inner_html.replace(inner_html);
-            }
-        }
-
+        self.velement.node.set_inner_html(&*inner_html);
+        self.velement.inner_html.replace(inner_html);
         Ok(())
     }
 
@@ -408,116 +545,44 @@ impl<TMsg: 'static> ElementRenderer for AppElementRenderer<'_, TMsg> {
     where
         T: Node<Msg = Self::Msg>,
     {
-        match &mut self.op {
-            RenderElementOp::Diff {
-                new_inner_html: None,
-                cursor,
-                ..
-            } => {
-                self.velement.children.resize_with(
-                    std::cmp::max(self.velement.children.len(), *cursor + 1),
-                    || VNode::Null,
-                );
-                child.render(AppRenderer {
-                    document: &*self.document,
-                    tx: &*self.tx,
-                    parent: self.node.as_ref(),
-                    vnode: &mut self.velement.children[*cursor],
-                })?;
-                *cursor += 1;
-            }
-
-            RenderElementOp::New if self.velement.inner_html.is_none() => {
-                let mut vnode = VNode::Null;
-                child.render(AppRenderer {
-                    document: &*self.document,
-                    tx: &*self.tx,
-                    parent: self.node.as_ref(),
-                    vnode: &mut vnode,
-                })?;
-                self.velement.children.push(vnode);
-            }
-
-            _ => return Ok(()),
+        if self.velement.inner_html.is_none() {
+            let child_vnode = child.render(AppRenderer {
+                vnode: None,
+                document: &*self.document,
+                tx: &*self.tx,
+                parent: &self.velement.node,
+            })?;
+            self.velement.children.push(child_vnode);
         }
-
         Ok(())
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        match self.op {
-            RenderElementOp::Diff {
-                new_attributes,
-                new_properties,
-                new_listeners,
-                new_class_names,
-                new_styles,
-                new_inner_html,
-                cursor,
-                ..
-            } => {
-                let old_attributes =
-                    std::mem::replace(&mut self.velement.attributes, new_attributes);
-                let old_properties =
-                    std::mem::replace(&mut self.velement.properties, new_properties);
-                let _ = std::mem::replace(&mut self.velement.listeners, new_listeners);
-                let old_class_names =
-                    std::mem::replace(&mut self.velement.class_names, new_class_names);
-                let old_styles = std::mem::replace(&mut self.velement.styles, new_styles);
-                let _ = std::mem::replace(&mut self.velement.inner_html, new_inner_html);
-
-                for (name, _) in old_attributes {
-                    self.node.remove_attribute(&*name)?;
-                }
-                for (name, _) in old_properties {
-                    remove_property(&self.node, &*name)?;
-                }
-                for name in old_class_names {
-                    self.class_list.remove_1(&*name)?;
-                }
-                for (name, _) in old_styles {
-                    js_sys::Reflect::set(&self.style, &JsValue::from(&*name), &JsValue::UNDEFINED)?;
-                }
-
-                if let Some(..) = self.velement.inner_html {
-                    for child in self.velement.children.drain(..) {
-                        if let Some(child) = child.as_node() {
-                            self.node.remove_child(child)?;
-                        }
-                    }
-                } else {
-                    for child in self.velement.children.drain(cursor..) {
-                        if let Some(child) = child.as_node() {
-                            self.node.remove_child(child)?;
-                        }
-                    }
-                }
-            }
-
-            RenderElementOp::New => {
-                if !self.velement.class_names.is_empty() {
-                    let class_list = self.node.class_list();
-                    for class_name in &self.velement.class_names {
-                        class_list.add_1(&*class_name)?;
-                    }
-                }
-
-                if !self.velement.styles.is_empty() {
-                    let style = js_sys::Reflect::get(&self.node, &JsValue::from_str("style"))?;
-                    for (name, value) in &self.velement.styles {
-                        js_sys::Reflect::set(
-                            &style,
-                            &JsValue::from_str(&*name),
-                            &JsValue::from_str(&*value),
-                        )?;
-                    }
-                }
+        if !self.velement.class_names.is_empty() {
+            let class_list = self.velement.node.class_list();
+            for class_name in &self.velement.class_names {
+                class_list.add_1(&*class_name)?;
             }
         }
 
-        Ok(())
+        if !self.velement.styles.is_empty() {
+            let style = js_sys::Reflect::get(&self.velement.node, &JsValue::from_str("style"))?;
+            for (name, value) in &self.velement.styles {
+                js_sys::Reflect::set(
+                    &style,
+                    &JsValue::from_str(&*name),
+                    &JsValue::from_str(&*value),
+                )?;
+            }
+        }
+
+        self.parent.append_child(&self.velement.node)?;
+
+        Ok(VNode::Element(self.velement))
     }
 }
+
+// ==== AppEvent ====
 
 struct AppEvent<'a> {
     event: &'a web::Event,
