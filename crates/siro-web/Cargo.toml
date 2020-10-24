@@ -27,7 +27,6 @@ package = "web-sys"
 version = "0.3"
 features = [
     "Document",
-    "DomTokenList",
     "Element",
     "Event",
     "HtmlElement",
