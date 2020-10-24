@@ -57,6 +57,16 @@ impl<TMsg: 'static> App<TMsg> {
         self.pending_tasks.push(Box::pin(future));
     }
 
+    /// Enable handling URL events.
+    pub fn with_navigation<F>(&mut self, _on_url_change: F) -> Result<String, JsValue>
+    where
+        F: Fn(String) -> TMsg + 'static,
+    {
+        let window = web::window().ok_or("no global Window exists")?;
+        let location = window.location();
+        location.hash()
+    }
+
     pub async fn next_message(&mut self) -> Option<TMsg> {
         futures::select! {
             ret = self.rx.next() => ret,

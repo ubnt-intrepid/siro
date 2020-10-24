@@ -7,6 +7,7 @@ A browser runtime for `siro` using `web-sys`.
 
 mod app;
 
+pub mod navigate;
 pub mod subscription;
 
 pub use crate::app::App;
