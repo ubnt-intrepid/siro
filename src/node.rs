@@ -36,20 +36,6 @@ pub trait Node {
     }
 }
 
-impl<E> Node for E
-where
-    E: Element,
-{
-    type Msg = E::Msg;
-
-    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
-    where
-        R: NodeRenderer<Msg = Self::Msg>,
-    {
-        renderer.element(self)
-    }
-}
-
 /// The context for rendering a virtual DOM node.
 pub trait NodeRenderer {
     /// The message type associated with this context.
@@ -62,36 +48,30 @@ pub trait NodeRenderer {
     type Error;
 
     /// Render an `Element` node.
-    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    fn element<A, C>(
+        self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+        attr: A,
+        children: C,
+    ) -> Result<Self::Ok, Self::Error>
     where
-        E: Element<Msg = Self::Msg>;
+        A: Attributes<Self::Msg>,
+        C: Nodes<Self::Msg>;
 
     /// Render a `Text` node.
     fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error>;
 }
 
-// ==== Element ====
-
-/// A data structure to be rendered as an `Element` node.
-pub trait Element {
-    type Msg: 'static;
-
-    /// Return the tag name of this element.
-    fn tag_name(&self) -> CowStr;
-
-    /// Returns the namespace URI of this document.
-    fn namespace_uri(&self) -> Option<CowStr> {
-        None
-    }
-
-    /// Render this element using the given rendering context.
-    fn render_element<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+/// A collection of DOM attributes.
+pub trait Attributes<TMsg: 'static> {
+    /// Apply DOM attributes to specified context.
+    fn render_attributes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: ElementRenderer<Msg = Self::Msg>;
+        R: AttributesRenderer<Msg = TMsg>;
 }
 
-/// The rendering context for an `Element`.
-pub trait ElementRenderer {
+pub trait AttributesRenderer {
     type Msg: 'static;
     type Ok;
     type Error;
@@ -119,13 +99,154 @@ pub trait ElementRenderer {
     /// should be ignored.
     fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error>;
 
-    /// Append a child `Node` to this element.
-    fn child<T>(&mut self, node: T) -> Result<(), Self::Error>
-    where
-        T: Node<Msg = Self::Msg>;
-
     /// Complete the rendering of this element.
     fn end(self) -> Result<Self::Ok, Self::Error>;
+}
+
+impl<TMsg: 'static> Attributes<TMsg> for () {
+    fn render_attributes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: AttributesRenderer<Msg = TMsg>,
+    {
+        renderer.end()
+    }
+}
+
+mod impl_attr_for_tuples {
+    use super::*;
+
+    struct RenderTupleAttributes<'a, R: ?Sized> {
+        renderer: &'a mut R,
+    }
+
+    impl<R: ?Sized> AttributesRenderer for RenderTupleAttributes<'_, R>
+    where
+        R: AttributesRenderer,
+    {
+        type Msg = R::Msg;
+        type Ok = ();
+        type Error = R::Error;
+
+        #[inline]
+        fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+            self.renderer.attribute(name, value)
+        }
+
+        #[inline]
+        fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+            self.renderer.property(name, value)
+        }
+
+        #[inline]
+        fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+            self.renderer.class(class_name)
+        }
+
+        #[inline]
+        fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+            self.renderer.style(name, value)
+        }
+
+        #[inline]
+        fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+            self.renderer.inner_html(inner_html)
+        }
+
+        #[inline]
+        fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
+        where
+            D: EventDecoder<Msg = Self::Msg> + 'static,
+        {
+            self.renderer.event(event_type, decoder)
+        }
+
+        #[inline]
+        fn end(self) -> Result<Self::Ok, Self::Error> {
+            Ok(())
+        }
+    }
+
+    macro_rules! impl_attr_for_tuples {
+        ( $H:ident, $( $T:ident ),* ) => {
+            impl_attr_for_tuples!($($T),*);
+
+            impl<TMsg: 'static, $H, $( $T ),*> Attributes<TMsg> for ($H, $( $T ),*)
+            where
+                $H: Attributes<TMsg>,
+                $( $T: Attributes<TMsg>, )*
+            {
+                fn render_attributes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+                where
+                    R: AttributesRenderer<Msg = TMsg>,
+                {
+                    #[allow(non_snake_case)]
+                    let ($H, $( $T ),*) = self;
+
+                    $H.render_attributes(RenderTupleAttributes {
+                        renderer: &mut renderer,
+                    })?;
+
+                    $(
+                        $T.render_attributes(RenderTupleAttributes {
+                            renderer: &mut renderer,
+                        })?;
+                    )*
+
+                    renderer.end()
+                }
+            }
+        };
+
+        ( $T:ident ) => {
+            impl<TMsg: 'static, $T> Attributes<TMsg> for ($T,)
+            where
+                $T: Attributes<TMsg>,
+            {
+                fn render_attributes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+                where
+                    R: AttributesRenderer<Msg = TMsg>,
+                {
+                    self.0.render_attributes(renderer)
+                }
+            }
+        };
+    }
+
+    impl_attr_for_tuples!(
+        M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, //
+        M11, M12, M13, M14, M15, M16, M17, M18, M19, M20
+    );
+}
+
+impl<TMsg: 'static, T> Attributes<TMsg> for Option<T>
+where
+    T: Attributes<TMsg>,
+{
+    fn render_attributes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: AttributesRenderer<Msg = TMsg>,
+    {
+        match self {
+            Some(attrs) => attrs.render_attributes(renderer),
+            None => renderer.end(),
+        }
+    }
+}
+
+impl<TMsg: 'static, M1, M2> Attributes<TMsg> for Either<M1, M2>
+where
+    M1: Attributes<TMsg>,
+    M2: Attributes<TMsg>,
+{
+    fn render_attributes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: AttributesRenderer<Msg = TMsg>,
+    {
+        match self {
+            Either::Left(l) => Attributes::render_attributes(l, renderer),
+            Either::Right(r) => Attributes::render_attributes(r, renderer),
+        }
+    }
 }
 
 // ==== Nodes ====

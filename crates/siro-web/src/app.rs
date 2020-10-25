@@ -2,7 +2,7 @@ use futures::{channel::mpsc, future::LocalBoxFuture, prelude::*, stream::Futures
 use gloo_events::EventListener;
 use siro::{
     event::{Event, EventDecoder},
-    node::{Element, ElementRenderer, Node, NodeRenderer, Nodes, NodesRenderer},
+    node::{Attributes, AttributesRenderer, Node, NodeRenderer, Nodes, NodesRenderer},
     subscription::{Mailbox, Subscriber, Subscription},
     types::{Attribute, CowStr, Property},
 };
@@ -251,13 +251,17 @@ impl<'a, TMsg: 'static> NodeRenderer for DiffNode<'a, TMsg> {
     type Ok = VNode;
     type Error = JsValue;
 
-    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    fn element<A, C>(
+        self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+        attrs: A,
+        children: C,
+    ) -> Result<Self::Ok, Self::Error>
     where
-        E: Element<Msg = TMsg>,
+        A: Attributes<TMsg>,
+        C: Nodes<TMsg>,
     {
-        let tag_name = element.tag_name();
-        let namespace_uri = element.namespace_uri();
-
         match self.vnode {
             VNode::Element(mut velement)
                 if velement.tag_name == tag_name && velement.namespace_uri == namespace_uri =>
@@ -269,15 +273,25 @@ impl<'a, TMsg: 'static> NodeRenderer for DiffNode<'a, TMsg> {
                 velement.class_names.clear();
                 velement.styles.clear();
 
-                element.render_element(DiffElement {
-                    velement,
+                attrs.render_attributes(DiffAttributes {
+                    velement: &mut velement,
                     old_attributes,
                     old_properties,
                     old_inner_html,
-                    document: self.document,
                     tx: self.tx,
-                    num_new_children: 0,
-                })
+                })?;
+
+                if velement.inner_html.is_none() {
+                    children.render_nodes(DiffNodes {
+                        vnodes: &mut velement.children,
+                        num_children: 0,
+                        parent: &velement.node,
+                        document: self.document,
+                        tx: self.tx,
+                    })?;
+                }
+
+                Ok(VNode::Element(velement))
             }
 
             _ => {
@@ -286,23 +300,37 @@ impl<'a, TMsg: 'static> NodeRenderer for DiffNode<'a, TMsg> {
                     None => self.document.create_element(&*tag_name)?,
                 };
 
-                element.render_element(NewElement {
-                    velement: VElement {
-                        node,
-                        tag_name,
-                        namespace_uri,
-                        attributes: FxIndexMap::default(),
-                        properties: FxIndexMap::default(),
-                        listeners: FxIndexMap::default(),
-                        class_names: FxIndexSet::default(),
-                        styles: FxIndexMap::default(),
-                        inner_html: None,
-                        children: vec![],
-                    },
-                    document: self.document,
-                    parent: self.parent,
+                let mut velement = VElement {
+                    node,
+                    tag_name,
+                    namespace_uri,
+                    attributes: FxIndexMap::default(),
+                    properties: FxIndexMap::default(),
+                    listeners: FxIndexMap::default(),
+                    class_names: FxIndexSet::default(),
+                    styles: FxIndexMap::default(),
+                    inner_html: None,
+                    children: vec![],
+                };
+
+                attrs.render_attributes(NewAttributes {
+                    velement: &mut velement,
                     tx: self.tx,
-                })
+                })?;
+
+                if velement.inner_html.is_none() {
+                    children.render_nodes(DiffNodes {
+                        vnodes: &mut velement.children,
+                        num_children: 0,
+                        document: self.document,
+                        tx: self.tx,
+                        parent: &velement.node,
+                    })?;
+                }
+
+                self.parent.append_child(&velement.node)?;
+
+                Ok(VNode::Element(velement))
             }
         }
     }
@@ -336,35 +364,53 @@ impl<'a, TMsg: 'static> NodeRenderer for NewNode<'a, TMsg> {
     type Ok = VNode;
     type Error = JsValue;
 
-    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    fn element<A, C>(
+        self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+        attrs: A,
+        children: C,
+    ) -> Result<Self::Ok, Self::Error>
     where
-        E: Element<Msg = Self::Msg>,
+        A: Attributes<Self::Msg>,
+        C: Nodes<Self::Msg>,
     {
-        let tag_name = element.tag_name();
-        let namespace_uri = element.namespace_uri();
-
         let node = match &namespace_uri {
             Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
             None => self.document.create_element(&*tag_name)?,
         };
 
-        element.render_element(NewElement {
-            velement: VElement {
-                node,
-                tag_name,
-                namespace_uri,
-                attributes: FxIndexMap::default(),
-                properties: FxIndexMap::default(),
-                listeners: FxIndexMap::default(),
-                class_names: FxIndexSet::default(),
-                styles: FxIndexMap::default(),
-                inner_html: None,
-                children: vec![],
-            },
-            document: self.document,
-            parent: self.parent,
+        let mut velement = VElement {
+            node,
+            tag_name,
+            namespace_uri,
+            attributes: FxIndexMap::default(),
+            properties: FxIndexMap::default(),
+            listeners: FxIndexMap::default(),
+            class_names: FxIndexSet::default(),
+            styles: FxIndexMap::default(),
+            inner_html: None,
+            children: vec![],
+        };
+
+        attrs.render_attributes(NewAttributes {
+            velement: &mut velement,
             tx: self.tx,
-        })
+        })?;
+
+        if velement.inner_html.is_none() {
+            children.render_nodes(DiffNodes {
+                vnodes: &mut velement.children,
+                num_children: 0,
+                document: self.document,
+                tx: self.tx,
+                parent: &velement.node,
+            })?;
+        }
+
+        self.parent.append_child(&velement.node)?;
+
+        Ok(VNode::Element(velement))
     }
 
     fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
@@ -374,21 +420,17 @@ impl<'a, TMsg: 'static> NodeRenderer for NewNode<'a, TMsg> {
     }
 }
 
-// ==== DiffElement ====
-
-struct DiffElement<'a, TMsg: 'static> {
-    velement: VElement,
+struct DiffAttributes<'a, TMsg: 'static> {
+    velement: &'a mut VElement,
     old_attributes: FxIndexMap<CowStr, Attribute>,
     old_properties: FxIndexMap<CowStr, Property>,
     old_inner_html: Option<CowStr>,
-    document: &'a web::Document,
     tx: &'a mpsc::UnboundedSender<TMsg>,
-    num_new_children: usize,
 }
 
-impl<TMsg: 'static> ElementRenderer for DiffElement<'_, TMsg> {
+impl<TMsg: 'static> AttributesRenderer for DiffAttributes<'_, TMsg> {
     type Msg = TMsg;
-    type Ok = VNode;
+    type Ok = ();
     type Error = JsValue;
 
     fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
@@ -448,35 +490,7 @@ impl<TMsg: 'static> ElementRenderer for DiffElement<'_, TMsg> {
         Ok(())
     }
 
-    fn child<T>(&mut self, child: T) -> Result<(), Self::Error>
-    where
-        T: Node<Msg = Self::Msg>,
-    {
-        if let Some(..) = self.velement.inner_html {
-            return Ok(());
-        }
-
-        if let Some(slot) = self.velement.children.get_mut(self.num_new_children) {
-            let vnode = child.render(DiffNode {
-                document: &*self.document,
-                tx: &*self.tx,
-                vnode: mem::take(slot),
-                parent: &self.velement.node,
-            })?;
-            let _ = mem::replace(slot, vnode);
-        } else {
-            let vnode = child.render(NewNode {
-                document: &*self.document,
-                tx: &*self.tx,
-                parent: &self.velement.node,
-            })?;
-            self.velement.children.push(vnode);
-        }
-        self.num_new_children += 1;
-        Ok(())
-    }
-
-    fn end(mut self) -> Result<Self::Ok, Self::Error> {
+    fn end(self) -> Result<Self::Ok, Self::Error> {
         for (name, _) in self.old_attributes {
             self.velement.node.remove_attribute(&*name)?;
         }
@@ -488,30 +502,20 @@ impl<TMsg: 'static> ElementRenderer for DiffElement<'_, TMsg> {
         self.velement.apply_class()?;
         self.velement.apply_style()?;
 
-        if self.velement.inner_html.is_none() {
-            for child in self.velement.children.drain(self.num_new_children..) {
-                if let Some(child) = child.as_node() {
-                    self.velement.node.remove_child(child)?;
-                }
-            }
-        }
-
-        Ok(VNode::Element(self.velement))
+        Ok(())
     }
 }
 
-// ==== NewElement ====
+// ==== NewAttributes ====
 
-struct NewElement<'a, TMsg: 'static> {
-    velement: VElement,
-    document: &'a web::Document,
-    parent: &'a web::Node,
+struct NewAttributes<'a, TMsg: 'static> {
+    velement: &'a mut VElement,
     tx: &'a mpsc::UnboundedSender<TMsg>,
 }
 
-impl<TMsg: 'static> ElementRenderer for NewElement<'_, TMsg> {
+impl<TMsg: 'static> AttributesRenderer for NewAttributes<'_, TMsg> {
     type Msg = TMsg;
-    type Ok = VNode;
+    type Ok = ();
     type Error = JsValue;
 
     fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
@@ -561,28 +565,10 @@ impl<TMsg: 'static> ElementRenderer for NewElement<'_, TMsg> {
         Ok(())
     }
 
-    fn child<T>(&mut self, child: T) -> Result<(), Self::Error>
-    where
-        T: Node<Msg = Self::Msg>,
-    {
-        if self.velement.inner_html.is_none() {
-            let child_vnode = child.render(NewNode {
-                document: &*self.document,
-                tx: &*self.tx,
-                parent: &self.velement.node,
-            })?;
-            self.velement.children.push(child_vnode);
-        }
-        Ok(())
-    }
-
     fn end(self) -> Result<Self::Ok, Self::Error> {
         self.velement.apply_class()?;
         self.velement.apply_style()?;
-
-        self.parent.append_child(&self.velement.node)?;
-
-        Ok(VNode::Element(self.velement))
+        Ok(())
     }
 }
 

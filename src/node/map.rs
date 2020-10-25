@@ -1,4 +1,4 @@
-use super::{Element, ElementRenderer, Node, NodeRenderer};
+use super::{Attributes, AttributesRenderer, Node, NodeRenderer, Nodes, NodesRenderer};
 use crate::{
     event::{Event, EventDecoder},
     types::{Attribute, CowStr, Property},
@@ -48,11 +48,31 @@ where
     type Error = R::Error;
 
     #[inline]
-    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    fn element<A, C>(
+        self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+        attr: A,
+        children: C,
+    ) -> Result<Self::Ok, Self::Error>
     where
-        E: Element<Msg = Self::Msg>,
+        A: Attributes<Self::Msg>,
+        C: Nodes<Self::Msg>,
     {
-        self.renderer.element(MapElement { element, f: self.f })
+        self.renderer.element(
+            tag_name,
+            namespace_uri,
+            MapAttributes {
+                attr,
+                f: self.f,
+                _marker: PhantomData,
+            },
+            MapChildren {
+                children,
+                f: self.f,
+                _marker: PhantomData,
+            },
+        )
     }
 
     #[inline]
@@ -61,74 +81,63 @@ where
     }
 }
 
-struct MapElement<'a, E, F> {
-    element: E,
+struct MapAttributes<'a, A, F, TMsg> {
+    attr: A,
     f: &'a F,
+    _marker: PhantomData<fn(TMsg)>,
 }
 
-impl<E, F, TMsg> Element for MapElement<'_, E, F>
+impl<A, F, TMsg, UMsg> Attributes<UMsg> for MapAttributes<'_, A, F, TMsg>
 where
-    E: Element,
-    F: Fn(E::Msg) -> TMsg + Clone + 'static,
+    A: Attributes<TMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
     TMsg: 'static,
+    UMsg: 'static,
 {
-    type Msg = TMsg;
-
-    #[inline]
-    fn tag_name(&self) -> CowStr {
-        self.element.tag_name()
-    }
-
-    #[inline]
-    fn namespace_uri(&self) -> Option<CowStr> {
-        self.element.namespace_uri()
-    }
-
-    #[inline]
-    fn render_element<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    fn render_attributes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: ElementRenderer<Msg = Self::Msg>,
+        R: AttributesRenderer<Msg = UMsg>,
     {
-        self.element.render_element(MapElementRenderer {
-            element: renderer,
+        self.attr.render_attributes(MapAttributesRenderer {
+            renderer,
             f: self.f,
             _marker: PhantomData,
         })
     }
 }
 
-struct MapElementRenderer<'a, E, F, TMsg> {
-    element: E,
+struct MapAttributesRenderer<'a, R, F, TMsg, UMsg> {
+    renderer: R,
     f: &'a F,
-    _marker: PhantomData<fn(TMsg)>,
+    _marker: PhantomData<fn(TMsg) -> UMsg>,
 }
 
-impl<E, F, TMsg> ElementRenderer for MapElementRenderer<'_, E, F, TMsg>
+impl<R, F, TMsg, UMsg> AttributesRenderer for MapAttributesRenderer<'_, R, F, TMsg, UMsg>
 where
-    E: ElementRenderer,
-    F: Fn(TMsg) -> E::Msg + Clone + 'static,
+    R: AttributesRenderer<Msg = UMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
     TMsg: 'static,
+    UMsg: 'static,
 {
     type Msg = TMsg;
-    type Ok = E::Ok;
-    type Error = E::Error;
+    type Ok = R::Ok;
+    type Error = R::Error;
 
     #[inline]
     fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
-        self.element.attribute(name, value)
+        self.renderer.attribute(name, value)
     }
 
     #[inline]
     fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
-        self.element.property(name, value)
+        self.renderer.property(name, value)
     }
 
-    #[inline]
     fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
     where
         D: EventDecoder<Msg = Self::Msg> + 'static,
     {
-        self.element.event(
+        self.renderer.event(
             event_type,
             MapEventDecoder {
                 decoder,
@@ -139,30 +148,22 @@ where
 
     #[inline]
     fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
-        self.element.class(class_name)
+        self.renderer.class(class_name)
     }
 
     #[inline]
     fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
-        self.element.style(name, value)
+        self.renderer.style(name, value)
     }
 
     #[inline]
     fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
-        self.element.inner_html(inner_html)
-    }
-
-    #[inline]
-    fn child<T>(&mut self, node: T) -> Result<(), Self::Error>
-    where
-        T: Node<Msg = Self::Msg>,
-    {
-        self.element.child(node.map(self.f.clone()))
+        self.renderer.inner_html(inner_html)
     }
 
     #[inline]
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.element.end()
+        self.renderer.end()
     }
 }
 
@@ -183,5 +184,61 @@ where
         E: Event,
     {
         Ok(self.decoder.decode_event(event)?.map(&self.f))
+    }
+}
+
+struct MapChildren<'a, C, F, TMsg> {
+    children: C,
+    f: &'a F,
+    _marker: PhantomData<fn(TMsg)>,
+}
+
+impl<C, F, TMsg, UMsg> Nodes<UMsg> for MapChildren<'_, C, F, TMsg>
+where
+    C: Nodes<TMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
+    TMsg: 'static,
+    UMsg: 'static,
+{
+    fn render_nodes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: NodesRenderer<Msg = UMsg>,
+    {
+        self.children.render_nodes(MapChildrenRenderer {
+            renderer,
+            f: self.f,
+            _marker: PhantomData,
+        })
+    }
+}
+
+struct MapChildrenRenderer<'a, R, F, TMsg, UMsg> {
+    renderer: R,
+    f: &'a F,
+    _marker: PhantomData<fn(TMsg) -> UMsg>,
+}
+
+impl<R, F, TMsg, UMsg> NodesRenderer for MapChildrenRenderer<'_, R, F, TMsg, UMsg>
+where
+    R: NodesRenderer<Msg = UMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
+    TMsg: 'static,
+    UMsg: 'static,
+{
+    type Msg = TMsg;
+    type Ok = R::Ok;
+    type Error = R::Error;
+
+    #[inline]
+    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
+    where
+        N: Node<Msg = Self::Msg>,
+    {
+        self.renderer.child(child.map(self.f.clone()))
+    }
+
+    #[inline]
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        self.renderer.end()
     }
 }

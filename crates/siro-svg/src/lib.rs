@@ -6,9 +6,8 @@ SVG directives for siro.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 use siro::{
-    attr::Attr,
-    node::{Element, ElementRenderer, Node, Nodes, NodesRenderer},
-    types::{Attribute, CowStr, Property},
+    node::{Attributes, Node, NodeRenderer, Nodes},
+    types::CowStr,
 };
 use std::marker::PhantomData;
 
@@ -22,7 +21,7 @@ fn svg_element<TMsg: 'static, A, C>(
     children: C,
 ) -> SvgElement<TMsg, A, C>
 where
-    A: Attr<TMsg>,
+    A: Attributes<TMsg>,
     C: Nodes<TMsg>,
 {
     SvgElement {
@@ -40,112 +39,24 @@ struct SvgElement<TMsg, A, C> {
     _marker: PhantomData<fn() -> TMsg>,
 }
 
-impl<TMsg: 'static, A, C> Element for SvgElement<TMsg, A, C>
+impl<TMsg: 'static, A, C> Node for SvgElement<TMsg, A, C>
 where
-    A: Attr<TMsg>,
+    A: Attributes<TMsg>,
     C: Nodes<TMsg>,
 {
     type Msg = TMsg;
 
     #[inline]
-    fn tag_name(&self) -> CowStr {
-        self.tag_name.clone()
-    }
-
-    #[inline]
-    fn namespace_uri(&self) -> Option<CowStr> {
-        Some(SVG_NAMESPACE_URI.into())
-    }
-
-    fn render_element<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: ElementRenderer<Msg = Self::Msg>,
+        R: NodeRenderer<Msg = Self::Msg>,
     {
-        let has_inner_html = self.attr.apply(AttrContext {
-            element: &mut renderer,
-            has_inner_html: false,
-        })?;
-
-        if !has_inner_html {
-            self.children.render_nodes(ChildrenContext {
-                element: &mut renderer,
-            })?;
-        }
-
-        renderer.end()
-    }
-}
-
-struct AttrContext<'a, Ctx: ?Sized> {
-    element: &'a mut Ctx,
-    has_inner_html: bool,
-}
-
-impl<Ctx: ?Sized> siro::attr::Context for AttrContext<'_, Ctx>
-where
-    Ctx: ElementRenderer,
-{
-    type Msg = Ctx::Msg;
-    type Ok = bool;
-    type Error = Ctx::Error;
-
-    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
-        self.element.attribute(name, value)
-    }
-
-    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
-        self.element.property(name, value)
-    }
-
-    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
-        self.element.class(class_name)
-    }
-
-    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
-        self.element.style(name, value)
-    }
-
-    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
-        self.has_inner_html = true;
-        self.element.inner_html(inner_html)
-    }
-
-    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
-    where
-        D: siro::event::EventDecoder<Msg = Self::Msg> + 'static,
-    {
-        self.element.event(event_type, decoder)
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(self.has_inner_html)
-    }
-}
-
-struct ChildrenContext<'a, Ctx: ?Sized> {
-    element: &'a mut Ctx,
-}
-
-impl<Ctx: ?Sized> NodesRenderer for ChildrenContext<'_, Ctx>
-where
-    Ctx: ElementRenderer,
-{
-    type Msg = Ctx::Msg;
-    type Ok = ();
-    type Error = Ctx::Error;
-
-    #[inline]
-    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
-    where
-        N: Node<Msg = Self::Msg>,
-    {
-        self.element.child(child)
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(())
+        renderer.element(
+            self.tag_name,
+            Some(SVG_NAMESPACE_URI.into()),
+            self.attr,
+            self.children,
+        )
     }
 }
 
@@ -155,7 +66,7 @@ macro_rules! svg_elements {
             #[doc = "Create a `View` of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/" $tag_name ") element."]
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
-                attr: impl Attr<TMsg>,
+                attr: impl Attributes<TMsg>,
                 children: impl Nodes<TMsg>,
             ) -> impl Node<Msg = TMsg> {
                 svg_element(stringify!($tag_name), attr, children)
@@ -175,16 +86,13 @@ svg_elements! {
 
 /// SVG attributes.
 pub mod attr {
-    use siro::{
-        attr::{attribute, Attr},
-        types::CowStr,
-    };
+    use siro::{attr::attribute, node::Attributes, types::CowStr};
 
     macro_rules! svg_attributes {
         ( $( $name:ident => $attrname:expr, )* ) => {$(
             paste::paste! {
                 #[doc = "Create an `Attr` to specify [`" $attrname "`](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/" $attrname ") attribute."]
-                pub fn $name<TMsg: 'static>(val: impl Into<CowStr>) -> impl Attr<TMsg> {
+                pub fn $name<TMsg: 'static>(val: impl Into<CowStr>) -> impl Attributes<TMsg> {
                     attribute($attrname, val.into())
                 }
             }

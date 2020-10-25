@@ -6,9 +6,8 @@ HTML directives for `siro`.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 use siro::{
-    attr::Attr,
-    node::{Element, ElementRenderer, Node, Nodes, NodesRenderer},
-    types::{Attribute, CowStr, Property},
+    node::{Attributes, Node, NodeRenderer, Nodes},
+    types::CowStr,
 };
 use std::marker::PhantomData;
 
@@ -18,7 +17,7 @@ fn html_element<TMsg: 'static, A, C>(
     children: C,
 ) -> HtmlElement<TMsg, A, C>
 where
-    A: Attr<TMsg>,
+    A: Attributes<TMsg>,
     C: Nodes<TMsg>,
 {
     HtmlElement {
@@ -36,107 +35,18 @@ struct HtmlElement<TMsg, A, C> {
     _marker: PhantomData<fn() -> TMsg>,
 }
 
-impl<TMsg: 'static, A, C> Element for HtmlElement<TMsg, A, C>
+impl<TMsg: 'static, A, C> Node for HtmlElement<TMsg, A, C>
 where
-    A: Attr<TMsg>,
+    A: Attributes<TMsg>,
     C: Nodes<TMsg>,
 {
     type Msg = TMsg;
 
-    #[inline]
-    fn tag_name(&self) -> CowStr {
-        self.tag_name.clone()
-    }
-
-    fn render_element<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: ElementRenderer<Msg = Self::Msg>,
+        R: NodeRenderer<Msg = Self::Msg>,
     {
-        let has_inner_html = self.attr.apply(AttrContext {
-            element: &mut renderer,
-            has_inner_html: false,
-        })?;
-
-        if !has_inner_html {
-            self.children.render_nodes(ChildrenContext {
-                element: &mut renderer,
-            })?;
-        }
-
-        renderer.end()
-    }
-}
-
-struct AttrContext<'a, Ctx: ?Sized> {
-    element: &'a mut Ctx,
-    has_inner_html: bool,
-}
-
-impl<Ctx: ?Sized> siro::attr::Context for AttrContext<'_, Ctx>
-where
-    Ctx: ElementRenderer,
-{
-    type Msg = Ctx::Msg;
-    type Ok = bool;
-    type Error = Ctx::Error;
-
-    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
-        self.element.attribute(name, value)
-    }
-
-    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
-        self.element.property(name, value)
-    }
-
-    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
-        self.element.class(class_name)
-    }
-
-    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
-        self.element.style(name, value)
-    }
-
-    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
-        self.has_inner_html = true;
-        self.element.inner_html(inner_html)
-    }
-
-    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
-    where
-        D: siro::event::EventDecoder<Msg = Self::Msg> + 'static,
-    {
-        self.element.event(event_type, decoder)
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(self.has_inner_html)
-    }
-}
-
-struct ChildrenContext<'a, Ctx: ?Sized> {
-    element: &'a mut Ctx,
-}
-
-impl<Ctx: ?Sized> NodesRenderer for ChildrenContext<'_, Ctx>
-where
-    Ctx: ElementRenderer,
-{
-    type Msg = Ctx::Msg;
-    type Ok = ();
-    type Error = Ctx::Error;
-
-    #[inline]
-    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
-    where
-        N: Node<Msg = Self::Msg>,
-    {
-        self.element.child(child)
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(())
+        renderer.element(self.tag_name, None, self.attr, self.children)
     }
 }
 
@@ -146,10 +56,10 @@ macro_rules! html_elements {
             #[doc = "Create a `View` of [`<" $tag_name ">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/" $tag_name ") element."]
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
-                attr: impl Attr<TMsg>,
+                attributes: impl Attributes<TMsg>,
                 children: impl Nodes<TMsg>
             ) -> impl Node<Msg = TMsg> {
-                html_element(stringify!($tag_name), attr, children)
+                html_element(stringify!($tag_name), attributes, children)
             }
         }
     )*};
@@ -223,39 +133,40 @@ html_elements!(
 /// HTML attributes.
 pub mod attr {
     use siro::{
-        attr::{attribute, property, Attr},
+        attr::{attribute, property},
+        node::Attributes,
         types::{CowStr, Property},
     };
 
-    pub fn autofocus<TMsg: 'static>(autofocus: bool) -> impl Attr<TMsg> {
+    pub fn autofocus<TMsg: 'static>(autofocus: bool) -> impl Attributes<TMsg> {
         attribute("autofocus", autofocus)
     }
 
-    pub fn href<TMsg: 'static>(url: impl Into<CowStr>) -> impl Attr<TMsg> {
+    pub fn href<TMsg: 'static>(url: impl Into<CowStr>) -> impl Attributes<TMsg> {
         attribute("href", url.into())
     }
 
-    pub fn id<TMsg: 'static>(id: impl Into<CowStr>) -> impl Attr<TMsg> {
+    pub fn id<TMsg: 'static>(id: impl Into<CowStr>) -> impl Attributes<TMsg> {
         attribute("id", id.into())
     }
 
-    pub fn label_for<TMsg: 'static>(target_id: impl Into<CowStr>) -> impl Attr<TMsg> {
+    pub fn label_for<TMsg: 'static>(target_id: impl Into<CowStr>) -> impl Attributes<TMsg> {
         attribute("for", target_id.into())
     }
 
-    pub fn name<TMsg: 'static>(name: impl Into<CowStr>) -> impl Attr<TMsg> {
+    pub fn name<TMsg: 'static>(name: impl Into<CowStr>) -> impl Attributes<TMsg> {
         attribute("name", name.into())
     }
 
-    pub fn placeholder<TMsg: 'static>(placeholder: impl Into<CowStr>) -> impl Attr<TMsg> {
+    pub fn placeholder<TMsg: 'static>(placeholder: impl Into<CowStr>) -> impl Attributes<TMsg> {
         attribute("placeholder", placeholder.into())
     }
 
-    pub fn checked<TMsg: 'static>(checked: bool) -> impl Attr<TMsg> {
+    pub fn checked<TMsg: 'static>(checked: bool) -> impl Attributes<TMsg> {
         property("checked", checked)
     }
 
-    pub fn value<TMsg: 'static>(value: impl Into<Property>) -> impl Attr<TMsg> {
+    pub fn value<TMsg: 'static>(value: impl Into<Property>) -> impl Attributes<TMsg> {
         property("value", value)
     }
 }
@@ -265,8 +176,8 @@ pub mod attr {
 /// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
 pub mod input {
     use siro::{
-        attr::{attribute, Attr},
-        node::Node,
+        attr::attribute,
+        node::{Attributes, Node},
     };
 
     macro_rules! input_elements {
@@ -274,7 +185,7 @@ pub mod input {
             paste::paste! {
                 #[doc = "Create a `View` of [`<input type=\"" $type_name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $type_name ") element."]
                 #[inline]
-                pub fn $type_name<TMsg: 'static>(attr: impl Attr<TMsg>) -> impl Node<Msg = TMsg> {
+                pub fn $type_name<TMsg: 'static>(attr: impl Attributes<TMsg>) -> impl Node<Msg = TMsg> {
                     super::input((attribute("type", stringify!($type_name)), attr), ())
                 }
             }
@@ -288,16 +199,19 @@ pub mod input {
 
     /// Create a `View` of [`<input type="datetime-local">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/datetime-local) element.
     #[inline]
-    pub fn datetime_local<TMsg: 'static>(attr: impl Attr<TMsg>) -> impl Node<Msg = TMsg> {
+    pub fn datetime_local<TMsg: 'static>(attr: impl Attributes<TMsg>) -> impl Node<Msg = TMsg> {
         super::input((attribute("type", "datetime-local"), attr), ())
     }
 }
 
 pub mod event {
     use serde::{de::IgnoredAny, Deserialize};
-    use siro::attr::{event, Attr};
+    use siro::{attr::event, node::Attributes};
 
-    pub fn on<T, TMsg>(event_type: &'static str, f: impl Fn(T) -> TMsg + 'static) -> impl Attr<TMsg>
+    pub fn on<T, TMsg>(
+        event_type: &'static str,
+        f: impl Fn(T) -> TMsg + 'static,
+    ) -> impl Attributes<TMsg>
     where
         T: for<'de> Deserialize<'de> + 'static,
         TMsg: 'static,
@@ -308,7 +222,7 @@ pub mod event {
     macro_rules! define_events {
         ( $( $name:ident => $event_type:expr ),* $(,)? ) => {$(
             #[inline]
-            pub fn $name<TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attr<TMsg> {
+            pub fn $name<TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attributes<TMsg> {
                 on($event_type, move |_: IgnoredAny| f())
             }
         )*};
@@ -332,11 +246,11 @@ pub mod event {
         checked: Option<bool>,
     }
 
-    pub fn on_input<TMsg: 'static>(f: impl Fn(String) -> TMsg + 'static) -> impl Attr<TMsg> {
+    pub fn on_input<TMsg: 'static>(f: impl Fn(String) -> TMsg + 'static) -> impl Attributes<TMsg> {
         event("input", move |e: InputEvent| Some(f(e.target.value?)))
     }
 
-    pub fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + 'static) -> impl Attr<TMsg> {
+    pub fn on_check<TMsg: 'static>(f: impl Fn(bool) -> TMsg + 'static) -> impl Attributes<TMsg> {
         event("input", move |e: InputEvent| Some(f(e.target.checked?)))
     }
 
@@ -345,7 +259,7 @@ pub mod event {
         key: String,
     }
 
-    pub fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attr<TMsg> {
+    pub fn on_enter<TMsg: 'static>(f: impl Fn() -> TMsg + 'static) -> impl Attributes<TMsg> {
         event("keydown", move |e: KeyEvent| match &*e.key {
             "Enter" => Some(f()),
             _ => None,

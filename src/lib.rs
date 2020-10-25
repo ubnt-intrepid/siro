@@ -20,8 +20,7 @@ pub mod types;
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        attr::Attr,
-        node::{Node, Nodes},
+        node::{Attributes, Node, Nodes},
         subscription::Subscription,
     };
 }
