@@ -6,6 +6,7 @@ A browser runtime for `siro` using `web-sys`.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 mod app;
+mod render;
 
 pub mod subscription;
 
