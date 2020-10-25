@@ -1,4 +1,4 @@
-use super::{ElementRenderer, Node, Renderer};
+use super::{Element, ElementRenderer, Node, NodeRenderer};
 use crate::{
     event::{Event, EventDecoder},
     types::{Attribute, CowStr, Property},
@@ -21,7 +21,7 @@ where
 
     fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: Renderer<Msg = Self::Msg>,
+        R: NodeRenderer<Msg = Self::Msg>,
     {
         self.node.render(MapRenderer {
             renderer,
@@ -37,9 +37,9 @@ struct MapRenderer<'a, R, F, TMsg> {
     _marker: PhantomData<fn(TMsg)>,
 }
 
-impl<'a, R, F, TMsg> Renderer for MapRenderer<'a, R, F, TMsg>
+impl<'a, R, F, TMsg> NodeRenderer for MapRenderer<'a, R, F, TMsg>
 where
-    R: Renderer,
+    R: NodeRenderer,
     F: Fn(TMsg) -> R::Msg + Clone + 'static,
     TMsg: 'static,
 {
@@ -47,28 +47,57 @@ where
     type Ok = R::Ok;
     type Error = R::Error;
 
-    type Element = MapElementRenderer<'a, R::Element, F, TMsg>;
+    #[inline]
+    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    where
+        E: Element<Msg = Self::Msg>,
+    {
+        self.renderer.element(MapElement { element, f: self.f })
+    }
 
-    fn element_node(
-        self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-    ) -> Result<Self::Element, Self::Error> {
-        let element = self.renderer.element_node(tag_name, namespace_uri)?;
-        Ok(MapElementRenderer {
-            element,
+    #[inline]
+    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
+        self.renderer.text(data)
+    }
+}
+
+struct MapElement<'a, E, F> {
+    element: E,
+    f: &'a F,
+}
+
+impl<E, F, TMsg> Element for MapElement<'_, E, F>
+where
+    E: Element,
+    F: Fn(E::Msg) -> TMsg + Clone + 'static,
+    TMsg: 'static,
+{
+    type Msg = TMsg;
+
+    #[inline]
+    fn tag_name(&self) -> CowStr {
+        self.element.tag_name()
+    }
+
+    #[inline]
+    fn namespace_uri(&self) -> Option<CowStr> {
+        self.element.namespace_uri()
+    }
+
+    #[inline]
+    fn render_element<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: ElementRenderer<Msg = Self::Msg>,
+    {
+        self.element.render_element(MapElementRenderer {
+            element: renderer,
             f: self.f,
             _marker: PhantomData,
         })
     }
-
-    #[inline]
-    fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
-        self.renderer.text_node(data)
-    }
 }
 
-pub struct MapElementRenderer<'a, E, F, TMsg> {
+struct MapElementRenderer<'a, E, F, TMsg> {
     element: E,
     f: &'a F,
     _marker: PhantomData<fn(TMsg)>,

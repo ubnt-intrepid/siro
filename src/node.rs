@@ -1,11 +1,9 @@
 //! Representation of DOM nodes.
 
-mod element;
 mod iter;
 mod map;
 mod text;
 
-pub use element::{element, Element};
 pub use iter::iter;
 pub use map::Map;
 pub use text::{text, Text};
@@ -26,7 +24,7 @@ pub trait Node {
     /// Render this node using the given renderer.
     fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: Renderer<Msg = Self::Msg>;
+        R: NodeRenderer<Msg = Self::Msg>;
 
     /// Map the message type to another one.
     fn map<F, TMsg: 'static>(self, f: F) -> Map<Self, F>
@@ -38,8 +36,22 @@ pub trait Node {
     }
 }
 
+impl<E> Node for E
+where
+    E: Element,
+{
+    type Msg = E::Msg;
+
+    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: NodeRenderer<Msg = Self::Msg>,
+    {
+        renderer.element(self)
+    }
+}
+
 /// The context for rendering a virtual DOM node.
-pub trait Renderer {
+pub trait NodeRenderer {
     /// The message type associated with this context.
     type Msg: 'static;
 
@@ -49,25 +61,36 @@ pub trait Renderer {
     /// The error type on rendering.
     type Error;
 
-    /// The renderer for an element node, returned from `element_node`.
-    type Element: ElementRenderer<
-        Msg = Self::Msg, //
-        Ok = Self::Ok,
-        Error = Self::Error,
-    >;
-
-    /// Start rendering an `Element` node.
-    fn element_node(
-        self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-    ) -> Result<Self::Element, Self::Error>;
+    /// Render an `Element` node.
+    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    where
+        E: Element<Msg = Self::Msg>;
 
     /// Render a `Text` node.
-    fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error>;
+    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error>;
 }
 
-/// The context for rendering an element node.
+// ==== Element ====
+
+/// A data structure to be rendered as an `Element` node.
+pub trait Element {
+    type Msg: 'static;
+
+    /// Return the tag name of this element.
+    fn tag_name(&self) -> CowStr;
+
+    /// Returns the namespace URI of this document.
+    fn namespace_uri(&self) -> Option<CowStr> {
+        None
+    }
+
+    /// Render this element using the given rendering context.
+    fn render_element<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: ElementRenderer<Msg = Self::Msg>;
+}
+
+/// The rendering context for an `Element`.
 pub trait ElementRenderer {
     type Msg: 'static;
     type Ok;

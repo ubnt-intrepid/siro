@@ -1,4 +1,4 @@
-use super::{CowStr, Node, Renderer};
+use super::{CowStr, Node, NodeRenderer};
 use std::marker::PhantomData;
 
 /// Create a `Node` rendered as a text node.
@@ -19,8 +19,8 @@ impl<TMsg: 'static> Node for Text<TMsg> {
 
     fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: Renderer<Msg = Self::Msg>,
+        R: NodeRenderer<Msg = Self::Msg>,
     {
-        renderer.text_node(self.value)
+        renderer.text(self.value)
     }
 }

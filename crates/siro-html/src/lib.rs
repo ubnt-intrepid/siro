@@ -7,8 +7,138 @@ HTML directives for `siro`.
 
 use siro::{
     attr::Attr,
-    node::{element, Node, Nodes},
+    node::{Element, ElementRenderer, Node, Nodes, NodesRenderer},
+    types::{Attribute, CowStr, Property},
 };
+use std::marker::PhantomData;
+
+fn html_element<TMsg: 'static, A, C>(
+    tag_name: impl Into<CowStr>,
+    attr: A,
+    children: C,
+) -> HtmlElement<TMsg, A, C>
+where
+    A: Attr<TMsg>,
+    C: Nodes<TMsg>,
+{
+    HtmlElement {
+        tag_name: tag_name.into(),
+        attr,
+        children,
+        _marker: PhantomData,
+    }
+}
+
+struct HtmlElement<TMsg, A, C> {
+    tag_name: CowStr,
+    attr: A,
+    children: C,
+    _marker: PhantomData<fn() -> TMsg>,
+}
+
+impl<TMsg: 'static, A, C> Element for HtmlElement<TMsg, A, C>
+where
+    A: Attr<TMsg>,
+    C: Nodes<TMsg>,
+{
+    type Msg = TMsg;
+
+    #[inline]
+    fn tag_name(&self) -> CowStr {
+        self.tag_name.clone()
+    }
+
+    fn render_element<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: ElementRenderer<Msg = Self::Msg>,
+    {
+        let has_inner_html = self.attr.apply(AttrContext {
+            element: &mut renderer,
+            has_inner_html: false,
+        })?;
+
+        if !has_inner_html {
+            self.children.render_nodes(ChildrenContext {
+                element: &mut renderer,
+            })?;
+        }
+
+        renderer.end()
+    }
+}
+
+struct AttrContext<'a, Ctx: ?Sized> {
+    element: &'a mut Ctx,
+    has_inner_html: bool,
+}
+
+impl<Ctx: ?Sized> siro::attr::Context for AttrContext<'_, Ctx>
+where
+    Ctx: ElementRenderer,
+{
+    type Msg = Ctx::Msg;
+    type Ok = bool;
+    type Error = Ctx::Error;
+
+    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+        self.element.attribute(name, value)
+    }
+
+    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+        self.element.property(name, value)
+    }
+
+    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
+        self.element.class(class_name)
+    }
+
+    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
+        self.element.style(name, value)
+    }
+
+    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
+        self.has_inner_html = true;
+        self.element.inner_html(inner_html)
+    }
+
+    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
+    where
+        D: siro::event::EventDecoder<Msg = Self::Msg> + 'static,
+    {
+        self.element.event(event_type, decoder)
+    }
+
+    #[inline]
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(self.has_inner_html)
+    }
+}
+
+struct ChildrenContext<'a, Ctx: ?Sized> {
+    element: &'a mut Ctx,
+}
+
+impl<Ctx: ?Sized> NodesRenderer for ChildrenContext<'_, Ctx>
+where
+    Ctx: ElementRenderer,
+{
+    type Msg = Ctx::Msg;
+    type Ok = ();
+    type Error = Ctx::Error;
+
+    #[inline]
+    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
+    where
+        N: Node<Msg = Self::Msg>,
+    {
+        self.element.child(child)
+    }
+
+    #[inline]
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
+    }
+}
 
 macro_rules! html_elements {
     ( $( $tag_name:ident ),* $(,)? ) => {$(
@@ -19,7 +149,7 @@ macro_rules! html_elements {
                 attr: impl Attr<TMsg>,
                 children: impl Nodes<TMsg>
             ) -> impl Node<Msg = TMsg> {
-                element(stringify!($tag_name), None, attr, children)
+                html_element(stringify!($tag_name), attr, children)
             }
         }
     )*};

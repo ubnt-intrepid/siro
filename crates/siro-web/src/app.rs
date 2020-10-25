@@ -2,7 +2,7 @@ use futures::{channel::mpsc, future::LocalBoxFuture, prelude::*, stream::Futures
 use gloo_events::EventListener;
 use siro::{
     event::{Event, EventDecoder},
-    node::{ElementRenderer, Node, Nodes, NodesRenderer, Renderer},
+    node::{Element, ElementRenderer, Node, NodeRenderer, Nodes, NodesRenderer},
     subscription::{Mailbox, Subscriber, Subscription},
     types::{Attribute, CowStr, Property},
 };
@@ -246,18 +246,18 @@ struct DiffNode<'a, TMsg: 'static> {
     tx: &'a mpsc::UnboundedSender<TMsg>,
 }
 
-impl<'a, TMsg: 'static> Renderer for DiffNode<'a, TMsg> {
+impl<'a, TMsg: 'static> NodeRenderer for DiffNode<'a, TMsg> {
     type Msg = TMsg;
     type Ok = VNode;
     type Error = JsValue;
 
-    type Element = AppElementRenderer<'a, TMsg>;
+    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    where
+        E: Element<Msg = TMsg>,
+    {
+        let tag_name = element.tag_name();
+        let namespace_uri = element.namespace_uri();
 
-    fn element_node(
-        self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-    ) -> Result<Self::Element, Self::Error> {
         match self.vnode {
             VNode::Element(mut velement)
                 if velement.tag_name == tag_name && velement.namespace_uri == namespace_uri =>
@@ -269,7 +269,7 @@ impl<'a, TMsg: 'static> Renderer for DiffNode<'a, TMsg> {
                 velement.class_names.clear();
                 velement.styles.clear();
 
-                Ok(AppElementRenderer::Diff(DiffElement {
+                element.render_element(DiffElement {
                     velement,
                     old_attributes,
                     old_properties,
@@ -277,7 +277,7 @@ impl<'a, TMsg: 'static> Renderer for DiffNode<'a, TMsg> {
                     document: self.document,
                     tx: self.tx,
                     num_new_children: 0,
-                }))
+                })
             }
 
             _ => {
@@ -286,7 +286,7 @@ impl<'a, TMsg: 'static> Renderer for DiffNode<'a, TMsg> {
                     None => self.document.create_element(&*tag_name)?,
                 };
 
-                Ok(AppElementRenderer::New(NewElement {
+                element.render_element(NewElement {
                     velement: VElement {
                         node,
                         tag_name,
@@ -302,12 +302,12 @@ impl<'a, TMsg: 'static> Renderer for DiffNode<'a, TMsg> {
                     document: self.document,
                     parent: self.parent,
                     tx: self.tx,
-                }))
+                })
             }
         }
     }
 
-    fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
+    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
         match self.vnode {
             VNode::Text(mut t) => {
                 if t.data != data {
@@ -331,24 +331,24 @@ struct NewNode<'a, TMsg: 'static> {
     tx: &'a mpsc::UnboundedSender<TMsg>,
 }
 
-impl<'a, TMsg: 'static> Renderer for NewNode<'a, TMsg> {
+impl<'a, TMsg: 'static> NodeRenderer for NewNode<'a, TMsg> {
     type Msg = TMsg;
     type Ok = VNode;
     type Error = JsValue;
 
-    type Element = AppElementRenderer<'a, TMsg>;
+    fn element<E>(self, element: E) -> Result<Self::Ok, Self::Error>
+    where
+        E: Element<Msg = Self::Msg>,
+    {
+        let tag_name = element.tag_name();
+        let namespace_uri = element.namespace_uri();
 
-    fn element_node(
-        self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-    ) -> Result<Self::Element, Self::Error> {
         let node = match &namespace_uri {
             Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
             None => self.document.create_element(&*tag_name)?,
         };
 
-        Ok(AppElementRenderer::New(NewElement {
+        element.render_element(NewElement {
             velement: VElement {
                 node,
                 tag_name,
@@ -364,94 +364,13 @@ impl<'a, TMsg: 'static> Renderer for NewNode<'a, TMsg> {
             document: self.document,
             parent: self.parent,
             tx: self.tx,
-        }))
+        })
     }
 
-    fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
+    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
         let node = self.document.create_text_node(&*data);
         self.parent.append_child(&node)?;
         Ok(VNode::Text(VText { node, data }))
-    }
-}
-
-enum AppElementRenderer<'a, TMsg: 'static> {
-    Diff(DiffElement<'a, TMsg>),
-    New(NewElement<'a, TMsg>),
-}
-
-impl<TMsg: 'static> ElementRenderer for AppElementRenderer<'_, TMsg> {
-    type Msg = TMsg;
-    type Ok = VNode;
-    type Error = JsValue;
-
-    #[inline]
-    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
-        match self {
-            Self::Diff(me) => me.attribute(name, value),
-            Self::New(me) => me.attribute(name, value),
-        }
-    }
-
-    #[inline]
-    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
-        match self {
-            Self::Diff(me) => me.property(name, value),
-            Self::New(me) => me.property(name, value),
-        }
-    }
-
-    #[inline]
-    fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
-    where
-        D: EventDecoder<Msg = Self::Msg> + 'static,
-    {
-        match self {
-            Self::Diff(me) => me.event(event_type, decoder),
-            Self::New(me) => me.event(event_type, decoder),
-        }
-    }
-
-    #[inline]
-    fn class(&mut self, class_name: CowStr) -> Result<(), Self::Error> {
-        match self {
-            Self::Diff(me) => me.class(class_name),
-            Self::New(me) => me.class(class_name),
-        }
-    }
-
-    #[inline]
-    fn style(&mut self, name: CowStr, value: CowStr) -> Result<(), Self::Error> {
-        match self {
-            Self::Diff(me) => me.style(name, value),
-            Self::New(me) => me.style(name, value),
-        }
-    }
-
-    #[inline]
-    fn inner_html(&mut self, inner_html: CowStr) -> Result<(), Self::Error> {
-        match self {
-            Self::Diff(me) => me.inner_html(inner_html),
-            Self::New(me) => me.inner_html(inner_html),
-        }
-    }
-
-    #[inline]
-    fn child<T>(&mut self, child: T) -> Result<(), Self::Error>
-    where
-        T: Node<Msg = Self::Msg>,
-    {
-        match self {
-            Self::Diff(me) => me.child(child),
-            Self::New(me) => me.child(child),
-        }
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        match self {
-            Self::Diff(me) => me.end(),
-            Self::New(me) => me.end(),
-        }
     }
 }
 
