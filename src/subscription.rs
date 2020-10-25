@@ -54,6 +54,19 @@ pub trait Subscriber {
     fn mailbox(&self) -> Self::Mailbox;
 }
 
+impl<S: ?Sized> Subscriber for &S
+where
+    S: Subscriber,
+{
+    type Msg = S::Msg;
+    type Mailbox = S::Mailbox;
+
+    #[inline]
+    fn mailbox(&self) -> Self::Mailbox {
+        (*self).mailbox()
+    }
+}
+
 /// A mailbox for sending messages to the subscriber.
 pub trait Mailbox: 'static {
     /// The message type to be sent.
