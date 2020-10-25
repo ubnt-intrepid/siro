@@ -7,8 +7,7 @@ SVG directives for siro.
 
 use siro::{
     attr::Attr,
-    children::Children,
-    node::{element, Node},
+    node::{element, Node, Nodes},
 };
 
 // TODO: implement missing elements and attributes.
@@ -22,7 +21,7 @@ macro_rules! svg_elements {
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
                 attr: impl Attr<TMsg>,
-                children: impl Children<TMsg>,
+                children: impl Nodes<TMsg>,
             ) -> impl Node<Msg = TMsg> {
                 element(stringify!($tag_name), Some(SVG_NAMESPACE_URI.into()), attr, children)
             }

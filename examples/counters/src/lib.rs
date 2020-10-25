@@ -56,7 +56,7 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
-    use siro::children::iter;
+    use siro::node::iter;
     use siro_html::div;
 
     div(

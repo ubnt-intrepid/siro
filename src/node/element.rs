@@ -1,7 +1,6 @@
-use super::{ElementRenderer, EventDecoder, Node, Renderer};
+use super::{ElementRenderer, EventDecoder, Node, Nodes, NodesRenderer, Renderer};
 use crate::{
     attr::{self, Attr},
-    children::{self, Children},
     types::{Attribute, CowStr, Property},
 };
 use std::marker::PhantomData;
@@ -15,7 +14,7 @@ pub fn element<TMsg: 'static, A, C>(
 ) -> Element<TMsg, A, C>
 where
     A: Attr<TMsg>,
-    C: Children<TMsg>,
+    C: Nodes<TMsg>,
 {
     Element {
         tag_name: tag_name.into(),
@@ -37,7 +36,7 @@ pub struct Element<TMsg, A, C> {
 impl<TMsg: 'static, A, C> Node for Element<TMsg, A, C>
 where
     A: Attr<TMsg>,
-    C: Children<TMsg>,
+    C: Nodes<TMsg>,
 {
     type Msg = TMsg;
 
@@ -53,7 +52,7 @@ where
         })?;
 
         if !has_inner_html {
-            self.children.render_children(ChildrenContext {
+            self.children.render_nodes(ChildrenContext {
                 element: &mut element,
             })?;
         }
@@ -113,7 +112,7 @@ struct ChildrenContext<'a, Ctx: ?Sized> {
     element: &'a mut Ctx,
 }
 
-impl<Ctx: ?Sized> children::Context for ChildrenContext<'_, Ctx>
+impl<Ctx: ?Sized> NodesRenderer for ChildrenContext<'_, Ctx>
 where
     Ctx: ElementRenderer,
 {

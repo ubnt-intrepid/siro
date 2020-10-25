@@ -204,7 +204,7 @@ fn view_main(model: &Model) -> impl Node<Msg = Msg> + '_ {
             html::label(attr::label_for("toggle-all"), "Mark all as complete"),
             html::ul(
                 class("todo-list"),
-                siro::children::iter(
+                siro::node::iter(
                     model
                         .entries
                         .values()

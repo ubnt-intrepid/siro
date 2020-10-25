@@ -7,8 +7,7 @@ HTML directives for `siro`.
 
 use siro::{
     attr::Attr,
-    children::Children,
-    node::{element, Node},
+    node::{element, Node, Nodes},
 };
 
 macro_rules! html_elements {
@@ -18,7 +17,7 @@ macro_rules! html_elements {
             #[inline]
             pub fn $tag_name<TMsg: 'static>(
                 attr: impl Attr<TMsg>,
-                children: impl Children<TMsg>
+                children: impl Nodes<TMsg>
             ) -> impl Node<Msg = TMsg> {
                 element(stringify!($tag_name), None, attr, children)
             }

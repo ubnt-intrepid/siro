@@ -1,10 +1,12 @@
 //! Representation of DOM nodes.
 
 mod element;
+mod iter;
 mod map;
 mod text;
 
 pub use element::{element, Element};
+pub use iter::iter;
 pub use map::Map;
 pub use text::{text, Text};
 
@@ -12,6 +14,9 @@ use crate::{
     event::EventDecoder,
     types::{Attribute, CowStr, Property},
 };
+use either::Either;
+
+// ==== Node ====
 
 /// A data structure that represents a virtual DOM node.
 pub trait Node {
@@ -100,41 +105,173 @@ pub trait ElementRenderer {
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-/// Implemented by types that is converted to `Node`.
-pub trait IntoNode<TMsg: 'static> {
-    /// The type of `Node` to be converted.
-    type Node: Node<Msg = TMsg>;
+// ==== Nodes ====
 
-    /// Convert itself into a `Node`.
-    fn into_node(self) -> Self::Node;
+/// Representing a collection of virtual DOM nodes.
+pub trait Nodes<TMsg: 'static> {
+    fn render_nodes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: NodesRenderer<Msg = TMsg>;
 }
 
-impl<N, TMsg: 'static> IntoNode<TMsg> for N
+/// The rendering context specified for `Nodes`.
+pub trait NodesRenderer {
+    type Msg: 'static;
+    type Ok;
+    type Error;
+
+    /// Append a child node.
+    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
+    where
+        N: Node<Msg = Self::Msg>;
+
+    /// Finalize the rendering process.
+    fn end(self) -> Result<Self::Ok, Self::Error>;
+}
+
+impl<TMsg: 'static> Nodes<TMsg> for () {
+    #[inline]
+    fn render_nodes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: NodesRenderer<Msg = TMsg>,
+    {
+        renderer.end()
+    }
+}
+
+impl<TMsg: 'static> Nodes<TMsg> for &'static str {
+    fn render_nodes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: NodesRenderer<Msg = TMsg>,
+    {
+        renderer.child(text(self))?;
+        renderer.end()
+    }
+}
+
+impl<TMsg: 'static> Nodes<TMsg> for String {
+    fn render_nodes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+    where
+        R: NodesRenderer<Msg = TMsg>,
+    {
+        renderer.child(text(self))?;
+        renderer.end()
+    }
+}
+
+impl<TMsg: 'static, C> Nodes<TMsg> for C
 where
-    N: Node<Msg = TMsg>,
+    C: Node<Msg = TMsg>,
 {
-    type Node = Self;
-
-    #[inline]
-    fn into_node(self) -> Self::Node {
-        self
+    fn render_nodes<Ctx>(self, mut ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    where
+        Ctx: NodesRenderer<Msg = TMsg>,
+    {
+        ctx.child(self)?;
+        ctx.end()
     }
 }
 
-impl<TMsg: 'static> IntoNode<TMsg> for &'static str {
-    type Node = Text<TMsg>;
-
-    #[inline]
-    fn into_node(self) -> Self::Node {
-        text(self)
+impl<TMsg: 'static, T> Nodes<TMsg> for Option<T>
+where
+    T: Nodes<TMsg>,
+{
+    fn render_nodes<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    where
+        Ctx: NodesRenderer<Msg = TMsg>,
+    {
+        match self {
+            Some(ch) => Nodes::render_nodes(ch, ctx),
+            None => ctx.end(),
+        }
     }
 }
 
-impl<TMsg: 'static> IntoNode<TMsg> for String {
-    type Node = Text<TMsg>;
-
-    #[inline]
-    fn into_node(self) -> Self::Node {
-        text(self)
+impl<TMsg: 'static, M1, M2> Nodes<TMsg> for Either<M1, M2>
+where
+    M1: Nodes<TMsg>,
+    M2: Nodes<TMsg>,
+{
+    fn render_nodes<Ctx>(self, ctx: Ctx) -> Result<Ctx::Ok, Ctx::Error>
+    where
+        Ctx: NodesRenderer<Msg = TMsg>,
+    {
+        match self {
+            Either::Left(l) => Nodes::render_nodes(l, ctx),
+            Either::Right(r) => Nodes::render_nodes(r, ctx),
+        }
     }
+}
+
+mod impl_tuples {
+    use super::*;
+
+    struct TupleContext<'a, Ctx: ?Sized> {
+        ctx: &'a mut Ctx,
+    }
+
+    impl<Ctx: ?Sized> NodesRenderer for TupleContext<'_, Ctx>
+    where
+        Ctx: NodesRenderer,
+    {
+        type Msg = Ctx::Msg;
+        type Ok = ();
+        type Error = Ctx::Error;
+
+        #[inline]
+        fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
+        where
+            N: Node<Msg = Self::Msg>,
+        {
+            self.ctx.child(child)
+        }
+
+        #[inline]
+        fn end(self) -> Result<Self::Ok, Self::Error> {
+            Ok(())
+        }
+    }
+
+    macro_rules! impl_nodes_for_tuples {
+        ( $H:ident, $($T:ident),+ ) => {
+            impl<TMsg: 'static, $H, $($T),+ > Nodes<TMsg> for ( $H, $($T),+ )
+            where
+                $H: Nodes<TMsg>,
+                $( $T: Nodes<TMsg>, )+
+            {
+                #[allow(non_snake_case)]
+                fn render_nodes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
+                where
+                    R: NodesRenderer<Msg = TMsg>,
+                {
+                    let ($H, $($T),+) = self;
+                    Nodes::render_nodes($H, TupleContext { ctx: &mut renderer })?;
+                    $( Nodes::render_nodes($T, TupleContext { ctx: &mut renderer })?; )+
+                    renderer.end()
+                }
+            }
+
+            impl_nodes_for_tuples!( $($T),+ );
+        };
+
+        ( $C:ident ) => {
+            impl<TMsg: 'static, $C > Nodes<TMsg> for ( $C, )
+            where
+                $C: Nodes<TMsg>,
+            {
+                #[allow(non_snake_case)]
+                fn render_nodes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+                where
+                    R: NodesRenderer<Msg = TMsg>,
+                {
+                    Nodes::render_nodes(self.0, renderer)
+                }
+            }
+        };
+    }
+
+    impl_nodes_for_tuples!(
+        C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, //
+        C11, C12, C13, C14, C15, C16, C17, C18, C19, C20
+    );
 }

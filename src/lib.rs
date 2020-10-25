@@ -11,7 +11,6 @@ detail of runtime implementation.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 pub mod attr;
-pub mod children;
 pub mod event;
 pub mod node;
 pub mod subscription;
@@ -22,8 +21,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
         attr::Attr,
-        children::Children,
-        node::{IntoNode, Node},
+        node::{Node, Nodes},
         subscription::Subscription,
     };
 }

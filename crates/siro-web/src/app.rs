@@ -2,7 +2,7 @@ use futures::{channel::mpsc, future::LocalBoxFuture, prelude::*, stream::Futures
 use gloo_events::EventListener;
 use siro::{
     event::{Event, EventDecoder},
-    node::{ElementRenderer, IntoNode, Node, Renderer},
+    node::{ElementRenderer, Node, Nodes, NodesRenderer, Renderer},
     subscription::{Mailbox, Subscriber, Subscription},
     types::{Attribute, CowStr, Property},
 };
@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 pub struct App<TMsg: 'static> {
     mountpoint: web::Node,
     document: web::Document,
-    vnode: Option<VNode>,
+    vnodes: Vec<VNode>,
     tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
     pending_tasks: FuturesUnordered<LocalBoxFuture<'static, TMsg>>,
@@ -24,7 +24,7 @@ impl<TMsg: 'static> App<TMsg> {
         Self {
             mountpoint,
             document,
-            vnode: None,
+            vnodes: vec![],
             tx,
             rx,
             pending_tasks: FuturesUnordered::new(),
@@ -66,21 +66,17 @@ impl<TMsg: 'static> App<TMsg> {
         }
     }
 
-    pub fn render<N>(&mut self, node: N) -> Result<(), JsValue>
+    pub fn render<N>(&mut self, nodes: N) -> Result<(), JsValue>
     where
-        N: IntoNode<TMsg>,
+        N: Nodes<TMsg>,
     {
-        let node = node.into_node();
-
-        let vnode = node.render(AppRenderer {
+        nodes.render_nodes(DiffNodes {
             document: &self.document,
-            tx: &self.tx,
-            vnode: self.vnode.take(),
             parent: &self.mountpoint,
+            vnodes: &mut self.vnodes,
+            num_children: 0,
+            tx: &self.tx,
         })?;
-
-        self.vnode.replace(vnode);
-
         Ok(())
     }
 }
@@ -193,14 +189,64 @@ struct VText {
     node: web::Text,
 }
 
-struct AppRenderer<'a, TMsg: 'static> {
-    vnode: Option<VNode>,
+struct DiffNodes<'a, TMsg> {
+    vnodes: &'a mut Vec<VNode>,
+    num_children: usize,
     document: &'a web::Document,
     parent: &'a web::Node,
     tx: &'a mpsc::UnboundedSender<TMsg>,
 }
 
-impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
+impl<TMsg: 'static> NodesRenderer for DiffNodes<'_, TMsg> {
+    type Msg = TMsg;
+    type Ok = ();
+    type Error = JsValue;
+
+    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
+    where
+        N: Node<Msg = Self::Msg>,
+    {
+        if let Some(slot) = self.vnodes.get_mut(self.num_children) {
+            let vnode = child.render(DiffNode {
+                document: &*self.document,
+                parent: &self.parent,
+                tx: &*self.tx,
+                vnode: mem::take(slot),
+            })?;
+            let _ = mem::replace(slot, vnode);
+        } else {
+            let vnode = child.render(NewNode {
+                document: &*self.document,
+                parent: &self.parent,
+                tx: &*self.tx,
+            })?;
+            self.vnodes.push(vnode);
+        }
+
+        self.num_children += 1;
+
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        for vnode in self.vnodes.drain(self.num_children..) {
+            if let Some(node) = vnode.as_node() {
+                self.parent.remove_child(node)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct DiffNode<'a, TMsg: 'static> {
+    vnode: VNode,
+    document: &'a web::Document,
+    parent: &'a web::Node,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
+}
+
+impl<'a, TMsg: 'static> Renderer for DiffNode<'a, TMsg> {
     type Msg = TMsg;
     type Ok = VNode;
     type Error = JsValue;
@@ -213,7 +259,7 @@ impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
         namespace_uri: Option<CowStr>,
     ) -> Result<Self::Element, Self::Error> {
         match self.vnode {
-            Some(VNode::Element(mut velement))
+            VNode::Element(mut velement)
                 if velement.tag_name == tag_name && velement.namespace_uri == namespace_uri =>
             {
                 let old_attributes = mem::take(&mut velement.attributes);
@@ -263,7 +309,7 @@ impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
 
     fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
         match self.vnode {
-            Some(VNode::Text(mut t)) => {
+            VNode::Text(mut t) => {
                 if t.data != data {
                     t.node.set_data(&*data);
                     t.data = data;
@@ -276,6 +322,55 @@ impl<'a, TMsg: 'static> Renderer for AppRenderer<'a, TMsg> {
                 Ok(VNode::Text(VText { node, data }))
             }
         }
+    }
+}
+
+struct NewNode<'a, TMsg: 'static> {
+    document: &'a web::Document,
+    parent: &'a web::Node,
+    tx: &'a mpsc::UnboundedSender<TMsg>,
+}
+
+impl<'a, TMsg: 'static> Renderer for NewNode<'a, TMsg> {
+    type Msg = TMsg;
+    type Ok = VNode;
+    type Error = JsValue;
+
+    type Element = AppElementRenderer<'a, TMsg>;
+
+    fn element_node(
+        self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+    ) -> Result<Self::Element, Self::Error> {
+        let node = match &namespace_uri {
+            Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
+            None => self.document.create_element(&*tag_name)?,
+        };
+
+        Ok(AppElementRenderer::New(NewElement {
+            velement: VElement {
+                node,
+                tag_name,
+                namespace_uri,
+                attributes: FxIndexMap::default(),
+                properties: FxIndexMap::default(),
+                listeners: FxIndexMap::default(),
+                class_names: FxIndexSet::default(),
+                styles: FxIndexMap::default(),
+                inner_html: None,
+                children: vec![],
+            },
+            document: self.document,
+            parent: self.parent,
+            tx: self.tx,
+        }))
+    }
+
+    fn text_node(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
+        let node = self.document.create_text_node(&*data);
+        self.parent.append_child(&node)?;
+        Ok(VNode::Text(VText { node, data }))
     }
 }
 
@@ -443,16 +538,15 @@ impl<TMsg: 'static> ElementRenderer for DiffElement<'_, TMsg> {
         }
 
         if let Some(slot) = self.velement.children.get_mut(self.num_new_children) {
-            let vnode = child.render(AppRenderer {
+            let vnode = child.render(DiffNode {
                 document: &*self.document,
                 tx: &*self.tx,
-                vnode: Some(mem::take(slot)),
+                vnode: mem::take(slot),
                 parent: &self.velement.node,
             })?;
             let _ = mem::replace(slot, vnode);
         } else {
-            let vnode = child.render(AppRenderer {
-                vnode: None,
+            let vnode = child.render(NewNode {
                 document: &*self.document,
                 tx: &*self.tx,
                 parent: &self.velement.node,
@@ -553,8 +647,7 @@ impl<TMsg: 'static> ElementRenderer for NewElement<'_, TMsg> {
         T: Node<Msg = Self::Msg>,
     {
         if self.velement.inner_html.is_none() {
-            let child_vnode = child.render(AppRenderer {
-                vnode: None,
+            let child_vnode = child.render(NewNode {
                 document: &*self.document,
                 tx: &*self.tx,
                 parent: &self.velement.node,
