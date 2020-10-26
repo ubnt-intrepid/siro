@@ -1,7 +1,13 @@
-use super::{Attributes, AttributesRenderer, Nodes, NodesRenderer};
-use crate::{
-    event::{Event, EventDecoder},
-    types::{Attribute, CowStr, Property},
+use super::{
+    AttributeValue, //
+    Attributes,
+    AttributesRenderer,
+    CowStr,
+    Event,
+    EventDecoder,
+    Nodes,
+    NodesRenderer,
+    PropertyValue,
 };
 use std::marker::PhantomData;
 
@@ -145,12 +151,12 @@ where
     type Error = R::Error;
 
     #[inline]
-    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+    fn attribute(&mut self, name: CowStr, value: AttributeValue) -> Result<(), Self::Error> {
         self.renderer.attribute(name, value)
     }
 
     #[inline]
-    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
         self.renderer.property(name, value)
     }
 

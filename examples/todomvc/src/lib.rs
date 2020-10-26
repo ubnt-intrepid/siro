@@ -1,10 +1,12 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use siro::attr::class;
 use siro::prelude::*;
-use siro_html::{
-    self as html, attr,
-    event::{on_blur, on_click, on_double_click, on_enter, on_input},
+use siro::{
+    html::{
+        self, attr,
+        event::{on_blur, on_click, on_double_click, on_enter, on_input},
+    },
+    vdom::class,
 };
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
@@ -204,7 +206,7 @@ fn view_main(model: &Model) -> impl Nodes<Msg> + '_ {
             html::label(attr::label_for("toggle-all"), "Mark all as complete"),
             html::ul(
                 class("todo-list"),
-                siro::node::iter(
+                siro::vdom::iter(
                     model
                         .entries
                         .values()

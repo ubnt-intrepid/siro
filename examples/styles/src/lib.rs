@@ -11,8 +11,10 @@ pub fn main() -> Result<(), JsValue> {
     let mut app = siro_web::App::<()>::mount("#app")?;
 
     app.render({
-        use siro::attr::style;
-        use siro_html::{div, span};
+        use siro::{
+            html::{div, span},
+            vdom::style,
+        };
 
         div(
             (),

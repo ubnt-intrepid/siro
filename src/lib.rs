@@ -10,17 +10,16 @@ detail of runtime implementation.
 #![doc(html_root_url = "https://docs.rs/siro/0.1.0")]
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
-pub mod attr;
-pub mod event;
-pub mod node;
+pub mod html;
 pub mod subscription;
-pub mod types;
+pub mod svg;
+pub mod vdom;
 
 /// A *prelude* for end users.
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        node::{Attributes, Nodes},
         subscription::Subscription,
+        vdom::{Attributes, Nodes},
     };
 }

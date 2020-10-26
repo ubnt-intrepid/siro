@@ -1,8 +1,8 @@
 use crate::render::{RenderContext, VNode};
 use futures::{channel::mpsc, future::LocalBoxFuture, prelude::*, stream::FuturesUnordered};
 use siro::{
-    node::Nodes,
     subscription::{Mailbox, Subscriber, Subscription},
+    vdom::Nodes,
 };
 use wasm_bindgen::prelude::*;
 

@@ -1,14 +1,8 @@
 /*!
-HTML directives for `siro`.
+HTML directives.
 !*/
 
-#![doc(html_root_url = "https://docs.rs/siro-html/0.1.0")]
-#![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
-
-use siro::{
-    node::{Attributes, Nodes, NodesRenderer},
-    types::CowStr,
-};
+use crate::vdom::{Attributes, CowStr, Nodes, NodesRenderer};
 use std::marker::PhantomData;
 
 fn html_element<TMsg: 'static, A, C>(
@@ -131,11 +125,7 @@ html_elements!(
 
 /// HTML attributes.
 pub mod attr {
-    use siro::{
-        attr::{attribute, property},
-        node::Attributes,
-        types::{CowStr, Property},
-    };
+    use crate::vdom::{attribute, property, Attributes, CowStr, PropertyValue};
 
     pub fn autofocus<TMsg: 'static>(autofocus: bool) -> impl Attributes<TMsg> {
         attribute("autofocus", autofocus)
@@ -165,7 +155,7 @@ pub mod attr {
         property("checked", checked)
     }
 
-    pub fn value<TMsg: 'static>(value: impl Into<Property>) -> impl Attributes<TMsg> {
+    pub fn value<TMsg: 'static>(value: impl Into<PropertyValue>) -> impl Attributes<TMsg> {
         property("value", value)
     }
 }
@@ -174,10 +164,7 @@ pub mod attr {
 ///
 /// [`<input>`]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
 pub mod input {
-    use siro::{
-        attr::attribute,
-        node::{Attributes, Nodes},
-    };
+    use crate::vdom::{attribute, Attributes, Nodes};
 
     macro_rules! input_elements {
         ( $( $type_name:ident ),* $(,)? ) => {$(
@@ -204,8 +191,8 @@ pub mod input {
 }
 
 pub mod event {
+    use crate::vdom::{event, Attributes};
     use serde::{de::IgnoredAny, Deserialize};
-    use siro::{attr::event, node::Attributes};
 
     pub fn on<T, TMsg>(
         event_type: &'static str,

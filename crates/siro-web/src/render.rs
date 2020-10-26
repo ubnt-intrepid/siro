@@ -1,9 +1,10 @@
 use gloo_events::EventListener;
 use siro::{
-    event::{Event, EventDecoder},
-    node::{Attributes, AttributesRenderer, Nodes, NodesRenderer},
     subscription::{Mailbox as _, Subscriber},
-    types::{Attribute, CowStr, Property},
+    vdom::{
+        AttributeValue, Attributes, AttributesRenderer, CowStr, Event, EventDecoder, Nodes,
+        NodesRenderer, PropertyValue,
+    },
 };
 use std::mem;
 use wasm_bindgen::prelude::*;
@@ -33,8 +34,8 @@ impl VNode {
 pub(crate) struct VElement {
     tag_name: CowStr,
     namespace_uri: Option<CowStr>,
-    attributes: FxIndexMap<CowStr, Attribute>,
-    properties: FxIndexMap<CowStr, Property>,
+    attributes: FxIndexMap<CowStr, AttributeValue>,
+    properties: FxIndexMap<CowStr, PropertyValue>,
     listeners: FxIndexMap<CowStr, EventListener>,
     class_names: FxIndexSet<CowStr>,
     styles: FxIndexMap<CowStr, CowStr>,
@@ -285,8 +286,8 @@ impl<S: Subscriber> NodesRenderer for DiffNodes<'_, '_, S> {
 struct DiffAttributes<'a, 'ctx, S: Subscriber> {
     ctx: &'a RenderContext<'ctx, S>,
     velement: &'a mut VElement,
-    old_attributes: FxIndexMap<CowStr, Attribute>,
-    old_properties: FxIndexMap<CowStr, Property>,
+    old_attributes: FxIndexMap<CowStr, AttributeValue>,
+    old_properties: FxIndexMap<CowStr, PropertyValue>,
     old_inner_html: Option<CowStr>,
 }
 
@@ -295,7 +296,7 @@ impl<S: Subscriber> AttributesRenderer for DiffAttributes<'_, '_, S> {
     type Ok = ();
     type Error = JsValue;
 
-    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+    fn attribute(&mut self, name: CowStr, value: AttributeValue) -> Result<(), Self::Error> {
         match self.old_attributes.remove(&*name) {
             Some(old_value) if old_value == value => (),
             _ => set_attribute(&self.velement.node, &*name, &value)?,
@@ -304,7 +305,7 @@ impl<S: Subscriber> AttributesRenderer for DiffAttributes<'_, '_, S> {
         Ok(())
     }
 
-    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
         match self.old_properties.remove(&*name) {
             Some(old_value) if old_value == value => (),
             _ => set_property(&self.velement.node, &*name, &value)?,
@@ -380,13 +381,13 @@ impl<S: Subscriber> AttributesRenderer for NewAttributes<'_, '_, S> {
     type Ok = ();
     type Error = JsValue;
 
-    fn attribute(&mut self, name: CowStr, value: Attribute) -> Result<(), Self::Error> {
+    fn attribute(&mut self, name: CowStr, value: AttributeValue) -> Result<(), Self::Error> {
         set_attribute(&self.velement.node, &*name, &value)?;
         self.velement.attributes.insert(name, value);
         Ok(())
     }
 
-    fn property(&mut self, name: CowStr, value: Property) -> Result<(), Self::Error> {
+    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
         set_property(&self.velement.node, &*name, &value)?;
         self.velement.properties.insert(name, value);
         Ok(())
@@ -452,20 +453,24 @@ impl Event for AppEvent<'_> {
 
 // ==== utils ====
 
-fn set_attribute(element: &web::Element, name: &str, value: &Attribute) -> Result<(), JsValue> {
+fn set_attribute(
+    element: &web::Element,
+    name: &str,
+    value: &AttributeValue,
+) -> Result<(), JsValue> {
     match value {
-        Attribute::String(value) => element.set_attribute(name, value)?,
-        Attribute::Bool(true) => element.set_attribute(name, "")?,
-        Attribute::Bool(false) => element.remove_attribute(name)?,
+        AttributeValue::String(value) => element.set_attribute(name, value)?,
+        AttributeValue::Bool(true) => element.set_attribute(name, "")?,
+        AttributeValue::Bool(false) => element.remove_attribute(name)?,
     }
     Ok(())
 }
 
-fn set_property(element: &web::Element, name: &str, value: &Property) -> Result<(), JsValue> {
+fn set_property(element: &web::Element, name: &str, value: &PropertyValue) -> Result<(), JsValue> {
     let value = match value {
-        Property::String(s) => JsValue::from_str(&*s),
-        Property::Number(n) => JsValue::from_f64(*n),
-        Property::Bool(b) => JsValue::from_bool(*b),
+        PropertyValue::String(s) => JsValue::from_str(&*s),
+        PropertyValue::Number(n) => JsValue::from_f64(*n),
+        PropertyValue::Bool(b) => JsValue::from_bool(*b),
     };
     js_sys::Reflect::set(element, &JsValue::from_str(name), &value)?;
     Ok(())

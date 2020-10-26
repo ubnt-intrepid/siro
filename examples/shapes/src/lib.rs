@@ -11,7 +11,7 @@ pub fn main() -> Result<(), JsValue> {
     let mut app = siro_web::App::<()>::mount("#app")?;
 
     app.render({
-        use siro_svg::{self as svg, attr, svg};
+        use siro::svg::{self, attr, svg};
 
         svg(
             (

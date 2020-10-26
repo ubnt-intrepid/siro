@@ -1,14 +1,6 @@
-/*!
-SVG directives for siro.
-!*/
+//! SVG directives.
 
-#![doc(html_root_url = "https://docs.rs/siro-svg/0.1.0")]
-#![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
-
-use siro::{
-    node::{Attributes, Nodes, NodesRenderer},
-    types::CowStr,
-};
+use crate::vdom::{Attributes, CowStr, Nodes, NodesRenderer};
 use std::marker::PhantomData;
 
 // TODO: implement missing elements and attributes.
@@ -85,7 +77,7 @@ svg_elements! {
 
 /// SVG attributes.
 pub mod attr {
-    use siro::{attr::attribute, node::Attributes, types::CowStr};
+    use crate::vdom::{attribute, Attributes, CowStr};
 
     macro_rules! svg_attributes {
         ( $( $name:ident => $attrname:expr, )* ) => {$(

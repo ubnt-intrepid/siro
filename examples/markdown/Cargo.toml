@@ -10,7 +10,6 @@ doc = false
 
 [dependencies]
 siro = { path = "../.." }
-siro-html = { path = "../../crates/siro-html" }
 siro-web = { path = "../../crates/siro-web" }
 
 ammonia = "3"

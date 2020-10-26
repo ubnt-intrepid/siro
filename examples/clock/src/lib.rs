@@ -1,6 +1,5 @@
-use siro::attr::style;
 use siro::prelude::*;
-use siro_svg as svg;
+use siro::{svg, vdom::style};
 
 use std::f32;
 use wasm_bindgen::prelude::*;

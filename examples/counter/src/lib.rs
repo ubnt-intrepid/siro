@@ -1,5 +1,5 @@
+use siro::html::{button, div, event::on_click};
 use siro::prelude::*;
-use siro_html as html;
 
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -27,16 +27,16 @@ fn update(model: &mut Model, msg: Msg) {
 }
 
 fn view(model: &Model) -> impl Nodes<Msg> {
-    html::div(
+    div(
         (),
         (
-            html::button(html::event::on_click(|| Msg::Decrement), "-"),
+            button(on_click(|| Msg::Decrement), "-"),
             " ",
             model.value.to_string(),
             " ",
-            html::button(html::event::on_click(|| Msg::Increment), "+"),
+            button(on_click(|| Msg::Increment), "+"),
             " ",
-            html::button(html::event::on_click(|| Msg::Reset), "Reset"),
+            button(on_click(|| Msg::Reset), "Reset"),
         ),
     )
 }
