@@ -1,4 +1,4 @@
-use super::{Attributes, AttributesRenderer, Node, NodeRenderer, Nodes, NodesRenderer};
+use super::{Attributes, AttributesRenderer, Nodes, NodesRenderer};
 use crate::{
     event::{Event, EventDecoder},
     types::{Attribute, CowStr, Property},
@@ -6,24 +6,40 @@ use crate::{
 use std::marker::PhantomData;
 
 /// A virtual node created by [`map`](./trait.Node.html#method.map).
-pub struct Map<TNode, F> {
-    pub(super) node: TNode,
-    pub(super) f: F,
+pub struct Map<TNodes, F, TMsg, UMsg> {
+    nodes: TNodes,
+    f: F,
+    _marker: PhantomData<fn(TMsg) -> UMsg>,
 }
 
-impl<TNode, F, TMsg> Node for Map<TNode, F>
+impl<TNodes, F, TMsg, UMsg> Map<TNodes, F, TMsg, UMsg>
 where
-    TNode: Node,
-    F: Fn(TNode::Msg) -> TMsg + Clone + 'static,
+    TNodes: Nodes<TMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
     TMsg: 'static,
+    UMsg: 'static,
 {
-    type Msg = TMsg;
+    pub(super) fn new(nodes: TNodes, f: F) -> Self {
+        Self {
+            nodes,
+            f,
+            _marker: PhantomData,
+        }
+    }
+}
 
-    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+impl<TNodes, F, TMsg, UMsg> Nodes<UMsg> for Map<TNodes, F, TMsg, UMsg>
+where
+    TNodes: Nodes<TMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
+    TMsg: 'static,
+    UMsg: 'static,
+{
+    fn render_nodes<R>(self, renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: NodeRenderer<Msg = Self::Msg>,
+        R: NodesRenderer<Msg = UMsg>,
     {
-        self.node.render(MapRenderer {
+        self.nodes.render_nodes(MapRenderer {
             renderer,
             f: &self.f,
             _marker: PhantomData,
@@ -31,17 +47,18 @@ where
     }
 }
 
-struct MapRenderer<'a, R, F, TMsg> {
+struct MapRenderer<'a, R, F, TMsg, UMsg> {
     renderer: R,
     f: &'a F,
-    _marker: PhantomData<fn(TMsg)>,
+    _marker: PhantomData<fn(TMsg) -> UMsg>,
 }
 
-impl<'a, R, F, TMsg> NodeRenderer for MapRenderer<'a, R, F, TMsg>
+impl<'a, R, F, TMsg, UMsg> NodesRenderer for MapRenderer<'a, R, F, TMsg, TMsg>
 where
-    R: NodeRenderer,
-    F: Fn(TMsg) -> R::Msg + Clone + 'static,
+    R: NodesRenderer<Msg = UMsg>,
+    F: Fn(TMsg) -> UMsg + Clone + 'static,
     TMsg: 'static,
+    UMsg: 'static,
 {
     type Msg = TMsg;
     type Ok = R::Ok;
@@ -49,12 +66,12 @@ where
 
     #[inline]
     fn element<A, C>(
-        self,
+        &mut self,
         tag_name: CowStr,
         namespace_uri: Option<CowStr>,
         attr: A,
         children: C,
-    ) -> Result<Self::Ok, Self::Error>
+    ) -> Result<(), Self::Error>
     where
         A: Attributes<Self::Msg>,
         C: Nodes<Self::Msg>,
@@ -76,8 +93,12 @@ where
     }
 
     #[inline]
-    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
-        self.renderer.text(data)
+    fn text_node(&mut self, data: CowStr) -> Result<(), Self::Error> {
+        self.renderer.text_node(data)
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        self.renderer.end()
     }
 }
 
@@ -204,41 +225,10 @@ where
     where
         R: NodesRenderer<Msg = UMsg>,
     {
-        self.children.render_nodes(MapChildrenRenderer {
+        self.children.render_nodes(MapRenderer {
             renderer,
             f: self.f,
             _marker: PhantomData,
         })
-    }
-}
-
-struct MapChildrenRenderer<'a, R, F, TMsg, UMsg> {
-    renderer: R,
-    f: &'a F,
-    _marker: PhantomData<fn(TMsg) -> UMsg>,
-}
-
-impl<R, F, TMsg, UMsg> NodesRenderer for MapChildrenRenderer<'_, R, F, TMsg, UMsg>
-where
-    R: NodesRenderer<Msg = UMsg>,
-    F: Fn(TMsg) -> UMsg + Clone + 'static,
-    TMsg: 'static,
-    UMsg: 'static,
-{
-    type Msg = TMsg;
-    type Ok = R::Ok;
-    type Error = R::Error;
-
-    #[inline]
-    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
-    where
-        N: Node<Msg = Self::Msg>,
-    {
-        self.renderer.child(child.map(self.f.clone()))
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.renderer.end()
     }
 }

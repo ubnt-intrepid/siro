@@ -1,7 +1,7 @@
 use gloo_events::EventListener;
 use siro::{
     event::{Event, EventDecoder},
-    node::{Attributes, AttributesRenderer, Node, NodeRenderer, Nodes, NodesRenderer},
+    node::{Attributes, AttributesRenderer, Nodes, NodesRenderer},
     subscription::{Mailbox as _, Subscriber},
     types::{Attribute, CowStr, Property},
 };
@@ -159,6 +159,69 @@ impl<S: Subscriber> RenderContext<'_, S> {
         self.parent.append_child(&node)?;
         Ok(VText { node, data })
     }
+
+    fn diff_element<A, C>(
+        &self,
+        vnode: &mut VNode,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+        attrs: A,
+        children: C,
+    ) -> Result<(), JsValue>
+    where
+        A: Attributes<S::Msg>,
+        C: Nodes<S::Msg>,
+    {
+        match vnode {
+            VNode::Element(velement)
+                if velement.tag_name == tag_name && velement.namespace_uri == namespace_uri =>
+            {
+                let old_attributes = mem::take(&mut velement.attributes);
+                let old_properties = mem::take(&mut velement.properties);
+                let old_inner_html = velement.inner_html.take();
+                velement.listeners.clear();
+                velement.class_names.clear();
+                velement.styles.clear();
+
+                attrs.render_attributes(DiffAttributes {
+                    ctx: self,
+                    velement,
+                    old_attributes,
+                    old_properties,
+                    old_inner_html,
+                })?;
+
+                if velement.inner_html.is_none() {
+                    self.reparent(&velement.node)
+                        .diff_nodes(children, &mut velement.children)?;
+                }
+            }
+
+            _ => {
+                let velement = self.create_element(tag_name, namespace_uri, attrs, children)?;
+                *vnode = VNode::Element(velement);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn diff_text_node(&self, vnode: &mut VNode, data: CowStr) -> Result<(), JsValue> {
+        match vnode {
+            VNode::Text(t) => {
+                if t.data != data {
+                    t.node.set_data(&*data);
+                    t.data = data;
+                }
+            }
+            _ => {
+                let vtext = self.create_text_node(data)?;
+                *vnode = VNode::Text(vtext);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 struct DiffNodes<'a, 'ctx, S: Subscriber> {
@@ -172,22 +235,39 @@ impl<S: Subscriber> NodesRenderer for DiffNodes<'_, '_, S> {
     type Ok = ();
     type Error = JsValue;
 
-    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
+    fn element<A, C>(
+        &mut self,
+        tag_name: CowStr,
+        namespace_uri: Option<CowStr>,
+        attrs: A,
+        children: C,
+    ) -> Result<(), Self::Error>
     where
-        N: Node<Msg = Self::Msg>,
+        A: Attributes<Self::Msg>,
+        C: Nodes<Self::Msg>,
     {
         if let Some(vnode) = self.vnodes.get_mut(self.num_children) {
-            child.render(DiffNode {
-                ctx: self.ctx,
-                vnode,
-            })?;
+            self.ctx
+                .diff_element(vnode, tag_name, namespace_uri, attrs, children)?;
         } else {
-            let vnode = child.render(NewNode { ctx: self.ctx })?;
+            let vnode = self
+                .ctx
+                .create_element(tag_name, namespace_uri, attrs, children)
+                .map(VNode::Element)?;
             self.vnodes.push(vnode);
         }
-
         self.num_children += 1;
+        Ok(())
+    }
 
+    fn text_node(&mut self, data: CowStr) -> Result<(), Self::Error> {
+        if let Some(vnode) = self.vnodes.get_mut(self.num_children) {
+            self.ctx.diff_text_node(vnode, data)?;
+        } else {
+            let vnode = self.ctx.create_text_node(data).map(VNode::Text)?;
+            self.vnodes.push(vnode);
+        }
+        self.num_children += 1;
         Ok(())
     }
 
@@ -199,114 +279,6 @@ impl<S: Subscriber> NodesRenderer for DiffNodes<'_, '_, S> {
         }
 
         Ok(())
-    }
-}
-
-struct DiffNode<'a, 'ctx, S: Subscriber> {
-    ctx: &'a RenderContext<'ctx, S>,
-    vnode: &'a mut VNode,
-}
-
-impl<S: Subscriber> NodeRenderer for DiffNode<'_, '_, S> {
-    type Msg = S::Msg;
-    type Ok = ();
-    type Error = JsValue;
-
-    fn element<A, C>(
-        self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-        attrs: A,
-        children: C,
-    ) -> Result<Self::Ok, Self::Error>
-    where
-        A: Attributes<S::Msg>,
-        C: Nodes<S::Msg>,
-    {
-        match self.vnode {
-            VNode::Element(velement)
-                if velement.tag_name == tag_name && velement.namespace_uri == namespace_uri =>
-            {
-                let old_attributes = mem::take(&mut velement.attributes);
-                let old_properties = mem::take(&mut velement.properties);
-                let old_inner_html = velement.inner_html.take();
-                velement.listeners.clear();
-                velement.class_names.clear();
-                velement.styles.clear();
-
-                attrs.render_attributes(DiffAttributes {
-                    ctx: self.ctx,
-                    velement,
-                    old_attributes,
-                    old_properties,
-                    old_inner_html,
-                })?;
-
-                if velement.inner_html.is_none() {
-                    self.ctx
-                        .reparent(&velement.node)
-                        .diff_nodes(children, &mut velement.children)?;
-                }
-            }
-
-            _ => {
-                let velement = self
-                    .ctx
-                    .create_element(tag_name, namespace_uri, attrs, children)?;
-                *self.vnode = VNode::Element(velement);
-            }
-        }
-
-        Ok(())
-    }
-
-    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
-        match self.vnode {
-            VNode::Text(t) => {
-                if t.data != data {
-                    t.node.set_data(&*data);
-                    t.data = data;
-                }
-            }
-            _ => {
-                let vtext = self.ctx.create_text_node(data)?;
-                *self.vnode = VNode::Text(vtext);
-            }
-        }
-
-        Ok(())
-    }
-}
-
-struct NewNode<'a, 'ctx, S: Subscriber> {
-    ctx: &'a RenderContext<'ctx, S>,
-}
-
-impl<S: Subscriber> NodeRenderer for NewNode<'_, '_, S> {
-    type Msg = S::Msg;
-    type Ok = VNode;
-    type Error = JsValue;
-
-    #[inline]
-    fn element<A, C>(
-        self,
-        tag_name: CowStr,
-        namespace_uri: Option<CowStr>,
-        attrs: A,
-        children: C,
-    ) -> Result<Self::Ok, Self::Error>
-    where
-        A: Attributes<Self::Msg>,
-        C: Nodes<Self::Msg>,
-    {
-        self.ctx
-            .create_element(tag_name, namespace_uri, attrs, children)
-            .map(VNode::Element)
-    }
-
-    #[inline]
-    fn text(self, data: CowStr) -> Result<Self::Ok, Self::Error> {
-        self.ctx.create_text_node(data).map(VNode::Text)
     }
 }
 

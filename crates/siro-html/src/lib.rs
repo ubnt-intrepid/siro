@@ -6,7 +6,7 @@ HTML directives for `siro`.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 use siro::{
-    node::{Attributes, Node, NodeRenderer, Nodes},
+    node::{Attributes, Nodes, NodesRenderer},
     types::CowStr,
 };
 use std::marker::PhantomData;
@@ -35,18 +35,17 @@ struct HtmlElement<TMsg, A, C> {
     _marker: PhantomData<fn() -> TMsg>,
 }
 
-impl<TMsg: 'static, A, C> Node for HtmlElement<TMsg, A, C>
+impl<TMsg: 'static, A, C> Nodes<TMsg> for HtmlElement<TMsg, A, C>
 where
     A: Attributes<TMsg>,
     C: Nodes<TMsg>,
 {
-    type Msg = TMsg;
-
-    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    fn render_nodes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: NodeRenderer<Msg = Self::Msg>,
+        R: NodesRenderer<Msg = TMsg>,
     {
-        renderer.element(self.tag_name, None, self.attr, self.children)
+        renderer.element(self.tag_name, None, self.attr, self.children)?;
+        renderer.end()
     }
 }
 
@@ -58,7 +57,7 @@ macro_rules! html_elements {
             pub fn $tag_name<TMsg: 'static>(
                 attributes: impl Attributes<TMsg>,
                 children: impl Nodes<TMsg>
-            ) -> impl Node<Msg = TMsg> {
+            ) -> impl Nodes<TMsg> {
                 html_element(stringify!($tag_name), attributes, children)
             }
         }
@@ -177,7 +176,7 @@ pub mod attr {
 pub mod input {
     use siro::{
         attr::attribute,
-        node::{Attributes, Node},
+        node::{Attributes, Nodes},
     };
 
     macro_rules! input_elements {
@@ -185,7 +184,7 @@ pub mod input {
             paste::paste! {
                 #[doc = "Create a `View` of [`<input type=\"" $type_name "\">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/" $type_name ") element."]
                 #[inline]
-                pub fn $type_name<TMsg: 'static>(attr: impl Attributes<TMsg>) -> impl Node<Msg = TMsg> {
+                pub fn $type_name<TMsg: 'static>(attr: impl Attributes<TMsg>) -> impl Nodes<TMsg> {
                     super::input((attribute("type", stringify!($type_name)), attr), ())
                 }
             }
@@ -199,7 +198,7 @@ pub mod input {
 
     /// Create a `View` of [`<input type="datetime-local">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/datetime-local) element.
     #[inline]
-    pub fn datetime_local<TMsg: 'static>(attr: impl Attributes<TMsg>) -> impl Node<Msg = TMsg> {
+    pub fn datetime_local<TMsg: 'static>(attr: impl Attributes<TMsg>) -> impl Nodes<TMsg> {
         super::input((attribute("type", "datetime-local"), attr), ())
     }
 }

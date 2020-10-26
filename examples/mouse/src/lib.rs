@@ -46,7 +46,7 @@ fn update(model: &mut Model, Msg { event, button }: Msg) -> Result<(), JsValue> 
     Ok(())
 }
 
-fn view(model: &Model) -> impl Node<Msg = Msg> {
+fn view(model: &Model) -> impl Nodes<Msg> {
     use siro::attr::style;
     use siro_svg::{
         attr::{cx, cy, fill, height, r, viewbox, width},

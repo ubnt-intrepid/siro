@@ -28,7 +28,7 @@ mod counter {
         }
     }
 
-    pub fn view(model: &Model) -> impl Node<Msg = Msg> {
+    pub fn view(model: &Model) -> impl Nodes<Msg> {
         use siro_html::{button, div, event::on_click};
 
         div(
@@ -55,7 +55,7 @@ fn update(model: &mut Model, msg: Msg) {
     counter::update(&mut model[i], msg);
 }
 
-fn view(model: &Model) -> impl Node<Msg = Msg> + '_ {
+fn view(model: &Model) -> impl Nodes<Msg> + '_ {
     use siro::node::iter;
     use siro_html::div;
 

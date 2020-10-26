@@ -6,7 +6,7 @@ SVG directives for siro.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 use siro::{
-    node::{Attributes, Node, NodeRenderer, Nodes},
+    node::{Attributes, Nodes, NodesRenderer},
     types::CowStr,
 };
 use std::marker::PhantomData;
@@ -39,24 +39,23 @@ struct SvgElement<TMsg, A, C> {
     _marker: PhantomData<fn() -> TMsg>,
 }
 
-impl<TMsg: 'static, A, C> Node for SvgElement<TMsg, A, C>
+impl<TMsg: 'static, A, C> Nodes<TMsg> for SvgElement<TMsg, A, C>
 where
     A: Attributes<TMsg>,
     C: Nodes<TMsg>,
 {
-    type Msg = TMsg;
-
     #[inline]
-    fn render<R>(self, renderer: R) -> Result<R::Ok, R::Error>
+    fn render_nodes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
     where
-        R: NodeRenderer<Msg = Self::Msg>,
+        R: NodesRenderer<Msg = TMsg>,
     {
         renderer.element(
             self.tag_name,
             Some(SVG_NAMESPACE_URI.into()),
             self.attr,
             self.children,
-        )
+        )?;
+        renderer.end()
     }
 }
 
@@ -68,7 +67,7 @@ macro_rules! svg_elements {
             pub fn $tag_name<TMsg: 'static>(
                 attr: impl Attributes<TMsg>,
                 children: impl Nodes<TMsg>,
-            ) -> impl Node<Msg = TMsg> {
+            ) -> impl Nodes<TMsg> {
                 svg_element(stringify!($tag_name), attr, children)
             }
         }

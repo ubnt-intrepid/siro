@@ -1,4 +1,4 @@
-use super::{Node, Nodes, NodesRenderer};
+use super::{Nodes, NodesRenderer};
 use std::marker::PhantomData;
 
 /// Create a `Nodes` from an iterator.
@@ -30,34 +30,8 @@ where
         R: NodesRenderer<Msg = TMsg>,
     {
         for child in self.iter {
-            Nodes::render_nodes(child, IterContext { ctx: &mut renderer })?;
+            Nodes::render_nodes(child, &mut renderer)?;
         }
         renderer.end()
-    }
-}
-
-struct IterContext<'a, Ctx: ?Sized> {
-    ctx: &'a mut Ctx,
-}
-
-impl<Ctx: ?Sized> NodesRenderer for IterContext<'_, Ctx>
-where
-    Ctx: NodesRenderer,
-{
-    type Msg = Ctx::Msg;
-    type Ok = ();
-    type Error = Ctx::Error;
-
-    #[inline]
-    fn child<N>(&mut self, child: N) -> Result<(), Self::Error>
-    where
-        N: Node<Msg = Self::Msg>,
-    {
-        self.ctx.child(child)
-    }
-
-    #[inline]
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(())
     }
 }

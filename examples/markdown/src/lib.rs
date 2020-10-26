@@ -21,7 +21,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model) -> impl Node<Msg = Msg> {
+fn view(model: &Model) -> impl Nodes<Msg> {
     use siro_html::{attr::id, div, event::on_input, textarea};
 
     div(
@@ -33,7 +33,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
     )
 }
 
-fn view_markdown_preview(input: &str) -> impl Node<Msg = Msg> {
+fn view_markdown_preview(input: &str) -> impl Nodes<Msg> {
     use pulldown_cmark::{Options, Parser};
     use siro::attr::inner_html;
     use siro_html::div;

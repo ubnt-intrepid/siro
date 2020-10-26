@@ -26,7 +26,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model) -> impl Node<Msg = Msg> {
+fn view(model: &Model) -> impl Nodes<Msg> {
     html::div(
         (),
         (

@@ -25,7 +25,7 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn view(model: &Model) -> impl Node<Msg = Msg> {
+fn view(model: &Model) -> impl Nodes<Msg> {
     let hour = model.date.get_hours() % 24;
     let minute = model.date.get_minutes() % 60;
     let second = model.date.get_seconds() % 60;
@@ -70,7 +70,7 @@ fn view(model: &Model) -> impl Node<Msg = Msg> {
     )
 }
 
-fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl Node<Msg = Msg> {
+fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl Nodes<Msg> {
     let t = 2.0 * f32::consts::PI * (turns - 0.25);
     let x = 200.0 + length * t.cos();
     let y = 200.0 + length * t.sin();
