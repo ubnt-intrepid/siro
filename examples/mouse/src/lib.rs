@@ -8,12 +8,16 @@ use wee_alloc::WeeAlloc;
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
+// ==== model ====
+
 #[derive(Default)]
 struct Model {
     x: i32,
     y: i32,
     clicked: bool,
 }
+
+// ==== update ====
 
 struct Msg {
     event: MouseEvent,
@@ -46,6 +50,8 @@ fn update(model: &mut Model, Msg { event, button }: Msg) -> Result<(), JsValue> 
     Ok(())
 }
 
+// ==== view ====
+
 fn view(model: &Model) -> impl Nodes<Msg> {
     use siro::{
         svg::{
@@ -75,6 +81,8 @@ fn view(model: &Model) -> impl Nodes<Msg> {
         ),
     )
 }
+
+// ==== runtime ====
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {

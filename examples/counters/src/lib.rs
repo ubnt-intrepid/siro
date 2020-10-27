@@ -9,10 +9,14 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 mod counter {
     use siro::prelude::*;
 
+    // ==== model ====
+
     #[derive(Default, Clone)]
     pub struct Model {
         value: i32,
     }
+
+    // ==== update ====
 
     pub enum Msg {
         Increment,
@@ -27,6 +31,8 @@ mod counter {
             Msg::Reset => model.value = 0,
         }
     }
+
+    // ==== view ====
 
     pub fn view(model: &Model) -> impl Nodes<Msg> {
         use siro::html::{button, div, event::on_click};
@@ -46,7 +52,11 @@ mod counter {
     }
 }
 
+// ==== model ====
+
 type Model = Vec<counter::Model>;
+
+// ==== update ====
 
 struct Msg(usize, counter::Msg);
 
@@ -54,6 +64,8 @@ fn update(model: &mut Model, msg: Msg) {
     let Msg(i, msg) = msg;
     counter::update(&mut model[i], msg);
 }
+
+// ==== view ====
 
 fn view(model: &Model) -> impl Nodes<Msg> + '_ {
     use siro::{html::div, vdom::iter};
@@ -76,6 +88,8 @@ fn view(model: &Model) -> impl Nodes<Msg> + '_ {
         ),
     )
 }
+
+// ==== runtime ====
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {

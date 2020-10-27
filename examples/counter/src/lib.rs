@@ -7,10 +7,14 @@ use wee_alloc::WeeAlloc;
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
+// ==== model ====
+
 #[derive(Default)]
 struct Model {
     value: i32,
 }
+
+// ==== update ====
 
 enum Msg {
     Increment,
@@ -26,6 +30,8 @@ fn update(model: &mut Model, msg: Msg) {
     }
 }
 
+// ==== view ====
+
 fn view(model: &Model) -> impl Nodes<Msg> {
     div(
         (),
@@ -40,6 +46,8 @@ fn view(model: &Model) -> impl Nodes<Msg> {
         ),
     )
 }
+
+// ==== runtime ====
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {

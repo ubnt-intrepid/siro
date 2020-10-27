@@ -5,12 +5,15 @@ use wee_alloc::WeeAlloc;
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
-#[derive(Debug, Default)]
+// ==== model ====
+
+#[derive(Default)]
 struct Model {
     input: String,
 }
 
-#[derive(Debug)]
+// ==== update ====
+
 enum Msg {
     Edit(String),
 }
@@ -20,6 +23,8 @@ fn update(model: &mut Model, msg: Msg) {
         Msg::Edit(input) => model.input = input,
     }
 }
+
+// ==== view ====
 
 fn view(model: &Model) -> impl Nodes<Msg> {
     use siro::html::{attr::id, div, event::on_input, textarea};
@@ -51,6 +56,8 @@ fn view_markdown_preview(input: &str) -> impl Nodes<Msg> {
 
     div(inner_html(output), ())
 }
+
+// ==== runtime ====
 
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {

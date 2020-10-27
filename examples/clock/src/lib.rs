@@ -8,32 +8,42 @@ use wee_alloc::WeeAlloc;
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
-#[derive(Debug)]
+// ==== model ====
+
 struct Model {
-    date: js_sys::Date,
+    current: Time,
 }
 
-#[derive(Debug)]
+struct Time {
+    hours: u32,
+    minutes: u32,
+    seconds: u32,
+}
+
+// ==== update ====
+
 enum Msg {
-    Tick,
+    Tick(Time),
 }
 
 fn update(model: &mut Model, msg: Msg) {
     match msg {
-        Msg::Tick => model.date = js_sys::Date::new_0(),
+        Msg::Tick(current) => model.current = current,
     }
 }
 
+// ==== view ====
+
 fn view(model: &Model) -> impl Nodes<Msg> {
-    let hour = model.date.get_hours() % 24;
-    let minute = model.date.get_minutes() % 60;
-    let second = model.date.get_seconds() % 60;
+    let hours = model.current.hours;
+    let minutes = model.current.minutes;
+    let seconds = model.current.seconds;
 
-    let second_turns = (second as f32) / 60.0;
-    let minute_turns = (minute as f32 + second_turns) / 60.0;
-    let hour_turns = ((hour % 12) as f32 + minute_turns) / 12.0;
+    let second_turns = (seconds as f32) / 60.0;
+    let minute_turns = (minutes as f32 + second_turns) / 60.0;
+    let hour_turns = ((hours % 12) as f32 + minute_turns) / 12.0;
 
-    let color = if hour >= 12 { "#F0A048" } else { "#1293D8" };
+    let color = if hours >= 12 { "#F0A048" } else { "#1293D8" };
 
     svg::svg(
         (
@@ -63,7 +73,7 @@ fn view(model: &Model) -> impl Nodes<Msg> {
                     svg::attr::fill(color),
                     style("fontWeight", "bold"),
                 ),
-                format!("{:02}:{:02}:{:02}", hour, minute, second),
+                format!("{:02}:{:02}:{:02}", hours, minutes, seconds),
             ),
         ),
     )
@@ -88,6 +98,8 @@ fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl 
     )
 }
 
+// ==== runtime ====
+
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
@@ -96,11 +108,11 @@ pub async fn main() -> Result<(), JsValue> {
 
     let _frames = app.subscribe(
         siro_web::subscription::animation_frames() //
-            .map(|_timestamp| Msg::Tick),
+            .map(|_timestamp| Msg::Tick(current_time())),
     )?;
 
     let mut model = Model {
-        date: js_sys::Date::new_0(),
+        current: current_time(),
     };
     app.render(view(&model))?;
 
@@ -110,4 +122,13 @@ pub async fn main() -> Result<(), JsValue> {
     }
 
     Ok(())
+}
+
+fn current_time() -> Time {
+    let date = js_sys::Date::new_0();
+    Time {
+        hours: date.get_hours(),
+        minutes: date.get_minutes(),
+        seconds: date.get_seconds(),
+    }
 }

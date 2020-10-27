@@ -70,6 +70,8 @@ fn view(model: &Model) -> impl Nodes<Msg> {
     )
 }
 
+// ==== runtime ====
+
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
