@@ -15,7 +15,7 @@ pub fn main() -> Result<(), JsValue> {
 
         svg(
             (
-                attr::viewbox("0 0 400 400"),
+                attr::view_box("0 0 400 400"),
                 attr::width("400"),
                 attr::height("400"),
             ),

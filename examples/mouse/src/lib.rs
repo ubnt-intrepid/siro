@@ -55,7 +55,7 @@ fn update(model: &mut Model, Msg { event, button }: Msg) -> Result<(), JsValue> 
 fn view(model: &Model) -> impl Nodes<Msg> {
     use siro::{
         svg::{
-            attr::{cx, cy, fill, height, r, viewbox, width},
+            attr::{cx, cy, fill, height, r, view_box, width},
             circle, svg,
         },
         vdom::style,
@@ -63,7 +63,7 @@ fn view(model: &Model) -> impl Nodes<Msg> {
 
     svg(
         (
-            viewbox("-500 -500 1000 1000"),
+            view_box("-500 -500 1000 1000"),
             width("100%"),
             height("100%"),
             style("position", "fixed"),

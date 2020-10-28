@@ -47,7 +47,7 @@ fn view(model: &Model) -> impl Nodes<Msg> {
 
     svg::svg(
         (
-            svg::attr::viewbox("0 0 400 400"),
+            svg::attr::view_box("0 0 400 400"),
             svg::attr::width("400"),
             svg::attr::height("400"),
         ),
