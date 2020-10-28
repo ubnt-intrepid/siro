@@ -5,7 +5,10 @@ mod map;
 pub use map::Map;
 
 use either::Either;
-use serde::de::{self, Deserialize, Deserializer};
+use serde::{
+    de::{self, Deserialize, Deserializer},
+    ser::Serialize,
+};
 use std::marker::PhantomData;
 
 /// Clone-on-write string.
@@ -253,7 +256,12 @@ pub trait AttributesRenderer {
     fn attribute(&mut self, name: CowStr, value: AttributeValue) -> Result<(), Self::Error>;
 
     /// Add a property to this element, corresponding to `domNode.name = value`.
-    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error>;
+    ///
+    /// Currently, the property values are modeled by `serde::Serialize` and converted
+    /// to JavaScript objects at rendering time.
+    fn property<T>(&mut self, name: CowStr, value: T) -> Result<(), Self::Error>
+    where
+        T: Serialize;
 
     /// Register an event callback to this element.
     fn event<D>(&mut self, event_type: &'static str, decoder: D) -> Result<(), Self::Error>
@@ -290,7 +298,10 @@ where
     }
 
     #[inline]
-    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
+    fn property<T>(&mut self, name: CowStr, value: T) -> Result<(), Self::Error>
+    where
+        T: Serialize,
+    {
         (*self).property(name, value)
     }
 
@@ -436,42 +447,6 @@ impl_attributes! {
     Bool => [bool];
 }
 
-/// The property values in DOM object.
-#[derive(Clone, Debug, PartialEq)]
-pub enum PropertyValue {
-    String(CowStr),
-    Number(f64),
-    Bool(bool),
-}
-
-macro_rules! impl_properties {
-    ($(
-        $Variant:ident => [ $($t:ty),* $(,)? ];
-    )*) => {$(
-        $(
-            impl From<$t> for PropertyValue {
-                fn from(val: $t) -> Self {
-                    Self::$Variant(val.into())
-                }
-            }
-        )*
-    )*};
-}
-
-impl_properties! {
-    String => [
-        &'static str,
-        String,
-        CowStr,
-    ];
-    Number => [
-        f64, f32,
-        i8, i16, i32,
-        u8, u16, u32,
-    ];
-    Bool => [bool];
-}
-
 /// An abstraction of DOM events.
 pub trait Event {
     /// The type of deserializer returned from `into_deserializer`.
@@ -535,7 +510,7 @@ where
 #[inline]
 pub fn property<TMsg: 'static>(
     name: impl Into<CowStr>,
-    value: impl Into<PropertyValue>,
+    value: impl Serialize,
 ) -> impl Attributes<TMsg> {
     SetProperty { name, value }
 }
@@ -548,13 +523,13 @@ struct SetProperty<K, V> {
 impl<K, V, TMsg: 'static> Attributes<TMsg> for SetProperty<K, V>
 where
     K: Into<CowStr>,
-    V: Into<PropertyValue>,
+    V: Serialize,
 {
     fn render_attributes<R>(self, mut renderer: R) -> Result<R::Ok, R::Error>
     where
         R: AttributesRenderer<Msg = TMsg>,
     {
-        renderer.property(self.name.into(), self.value.into())?;
+        renderer.property(self.name.into(), self.value)?;
         renderer.end()
     }
 }

@@ -7,8 +7,8 @@ use super::{
     EventDecoder,
     Nodes,
     NodesRenderer,
-    PropertyValue,
 };
+use serde::Serialize;
 use std::marker::PhantomData;
 
 /// A virtual node created by [`map`](./trait.Node.html#method.map).
@@ -156,7 +156,10 @@ where
     }
 
     #[inline]
-    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
+    fn property<T>(&mut self, name: CowStr, value: T) -> Result<(), Self::Error>
+    where
+        T: Serialize,
+    {
         self.renderer.property(name, value)
     }
 

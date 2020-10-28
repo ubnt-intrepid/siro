@@ -1,9 +1,10 @@
 use gloo_events::EventListener;
+use serde::Serialize;
 use siro::{
     subscription::{Mailbox as _, Subscriber},
     vdom::{
         AttributeValue, Attributes, AttributesRenderer, CowStr, Event, EventDecoder, Nodes,
-        NodesRenderer, PropertyValue,
+        NodesRenderer,
     },
 };
 use std::mem;
@@ -35,7 +36,7 @@ pub(crate) struct VElement {
     tag_name: CowStr,
     namespace_uri: Option<CowStr>,
     attributes: FxIndexMap<CowStr, AttributeValue>,
-    properties: FxIndexMap<CowStr, PropertyValue>,
+    properties: FxIndexMap<CowStr, JsValue>,
     listeners: FxIndexMap<CowStr, EventListener>,
     class_names: FxIndexSet<CowStr>,
     styles: FxIndexMap<CowStr, CowStr>,
@@ -287,7 +288,7 @@ struct DiffAttributes<'a, 'ctx, S: Subscriber> {
     ctx: &'a RenderContext<'ctx, S>,
     velement: &'a mut VElement,
     old_attributes: FxIndexMap<CowStr, AttributeValue>,
-    old_properties: FxIndexMap<CowStr, PropertyValue>,
+    old_properties: FxIndexMap<CowStr, JsValue>,
     old_inner_html: Option<CowStr>,
 }
 
@@ -305,12 +306,17 @@ impl<S: Subscriber> AttributesRenderer for DiffAttributes<'_, '_, S> {
         Ok(())
     }
 
-    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
+    fn property<T>(&mut self, name: CowStr, value: T) -> Result<(), Self::Error>
+    where
+        T: Serialize,
+    {
+        let js_value = serde_wasm_bindgen::to_value(&value)?;
+
         match self.old_properties.remove(&*name) {
-            Some(old_value) if old_value == value => (),
-            _ => set_property(&self.velement.node, &*name, &value)?,
+            Some(old_value) if old_value == js_value => (),
+            _ => set_property(&self.velement.node, &*name, &js_value)?,
         }
-        self.velement.properties.insert(name, value);
+        self.velement.properties.insert(name, js_value);
         Ok(())
     }
 
@@ -387,9 +393,13 @@ impl<S: Subscriber> AttributesRenderer for NewAttributes<'_, '_, S> {
         Ok(())
     }
 
-    fn property(&mut self, name: CowStr, value: PropertyValue) -> Result<(), Self::Error> {
-        set_property(&self.velement.node, &*name, &value)?;
-        self.velement.properties.insert(name, value);
+    fn property<T>(&mut self, name: CowStr, value: T) -> Result<(), Self::Error>
+    where
+        T: Serialize,
+    {
+        let js_value = serde_wasm_bindgen::to_value(&value)?;
+        set_property(&self.velement.node, &*name, &js_value)?;
+        self.velement.properties.insert(name, js_value);
         Ok(())
     }
 
@@ -466,13 +476,8 @@ fn set_attribute(
     Ok(())
 }
 
-fn set_property(element: &web::Element, name: &str, value: &PropertyValue) -> Result<(), JsValue> {
-    let value = match value {
-        PropertyValue::String(s) => JsValue::from_str(&*s),
-        PropertyValue::Number(n) => JsValue::from_f64(*n),
-        PropertyValue::Bool(b) => JsValue::from_bool(*b),
-    };
-    js_sys::Reflect::set(element, &JsValue::from_str(name), &value)?;
+fn set_property(element: &web::Element, name: &str, value: &JsValue) -> Result<(), JsValue> {
+    js_sys::Reflect::set(element, &JsValue::from_str(name), value)?;
     Ok(())
 }
 

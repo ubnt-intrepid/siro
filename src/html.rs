@@ -125,7 +125,7 @@ html_elements!(
 
 /// HTML attributes.
 pub mod attr {
-    use crate::vdom::{attribute, property, Attributes, CowStr, PropertyValue};
+    use crate::vdom::{attribute, property, Attributes, CowStr};
 
     pub fn autofocus<TMsg: 'static>(autofocus: bool) -> impl Attributes<TMsg> {
         attribute("autofocus", autofocus)
@@ -155,8 +155,8 @@ pub mod attr {
         property("checked", checked)
     }
 
-    pub fn value<TMsg: 'static>(value: impl Into<PropertyValue>) -> impl Attributes<TMsg> {
-        property("value", value)
+    pub fn value<TMsg: 'static>(value: impl Into<CowStr>) -> impl Attributes<TMsg> {
+        property("value", value.into())
     }
 }
 
