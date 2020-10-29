@@ -1,5 +1,5 @@
 use crate::render::{RenderContext, VNode};
-use futures::{channel::mpsc, future::LocalBoxFuture, prelude::*, stream::FuturesUnordered};
+use futures::{channel::mpsc, prelude::*};
 use siro::{
     subscription::{Mailbox, Subscriber, Subscription},
     vdom::Nodes,
@@ -12,7 +12,6 @@ pub struct App<TMsg: 'static> {
     vnodes: Vec<VNode>,
     tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
-    pending_tasks: FuturesUnordered<LocalBoxFuture<'static, TMsg>>,
 }
 
 impl<TMsg: 'static> App<TMsg> {
@@ -24,7 +23,6 @@ impl<TMsg: 'static> App<TMsg> {
             vnodes: vec![],
             tx,
             rx,
-            pending_tasks: FuturesUnordered::new(),
         }
     }
 
@@ -48,19 +46,8 @@ impl<TMsg: 'static> App<TMsg> {
         subscription.subscribe(AppSubscriber { tx: &self.tx })
     }
 
-    pub fn spawn_local<Fut>(&mut self, future: Fut)
-    where
-        Fut: Future<Output = TMsg> + 'static,
-    {
-        self.pending_tasks.push(Box::pin(future));
-    }
-
     pub async fn next_message(&mut self) -> Option<TMsg> {
-        futures::select! {
-            msg = self.rx.select_next_some() => Some(msg),
-            msg = self.pending_tasks.select_next_some() => Some(msg),
-            complete => None,
-        }
+        self.rx.next().await
     }
 
     pub fn render<N>(&mut self, nodes: N) -> Result<(), JsValue>
