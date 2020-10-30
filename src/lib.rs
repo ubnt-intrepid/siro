@@ -11,15 +11,11 @@ detail of runtime implementation.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 pub mod html;
-pub mod subscription;
 pub mod svg;
 pub mod vdom;
 
 /// A *prelude* for end users.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{
-        subscription::Subscription,
-        vdom::{Attributes, Nodes},
-    };
+    pub use crate::vdom::{Attributes, Nodes};
 }

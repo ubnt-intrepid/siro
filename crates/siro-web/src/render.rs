@@ -1,11 +1,9 @@
+use crate::subscription::{Mailbox as _, Subscriber};
 use gloo_events::EventListener;
 use serde::Serialize;
-use siro::{
-    subscription::{Mailbox as _, Subscriber},
-    vdom::{
-        AttributeValue, Attributes, AttributesRenderer, CowStr, Event, EventDecoder, Nodes,
-        NodesRenderer,
-    },
+use siro::vdom::{
+    AttributeValue, Attributes, AttributesRenderer, CowStr, Event, EventDecoder, Nodes,
+    NodesRenderer,
 };
 use std::mem;
 use wasm_bindgen::prelude::*;

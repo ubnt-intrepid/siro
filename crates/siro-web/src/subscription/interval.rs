@@ -1,4 +1,4 @@
-use siro::subscription::{Mailbox as _, Subscribe, Subscriber, Subscription};
+use super::{Mailbox as _, Subscribe, Subscriber, Subscription};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
 pub fn interval(timeout: i32) -> impl Subscription<Msg = (), Error = JsValue> {

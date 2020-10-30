@@ -1,5 +1,5 @@
 use siro::prelude::*;
-use siro_web::subscription::window_event;
+use siro_web::subscription::{window_event, Subscription as _};
 
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;

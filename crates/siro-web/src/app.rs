@@ -1,4 +1,7 @@
-use crate::render::{RenderContext, VNode};
+use crate::{
+    render::{RenderContext, VNode},
+    subscription::{Mailbox, Subscriber, Subscription},
+};
 use futures::{
     channel::mpsc, //
     future::LocalBoxFuture,
@@ -7,10 +10,7 @@ use futures::{
     stream::FuturesUnordered,
 };
 use serde::Deserialize;
-use siro::{
-    subscription::{Mailbox, Subscriber, Subscription},
-    vdom::Nodes,
-};
+use siro::vdom::Nodes;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen_futures::JsFuture;

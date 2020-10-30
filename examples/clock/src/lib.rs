@@ -1,5 +1,6 @@
 use siro::prelude::*;
 use siro::{svg, vdom::style};
+use siro_web::subscription::Subscription as _;
 
 use std::f32;
 use wasm_bindgen::prelude::*;

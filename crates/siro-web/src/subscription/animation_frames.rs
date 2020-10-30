@@ -1,5 +1,5 @@
+use super::{Mailbox as _, Subscribe, Subscriber, Subscription};
 use once_cell::unsync::OnceCell;
-use siro::subscription::{Mailbox as _, Subscribe, Subscriber, Subscription};
 use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 

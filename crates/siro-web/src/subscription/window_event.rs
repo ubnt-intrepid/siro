@@ -1,6 +1,6 @@
+use super::{Mailbox as _, Subscribe, Subscriber, Subscription};
 use gloo_events::EventListener;
 use serde::Deserialize;
-use siro::subscription::{Mailbox as _, Subscribe, Subscriber, Subscription};
 use std::{borrow::Cow, marker::PhantomData};
 use wasm_bindgen::prelude::*;
 
