@@ -63,7 +63,8 @@ fn view_markdown_preview(input: &str) -> impl Nodes<Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = siro_web::App::mount_to_body()?;
+    let mut app = siro_web::App::new()?;
+    app.mount_to_body()?;
 
     let mut model = Model::default();
     app.render(view(&model))?;

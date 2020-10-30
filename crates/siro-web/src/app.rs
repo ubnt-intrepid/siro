@@ -16,9 +16,9 @@ use wasm_bindgen::JsCast as _;
 use wasm_bindgen_futures::JsFuture;
 
 pub struct App<TMsg: 'static> {
-    mountpoint: web::Node,
     window: web::Window,
     document: web::Document,
+    mountpoint: Option<web::Node>,
     vnodes: Vec<VNode>,
     tx: mpsc::UnboundedSender<TMsg>,
     rx: mpsc::UnboundedReceiver<TMsg>,
@@ -26,31 +26,38 @@ pub struct App<TMsg: 'static> {
 }
 
 impl<TMsg: 'static> App<TMsg> {
-    fn new(mountpoint: web::Node, window: web::Window, document: web::Document) -> Self {
+    pub fn new() -> Result<Self, JsValue> {
+        let window = web::window().ok_or("no global Window exists")?;
+        let document = window.document().ok_or("no Document exists")?;
         let (tx, rx) = mpsc::unbounded();
-        Self {
-            mountpoint,
+        Ok(Self {
             window,
             document,
+            mountpoint: None,
             vnodes: vec![],
             tx,
             rx,
             cmd_tasks: FuturesUnordered::new(),
-        }
+        })
     }
 
-    pub fn mount(selector: &str) -> Result<Self, JsValue> {
-        let window = web::window().ok_or("no global Window exists")?;
-        let document = window.document().ok_or("no Document exists")?;
-        let mountpoint = document.query_selector(selector)?.ok_or("missing node")?;
-        Ok(Self::new(mountpoint.into(), window, document))
+    pub fn window(&self) -> &web::Window {
+        &self.window
     }
 
-    pub fn mount_to_body() -> Result<Self, JsValue> {
-        let window = web::window().ok_or("no global Window exists")?;
-        let document = window.document().ok_or("no Document exists")?;
-        let body = document.body().ok_or("missing body in document")?;
-        Ok(Self::new(body.into(), window, document))
+    pub fn mount(&mut self, selector: &str) -> Result<(), JsValue> {
+        let mountpoint = self
+            .document
+            .query_selector(selector)?
+            .ok_or("missing node")?;
+        self.mountpoint.replace(mountpoint.into());
+        Ok(())
+    }
+
+    pub fn mount_to_body(&mut self) -> Result<(), JsValue> {
+        let body = self.document.body().ok_or("missing body in document")?;
+        self.mountpoint.replace(body.into());
+        Ok(())
     }
 
     /// Register a `Subscription`.
@@ -89,12 +96,14 @@ impl<TMsg: 'static> App<TMsg> {
     where
         N: Nodes<TMsg>,
     {
-        RenderContext {
-            document: &self.document,
-            parent: &self.mountpoint,
-            subscriber: AppSubscriber { tx: &self.tx },
+        if let Some(mountpoint) = &self.mountpoint {
+            RenderContext {
+                document: &self.document,
+                parent: mountpoint,
+                subscriber: AppSubscriber { tx: &self.tx },
+            }
+            .diff_nodes(nodes, &mut self.vnodes)?;
         }
-        .diff_nodes(nodes, &mut self.vnodes)?;
         Ok(())
     }
 }

@@ -16,15 +16,17 @@ const STORAGE_KEY: &str = "siro-todomvc-save";
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let window = web_sys::window().ok_or("no global `Window` exists")?;
-    let storage = window
+    let mut app = siro_web::App::new()?;
+    app.mount("#app")?;
+
+    let storage = app
+        .window()
         .local_storage()?
         .ok_or("cannot access localStorage")?;
 
     let mut model = restore_model(&storage).unwrap_or_default();
-    model.visibility = current_visibility(&window);
+    model.visibility = current_visibility(app.window());
 
-    let mut app = siro_web::App::mount("#app")?;
     app.render(app::view(&model))?;
 
     while let Some(msg) = app.next_message().await {

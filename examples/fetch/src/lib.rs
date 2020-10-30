@@ -131,7 +131,8 @@ struct Signature {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = siro_web::App::mount("#app")?;
+    let mut app = siro_web::App::new()?;
+    app.mount("#app")?;
 
     let mut model = Model {
         repo_slug: "ubnt-intrepid/siro".into(),

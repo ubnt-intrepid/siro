@@ -8,7 +8,8 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = siro_web::App::<()>::mount("#app")?;
+    let mut app = siro_web::App::<()>::new()?;
+    app.mount("#app")?;
 
     app.render({
         use siro::svg::{self, attr, svg};
