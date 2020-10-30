@@ -20,7 +20,8 @@ once_cell = "1.4"
 rustc-hash = "1.1"
 serde = "1"
 serde-wasm-bindgen = "0.1"
-wasm-bindgen = "0.2"
+wasm-bindgen = { version = "0.2", features = [ "serde-serialize" ] }
+wasm-bindgen-futures = "0.4"
 
 [dependencies.web]
 package = "web-sys"
@@ -29,8 +30,13 @@ features = [
     "Document",
     "Element",
     "Event",
+    "Headers",
     "HtmlElement",
     "Node",
+    "Request",
+    "RequestInit",
+    "RequestMode",
+    "Response",
     "Text",
     "Window",
 ]

@@ -13,19 +13,7 @@ siro = { path = "../.." }
 siro-web = { path = "../../crates/siro-web" }
 
 console_error_panic_hook = "0.1"
-futures = "0.3"
 serde = { version = "1", features = [ "derive" ] }
 wasm-bindgen = { version = "0.2", features = [ "serde-serialize" ] }
 wasm-bindgen-futures = "0.4"
 wee_alloc = "0.4"
-
-[dependencies.web-sys]
-version = "0.3"
-features = [
-    "Headers",
-    "Request",
-    "RequestInit",
-    "RequestMode",
-    "Response",
-    "Window",
-]

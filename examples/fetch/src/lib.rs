@@ -6,13 +6,8 @@ use siro::html::{
 };
 use siro::prelude::*;
 
-use futures::prelude::*;
-use futures::stream::FuturesUnordered;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
 use wee_alloc::WeeAlloc;
 
 #[global_allocator]
@@ -36,7 +31,7 @@ enum Msg {
 }
 
 enum Cmd {
-    Fetch { repo_slug: String, branch: String },
+    Fetch(String),
     None,
 }
 
@@ -53,12 +48,16 @@ fn update(model: &mut Model, msg: Msg) -> Cmd {
         }
 
         Msg::RequestFetch => {
-            let repo_slug = model.repo_slug.trim().to_owned();
-            let mut branch = model.branch.trim().to_owned();
+            let repo_slug = model.repo_slug.trim();
+            let mut branch = model.branch.trim();
             if branch.is_empty() {
-                branch = "master".into();
+                branch = "master";
             }
-            Cmd::Fetch { repo_slug, branch }
+            let url = format!(
+                "https://api.github.com/repos/{}/branches/{}",
+                repo_slug, branch
+            );
+            Cmd::Fetch(url)
         }
 
         Msg::UpdateResponse(response) => {
@@ -132,8 +131,6 @@ struct Signature {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let window = web_sys::window().ok_or("no global Window exists")?;
-
     let mut app = siro_web::App::mount("#app")?;
 
     let mut model = Model {
@@ -144,91 +141,17 @@ pub async fn main() -> Result<(), JsValue> {
 
     app.render(view(&model))?;
 
-    let mut cmd_tasks = FuturesUnordered::new();
-    loop {
-        futures::select! {
-            msg = app.select_next_some() => {
-                let cmd = update(&mut model, msg);
-                app.render(view(&model))?;
+    while let Some(msg) = app.next_message().await {
+        let cmd = update(&mut model, msg);
+        app.render(view(&model))?;
 
-                match cmd {
-                    Cmd::Fetch { repo_slug, branch } => {
-                        let window = window.clone();
-                        cmd_tasks.push(async move {
-                            let response = do_fetch(&window, &repo_slug, &branch).await;
-                            Msg::UpdateResponse(response)
-                        });
-                    }
-                    Cmd::None => (),
-                }
-            },
-
-            msg = cmd_tasks.select_next_some() => {
-                app.send_message(msg);
+        match cmd {
+            Cmd::Fetch(url) => {
+                app.start_fetch(url, Msg::UpdateResponse);
             }
-
-            complete => break,
+            Cmd::None => (),
         }
     }
 
     Ok(())
-}
-
-async fn do_fetch(
-    window: &web_sys::Window,
-    repo_slug: &str,
-    branch: &str,
-) -> Result<Branch, String> {
-    let mut opts = RequestInit::new();
-    opts.method("GET");
-    opts.mode(RequestMode::Cors);
-
-    let url = format!(
-        "https://api.github.com/repos/{}/branches/{}",
-        repo_slug, branch
-    );
-
-    let request = Request::new_with_str_and_init(&url, &opts)
-        .map_err(|err| runtime_error(&err, "failed to construct Request"))?;
-    request
-        .headers()
-        .set("Accept", "application/vnd.github.v3+json")
-        .map_err(|err| runtime_error(&err, "failed to set Accept header to Request"))?;
-
-    let resp_value = JsFuture::from(window.fetch_with_request(&request))
-        .await
-        .map_err(|err| runtime_error(&err, "failed to fetch request"))?;
-
-    let resp: Response = resp_value
-        .dyn_into()
-        .map_err(|err| runtime_error(&err, "invalid object"))?;
-
-    if !resp.ok() {
-        return Err(format!(
-            "failed to fetch: {} {}",
-            resp.status(),
-            resp.status_text()
-        ));
-    }
-
-    let json = JsFuture::from(
-        resp.json()
-            .map_err(|err| runtime_error(&err, "before receiving JSON payload"))?,
-    )
-    .await
-    .map_err(|err| runtime_error(&err, "during receiving JSON payload"))?;
-
-    let branch_info: Branch = json
-        .into_serde()
-        .map_err(|err| format!("invalid JSON format: {}", err))?;
-
-    Ok(branch_info)
-}
-
-fn runtime_error(v: &JsValue, msg: &str) -> String {
-    if let Some(s) = v.as_string() {
-        format!("{}: {}", msg, s)
-    } else {
-        msg.into()
-    }
 }
