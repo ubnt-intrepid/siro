@@ -6,6 +6,8 @@ use siro::html::{
 };
 use siro::prelude::*;
 
+use futures::prelude::*;
+use futures::stream::FuturesUnordered;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -18,7 +20,7 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 struct Model {
     repo_slug: String,
     branch: String,
-    response: Option<Result<Branch, String>>,
+    response: Option<Branch>,
 }
 
 // ==== update ====
@@ -27,7 +29,7 @@ enum Msg {
     UpdateRepoSlug(String),
     UpdateBranch(String),
     RequestFetch,
-    UpdateResponse(Result<Branch, String>),
+    UpdateResponse(Branch),
 }
 
 enum Cmd {
@@ -92,8 +94,7 @@ fn view(model: &Model) -> impl Nodes<Msg> {
             div(
                 (),
                 match model.response {
-                    Some(Ok(ref branch)) => format!("branch: {:?}", branch).into(),
-                    Some(Err(ref error)) => format!("error: {:?}", error).into(),
+                    Some(ref branch) => format!("branch: {:?}", branch).into(),
                     None => None,
                 },
             ),
@@ -142,13 +143,31 @@ pub async fn main() -> Result<(), JsValue> {
 
     app.render(view(&model))?;
 
-    while let Some(msg) = app.next_message().await {
+    let client = reqwest::Client::new();
+    let mut cmd_tasks = FuturesUnordered::new();
+
+    loop {
+        let msg = futures::select! {
+            msg = app.select_next_some() => msg,
+            msg = cmd_tasks.select_next_some() => msg,
+            complete => break,
+        };
+
         let cmd = update(&mut model, msg);
         app.render(view(&model))?;
 
         match cmd {
             Cmd::Fetch(url) => {
-                app.start_fetch(url, Msg::UpdateResponse);
+                let send = client
+                    .get(&url)
+                    .header("Accept", "application/vnd.github.v3+json")
+                    .send();
+                cmd_tasks.push(async move {
+                    let resp = send.await.unwrap();
+                    let text = resp.text().await.unwrap();
+                    let branch_info: Branch = serde_json::from_str(&text).unwrap();
+                    Msg::UpdateResponse(branch_info)
+                });
             }
             Cmd::None => (),
         }

@@ -30,13 +30,8 @@ features = [
     "Document",
     "Element",
     "Event",
-    "Headers",
     "HtmlElement",
     "Node",
-    "Request",
-    "RequestInit",
-    "RequestMode",
-    "Response",
     "Text",
     "Window",
 ]
