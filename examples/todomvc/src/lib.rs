@@ -25,7 +25,9 @@ pub async fn main() -> Result<(), JsValue> {
         .ok_or("cannot access localStorage")?;
 
     let mut model = restore_model(&storage).unwrap_or_default();
-    model.visibility = current_visibility(app.window());
+    model.visibility = app
+        .current_url_hash()
+        .and_then(|hash| hash.trim_start_matches("#/").parse().ok());
 
     app.render(app::view(&model))?;
 
@@ -57,11 +59,6 @@ fn save_model(model: &Model, storage: &Storage) {
 fn restore_model(storage: &Storage) -> Option<app::Model> {
     let model_raw = storage.get_item(STORAGE_KEY).ok()??;
     serde_json::from_str(&model_raw).ok()
-}
-
-fn current_visibility(window: &web_sys::Window) -> Option<app::Visibility> {
-    let hash = window.location().hash().ok()?;
-    hash.trim_start_matches("#/").parse().ok()
 }
 
 fn focus_element(id: String) -> Option<()> {

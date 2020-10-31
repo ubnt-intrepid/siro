@@ -55,6 +55,10 @@ impl<TMsg: 'static> App<TMsg> {
         Ok(())
     }
 
+    pub fn current_url_hash(&self) -> Option<String> {
+        self.window.location().hash().ok()
+    }
+
     /// Register a `Subscription`.
     pub fn subscribe<S>(&self, subscription: S) -> Result<S::Subscribe, S::Error>
     where
