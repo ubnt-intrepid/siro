@@ -17,7 +17,7 @@ pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     let mut app = siro_web::App::new()?;
-    app.mount("#app")?;
+    app.mount_to_body()?;
 
     let storage = app
         .window()

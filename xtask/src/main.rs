@@ -57,18 +57,6 @@ fn setup_path() -> anyhow::Result<()> {
 }
 
 fn build(manifest_dir: &Path) -> anyhow::Result<()> {
-    let webpack_config = manifest_dir.join("webpack.config.js");
-    if webpack_config.is_file() {
-        let mut webpack = command("webpack");
-        webpack.arg("--config").arg(&webpack_config);
-
-        println!("[xtask] run command: {:?}", webpack);
-        let status = webpack.status()?;
-        anyhow::ensure!(status.success(), "webpack failed with: {:?}", status);
-
-        return Ok(());
-    }
-
     let mut wasm_pack = command("wasm-pack");
     wasm_pack
         .arg("build")
