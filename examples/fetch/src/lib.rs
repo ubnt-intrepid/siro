@@ -7,7 +7,7 @@ use siro::html::{
 use siro::prelude::*;
 
 use futures::prelude::*;
-use futures::stream::FuturesUnordered;
+use futures::{select, stream::FuturesUnordered};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -23,6 +23,30 @@ struct Model {
     response: Option<Branch>,
 }
 
+#[derive(Debug, Deserialize)]
+struct Branch {
+    name: String,
+    commit: Commit,
+}
+
+#[derive(Debug, Deserialize)]
+struct Commit {
+    sha: String,
+    commit: CommitDetails,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitDetails {
+    author: Signature,
+    committer: Signature,
+}
+
+#[derive(Debug, Deserialize)]
+struct Signature {
+    name: String,
+    email: String,
+}
+
 // ==== update ====
 
 enum Msg {
@@ -32,6 +56,11 @@ enum Msg {
     UpdateResponse(Branch),
 }
 
+// Cmd is a user-defined type that indicates the operations performed
+// by the runtime.
+//
+// Unlike Elm, this type is defined on the application side that is not
+// tied to the concrete logic.
 enum Cmd {
     Fetch(String),
     None,
@@ -104,58 +133,46 @@ fn view(model: &Model) -> impl Nodes<Msg> {
 
 // ==== runtime ====
 
-#[derive(Debug, Deserialize)]
-struct Branch {
-    name: String,
-    commit: Commit,
-}
-
-#[derive(Debug, Deserialize)]
-struct Commit {
-    sha: String,
-    commit: CommitDetails,
-}
-
-#[derive(Debug, Deserialize)]
-struct CommitDetails {
-    author: Signature,
-    committer: Signature,
-}
-
-#[derive(Debug, Deserialize)]
-struct Signature {
-    name: String,
-    email: String,
-}
-
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
+    // Start the Web application and mount on the specified DOM node.
     let mut app = siro_web::App::new()?;
     app.mount("#app")?;
 
+    // Miscellaneous values used in event loop.
+    let client = reqwest::Client::new();
+    let mut cmd_tasks = FuturesUnordered::new();
+
+    // Initialize the model and render as DOM tree.
     let mut model = Model {
         repo_slug: "ubnt-intrepid/siro".into(),
         branch: "main".into(),
         response: None,
     };
-
     app.render(view(&model))?;
 
-    let client = reqwest::Client::new();
-    let mut cmd_tasks = FuturesUnordered::new();
-
+    // Run the event loop.
     loop {
-        let msg = futures::select! {
+        // Receive a message from the environment.
+        let msg = select! {
             msg = app.select_next_some() => msg,
             msg = cmd_tasks.select_next_some() => msg,
             complete => break,
         };
 
+        // Apply the message to model and update the view.
         let cmd = update(&mut model, msg);
         app.render(view(&model))?;
 
+        // Dispatch the command returned from application.
+        //
+        // Here, `cmd` is just a value that is not abstracted like `Cmd<Msg>`,
+        // and it is manually dispatched inside the event loop.
+        //
+        // The dispatch result will be returned to the application side
+        // as the value of `Msg`.
         match cmd {
             Cmd::Fetch(url) => {
                 let send = client
@@ -169,6 +186,7 @@ pub async fn main() -> Result<(), JsValue> {
                     Msg::UpdateResponse(branch_info)
                 });
             }
+
             Cmd::None => (),
         }
     }
