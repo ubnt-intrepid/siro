@@ -1,47 +1,57 @@
-use super::{Mailbox as _, Subscribe, Subscriber, Subscription};
-use wasm_bindgen::{prelude::*, JsCast as _};
+use super::Subscription;
+use crate::env::Env;
+use futures::prelude::*;
+use futures::{
+    channel::mpsc,
+    stream::{FusedStream, Stream},
+    task::{self, Poll},
+};
+use std::pin::Pin;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast as _;
 
-pub fn interval(timeout: i32) -> impl Subscription<Msg = (), Error = JsValue> {
-    SubscribeInterval { timeout }
+#[inline]
+pub fn interval(timeout: i32) -> Interval {
+    Interval { timeout }
 }
 
-struct SubscribeInterval {
+pub struct Interval {
     timeout: i32,
 }
 
-impl Subscription for SubscribeInterval {
+impl Subscription for Interval {
     type Msg = ();
-    type Error = JsValue;
-    type Subscribe = IntervalSubscription;
+    type Stream = IntervalStream;
 
-    fn subscribe<Ctx>(self, ctx: Ctx) -> Result<Self::Subscribe, Self::Error>
-    where
-        Ctx: Subscriber<Msg = Self::Msg>,
-    {
-        let Self { timeout } = self;
-
-        let mailbox = ctx.mailbox();
-
-        let window = web::window().ok_or("no global `Window` exists")?;
+    fn subscribe(self, env: &Env) -> Result<Self::Stream, JsValue> {
+        let (tx, rx) = mpsc::unbounded();
 
         let cb = Closure::wrap(Box::new(move || {
-            mailbox.send_message(());
+            tx.unbounded_send(()).unwrap_throw();
         }) as Box<dyn FnMut()>);
 
-        let id = window.set_interval_with_callback_and_timeout_and_arguments_0(
-            cb.as_ref().unchecked_ref(),
-            timeout,
-        )?;
+        let id = env
+            .window
+            .set_interval_with_callback_and_timeout_and_arguments_0(
+                cb.as_ref().unchecked_ref(),
+                self.timeout,
+            )?;
 
-        Ok(IntervalSubscription(Some(Inner {
-            window: window.clone(),
-            id,
-            _cb: cb,
-        })))
+        Ok(IntervalStream {
+            rx,
+            inner: Some(Inner {
+                window: env.window.clone(),
+                id,
+                _cb: cb,
+            }),
+        })
     }
 }
 
-struct IntervalSubscription(Option<Inner>);
+pub struct IntervalStream {
+    rx: mpsc::UnboundedReceiver<()>,
+    inner: Option<Inner>,
+}
 
 struct Inner {
     window: web::Window,
@@ -49,19 +59,35 @@ struct Inner {
     _cb: Closure<dyn FnMut()>,
 }
 
-impl Subscribe for IntervalSubscription {
-    type Error = JsValue;
-
-    fn unsubscribe(&mut self) -> Result<(), Self::Error> {
-        if let Some(inner) = self.0.take() {
+impl IntervalStream {
+    fn unsubscribe(&mut self) -> Result<(), JsValue> {
+        if let Some(inner) = self.inner.take() {
             inner.window.clear_interval_with_handle(inner.id);
         }
         Ok(())
     }
 }
 
-impl Drop for IntervalSubscription {
+impl Drop for IntervalStream {
     fn drop(&mut self) {
         let _ = self.unsubscribe();
+    }
+}
+
+impl Stream for IntervalStream {
+    type Item = ();
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Option<Self::Item>> {
+        self.get_mut().rx.poll_next_unpin(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.rx.size_hint()
+    }
+}
+
+impl FusedStream for IntervalStream {
+    fn is_terminated(&self) -> bool {
+        self.rx.is_terminated()
     }
 }

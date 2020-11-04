@@ -1,6 +1,8 @@
 use siro::prelude::*;
 use siro_web::subscription::{window_event, Subscription as _};
 
+use futures::prelude::*;
+use futures::select;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -88,26 +90,43 @@ fn view(model: &Model) -> impl Nodes<Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = siro_web::App::new()?;
-    app.mount("#app")?;
+    let env = siro_web::Env::new()?;
 
-    let _mousedown = app.subscribe(window_event("mousedown").map(|event| Msg {
-        event,
-        button: Some(Button::Down),
-    }))?;
-    let _mousemove = app.subscribe(window_event("mousemove").map(|event| Msg {
-        event,
-        button: None,
-    }))?;
-    let _mouseup = app.subscribe(window_event("mouseup").map(|event| Msg {
-        event,
-        button: Some(Button::Up),
-    }))?;
+    let mut app = env.mount("#app")?;
+
+    let mut mousedown = env.subscribe(
+        window_event("mousedown") //
+            .map(|event| Msg {
+                event,
+                button: Some(Button::Down),
+            }),
+    )?;
+    let mut mousemove = env.subscribe(
+        window_event("mousemove") //
+            .map(|event| Msg {
+                event,
+                button: None,
+            }),
+    )?;
+    let mut mouseup = env.subscribe(
+        window_event("mouseup") //
+            .map(|event| Msg {
+                event,
+                button: Some(Button::Up),
+            }),
+    )?;
 
     let mut model = Model::default();
     app.render(view(&model))?;
 
-    while let Some(msg) = app.next_message().await {
+    loop {
+        let msg = select! {
+            msg = app.select_next_some() => msg,
+            msg = mouseup.select_next_some() => msg,
+            msg = mousedown.select_next_some() => msg,
+            msg = mousemove.select_next_some() => msg,
+            complete => break,
+        };
         update(&mut model, msg)?;
         app.render(view(&model))?;
     }

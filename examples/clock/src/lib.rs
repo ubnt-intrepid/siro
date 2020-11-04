@@ -1,7 +1,9 @@
 use siro::prelude::*;
 use siro::{svg, vdom::style};
-use siro_web::subscription::Subscription as _;
+use siro_web::subscription::{animation_frames, Subscription as _};
 
+use futures::prelude::*;
+use futures::select;
 use std::f32;
 use wasm_bindgen::prelude::*;
 use wee_alloc::WeeAlloc;
@@ -105,11 +107,12 @@ fn view_hand(stroke: &'static str, width: i32, length: f32, turns: f32) -> impl 
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let mut app = siro_web::App::new()?;
-    app.mount("#app")?;
+    let env = siro_web::Env::new()?;
 
-    let _frames = app.subscribe(
-        siro_web::subscription::animation_frames() //
+    let mut app = env.mount("#app")?;
+
+    let mut frames = env.subscribe(
+        animation_frames() //
             .map(|_timestamp| Msg::Tick(current_time())),
     )?;
 
@@ -118,7 +121,13 @@ pub async fn main() -> Result<(), JsValue> {
     };
     app.render(view(&model))?;
 
-    while let Some(msg) = app.next_message().await {
+    loop {
+        let msg = select! {
+            msg = app.select_next_some() => msg,
+            msg = frames.select_next_some() => msg,
+            complete => break,
+        };
+
         update(&mut model, msg);
         app.render(view(&model))?;
     }

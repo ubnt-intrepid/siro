@@ -6,8 +6,9 @@ A browser runtime for `siro` using `web-sys`.
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
 mod app;
+mod env;
 mod render;
 
 pub mod subscription;
 
-pub use crate::app::App;
+pub use crate::{app::App, env::Env};

@@ -1,29 +1,33 @@
-use super::{Mailbox as _, Subscribe, Subscriber, Subscription};
+use super::Subscription;
+use crate::env::Env;
+use futures::prelude::*;
+use futures::{
+    channel::mpsc,
+    stream::{FusedStream, Stream},
+    task::{self, Poll},
+};
 use once_cell::unsync::OnceCell;
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, pin::Pin, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast as _};
 
-pub fn animation_frames() -> impl Subscription<Msg = f64, Error = JsValue> {
-    SubscribeAnimationFrames { _p: () }
+#[inline]
+pub fn animation_frames() -> AnimationFrames {
+    AnimationFrames { _p: () }
 }
 
-struct SubscribeAnimationFrames {
+pub struct AnimationFrames {
     _p: (),
 }
 
-impl Subscription for SubscribeAnimationFrames {
+impl Subscription for AnimationFrames {
     type Msg = f64;
-    type Error = JsValue;
-    type Subscribe = AnimationFramesSubscription;
+    type Stream = AnimationFramesStream;
 
-    fn subscribe<Ctx>(self, ctx: Ctx) -> Result<Self::Subscribe, Self::Error>
-    where
-        Ctx: Subscriber<Msg = Self::Msg>,
-    {
-        let mailbox = ctx.mailbox();
+    fn subscribe(self, env: &Env) -> Result<Self::Stream, JsValue> {
+        let (tx, rx) = mpsc::unbounded();
 
         let scheduler = Rc::new(Scheduler {
-            window: web::window().ok_or("no global `Window` exists")?,
+            window: env.window.clone(),
             running: Cell::new(true),
             current_id: Cell::new(None),
         });
@@ -38,7 +42,7 @@ impl Subscription for SubscribeAnimationFrames {
                 let closure = closure2.take();
 
                 if scheduler2.running.get() {
-                    mailbox.send_message(timestamp);
+                    tx.unbounded_send(timestamp).unwrap_throw();
 
                     scheduler2.schedule(
                         closure
@@ -57,7 +61,50 @@ impl Subscription for SubscribeAnimationFrames {
 
         scheduler.schedule(closure.get().expect_throw("closure is not set"));
 
-        Ok(AnimationFramesSubscription { scheduler, closure })
+        Ok(AnimationFramesStream {
+            rx,
+            scheduler,
+            closure,
+        })
+    }
+}
+
+pub struct AnimationFramesStream {
+    rx: mpsc::UnboundedReceiver<f64>,
+    scheduler: Rc<Scheduler>,
+    closure: Rc<OnceCell<Closure<dyn Fn(f64)>>>,
+}
+
+impl AnimationFramesStream {
+    fn unsubscribe(&mut self) -> Result<(), JsValue> {
+        if let Some(closure) = self.closure.get() {
+            let _ = self.scheduler.cancel(closure);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for AnimationFramesStream {
+    fn drop(&mut self) {
+        let _ = self.unsubscribe();
+    }
+}
+
+impl Stream for AnimationFramesStream {
+    type Item = f64;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Option<Self::Item>> {
+        self.get_mut().rx.poll_next_unpin(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.rx.size_hint()
+    }
+}
+
+impl FusedStream for AnimationFramesStream {
+    fn is_terminated(&self) -> bool {
+        self.rx.is_terminated()
     }
 }
 
@@ -87,27 +134,5 @@ impl Scheduler {
         f.call1(&JsValue::NULL, &0.0.into())?;
 
         Ok(())
-    }
-}
-
-struct AnimationFramesSubscription {
-    scheduler: Rc<Scheduler>,
-    closure: Rc<OnceCell<Closure<dyn Fn(f64)>>>,
-}
-
-impl Subscribe for AnimationFramesSubscription {
-    type Error = JsValue;
-
-    fn unsubscribe(&mut self) -> Result<(), Self::Error> {
-        if let Some(closure) = self.closure.get() {
-            let _ = self.scheduler.cancel(closure);
-        }
-        Ok(())
-    }
-}
-
-impl Drop for AnimationFramesSubscription {
-    fn drop(&mut self) {
-        let _ = self.unsubscribe();
     }
 }

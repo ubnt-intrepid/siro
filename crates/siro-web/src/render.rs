@@ -1,4 +1,4 @@
-use crate::subscription::{Mailbox as _, Subscriber};
+use futures::channel::mpsc;
 use gloo_events::EventListener;
 use serde::Serialize;
 use siro::vdom::{
@@ -82,16 +82,16 @@ pub(super) struct VText {
 
 // ==== RenderContext ====
 
-pub(super) struct RenderContext<'ctx, S: Subscriber> {
+pub(super) struct RenderContext<'ctx, TMsg> {
     pub(super) document: &'ctx web::Document,
     pub(super) parent: &'ctx web::Node,
-    pub(super) subscriber: S,
+    pub(super) tx: &'ctx mpsc::UnboundedSender<TMsg>,
 }
 
-impl<S: Subscriber> RenderContext<'_, S> {
+impl<TMsg: 'static> RenderContext<'_, TMsg> {
     pub(super) fn diff_nodes<N>(&self, nodes: N, vnodes: &mut Vec<VNode>) -> Result<(), JsValue>
     where
-        N: Nodes<S::Msg>,
+        N: Nodes<TMsg>,
     {
         nodes.render_nodes(DiffNodes {
             ctx: self,
@@ -102,10 +102,10 @@ impl<S: Subscriber> RenderContext<'_, S> {
         Ok(())
     }
 
-    fn reparent<'a>(&'a self, parent: &'a web::Node) -> RenderContext<'a, &'a S> {
+    fn reparent<'a>(&'a self, parent: &'a web::Node) -> RenderContext<'a, TMsg> {
         RenderContext {
             document: &*self.document,
-            subscriber: &self.subscriber,
+            tx: &*self.tx,
             parent,
         }
     }
@@ -118,8 +118,8 @@ impl<S: Subscriber> RenderContext<'_, S> {
         children: C,
     ) -> Result<VElement, JsValue>
     where
-        A: Attributes<S::Msg>,
-        C: Nodes<S::Msg>,
+        A: Attributes<TMsg>,
+        C: Nodes<TMsg>,
     {
         let node = match &namespace_uri {
             Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
@@ -169,8 +169,8 @@ impl<S: Subscriber> RenderContext<'_, S> {
         children: C,
     ) -> Result<(), JsValue>
     where
-        A: Attributes<S::Msg>,
-        C: Nodes<S::Msg>,
+        A: Attributes<TMsg>,
+        C: Nodes<TMsg>,
     {
         match vnode {
             VNode::Element(velement)
@@ -224,14 +224,14 @@ impl<S: Subscriber> RenderContext<'_, S> {
     }
 }
 
-struct DiffNodes<'a, 'ctx, S: Subscriber> {
-    ctx: &'a RenderContext<'ctx, S>,
+struct DiffNodes<'a, 'ctx, TMsg> {
+    ctx: &'a RenderContext<'ctx, TMsg>,
     vnodes: &'a mut Vec<VNode>,
     num_children: usize,
 }
 
-impl<S: Subscriber> NodesRenderer for DiffNodes<'_, '_, S> {
-    type Msg = S::Msg;
+impl<TMsg: 'static> NodesRenderer for DiffNodes<'_, '_, TMsg> {
+    type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
 
@@ -282,16 +282,16 @@ impl<S: Subscriber> NodesRenderer for DiffNodes<'_, '_, S> {
     }
 }
 
-struct DiffAttributes<'a, 'ctx, S: Subscriber> {
-    ctx: &'a RenderContext<'ctx, S>,
+struct DiffAttributes<'a, 'ctx, TMsg> {
+    ctx: &'a RenderContext<'ctx, TMsg>,
     velement: &'a mut VElement,
     old_attributes: FxIndexMap<CowStr, AttributeValue>,
     old_properties: FxIndexMap<CowStr, JsValue>,
     old_inner_html: Option<CowStr>,
 }
 
-impl<S: Subscriber> AttributesRenderer for DiffAttributes<'_, '_, S> {
-    type Msg = S::Msg;
+impl<TMsg: 'static> AttributesRenderer for DiffAttributes<'_, '_, TMsg> {
+    type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
 
@@ -322,13 +322,13 @@ impl<S: Subscriber> AttributesRenderer for DiffAttributes<'_, '_, S> {
     where
         D: EventDecoder<Msg = Self::Msg> + 'static,
     {
-        let mailbox = self.ctx.subscriber.mailbox();
+        let tx = self.ctx.tx.clone();
         let listener = EventListener::new(&self.velement.node, event_type, move |event| {
             if let Some(msg) = decoder
                 .decode_event(AppEvent { event })
                 .expect_throw("failed to decode Event")
             {
-                mailbox.send_message(msg);
+                tx.unbounded_send(msg).unwrap_throw();
             }
         });
         self.velement.listeners.insert(event_type.into(), listener);
@@ -375,13 +375,13 @@ impl<S: Subscriber> AttributesRenderer for DiffAttributes<'_, '_, S> {
 
 // ==== NewAttributes ====
 
-struct NewAttributes<'a, 'ctx, S: Subscriber> {
-    ctx: &'a RenderContext<'ctx, S>,
+struct NewAttributes<'a, 'ctx, TMsg> {
+    ctx: &'a RenderContext<'ctx, TMsg>,
     velement: &'a mut VElement,
 }
 
-impl<S: Subscriber> AttributesRenderer for NewAttributes<'_, '_, S> {
-    type Msg = S::Msg;
+impl<TMsg: 'static> AttributesRenderer for NewAttributes<'_, '_, TMsg> {
+    type Msg = TMsg;
     type Ok = ();
     type Error = JsValue;
 
@@ -405,13 +405,13 @@ impl<S: Subscriber> AttributesRenderer for NewAttributes<'_, '_, S> {
     where
         D: EventDecoder<Msg = Self::Msg> + 'static,
     {
-        let mailbox = self.ctx.subscriber.mailbox();
+        let tx = self.ctx.tx.clone();
         let listener = EventListener::new(&self.velement.node, event_type, move |event| {
             if let Some(msg) = decoder
                 .decode_event(AppEvent { event })
                 .expect_throw("failed to decode Event")
             {
-                mailbox.send_message(msg);
+                tx.unbounded_send(msg).unwrap_throw();
             }
         });
 

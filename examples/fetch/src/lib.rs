@@ -137,9 +137,10 @@ fn view(model: &Model) -> impl Nodes<Msg> {
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
+    let env = siro_web::Env::new()?;
+
     // Start the Web application and mount on the specified DOM node.
-    let mut app = siro_web::App::new()?;
-    app.mount("#app")?;
+    let mut app = env.mount("#app")?;
 
     // Miscellaneous values used in event loop.
     let client = reqwest::Client::new();
