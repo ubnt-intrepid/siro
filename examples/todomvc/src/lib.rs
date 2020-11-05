@@ -13,7 +13,7 @@ static ALLOC: WeeAlloc = WeeAlloc::INIT;
 const STORAGE_KEY: &str = "siro-todomvc-save";
 
 #[wasm_bindgen(start)]
-pub async fn main() -> Result<(), JsValue> {
+pub async fn main() -> siro_web::Result<()> {
     console_error_panic_hook::set_once();
 
     let env = siro_web::Env::new()?;
@@ -22,8 +22,9 @@ pub async fn main() -> Result<(), JsValue> {
 
     let storage = env
         .window()
-        .local_storage()?
-        .ok_or("cannot access localStorage")?;
+        .local_storage()
+        .map_err(siro_web::Error::caught_from_js)?
+        .ok_or_else(|| siro_web::Error::custom("cannot access localStorage"))?;
 
     let mut model = restore_model(&storage).unwrap_or_default();
     model.visibility = current_visibility(env.window());

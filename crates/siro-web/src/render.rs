@@ -44,7 +44,7 @@ pub(crate) struct VElement {
 }
 
 impl VElement {
-    fn apply_class(&self) -> Result<(), JsValue> {
+    fn apply_class(&self) -> crate::Result<()> {
         let class_name = self.class_names.iter().fold(String::new(), |mut acc, c| {
             if !acc.is_empty() {
                 acc += " ";
@@ -56,7 +56,7 @@ impl VElement {
         Ok(())
     }
 
-    fn apply_style(&self) -> Result<(), JsValue> {
+    fn apply_style(&self) -> crate::Result<()> {
         let style = self
             .styles
             .iter()
@@ -89,7 +89,7 @@ pub(super) struct RenderContext<'ctx, TMsg> {
 }
 
 impl<TMsg: 'static> RenderContext<'_, TMsg> {
-    pub(super) fn diff_nodes<N>(&self, nodes: N, vnodes: &mut Vec<VNode>) -> Result<(), JsValue>
+    pub(super) fn diff_nodes<N>(&self, nodes: N, vnodes: &mut Vec<VNode>) -> crate::Result<()>
     where
         N: Nodes<TMsg>,
     {
@@ -116,14 +116,20 @@ impl<TMsg: 'static> RenderContext<'_, TMsg> {
         namespace_uri: Option<CowStr>,
         attrs: A,
         children: C,
-    ) -> Result<VElement, JsValue>
+    ) -> crate::Result<VElement>
     where
         A: Attributes<TMsg>,
         C: Nodes<TMsg>,
     {
         let node = match &namespace_uri {
-            Some(uri) => self.document.create_element_ns(Some(&*uri), &*tag_name)?,
-            None => self.document.create_element(&*tag_name)?,
+            Some(uri) => self
+                .document
+                .create_element_ns(Some(&*uri), &*tag_name)
+                .map_err(crate::Error::caught_from_js)?,
+            None => self
+                .document
+                .create_element(&*tag_name)
+                .map_err(crate::Error::caught_from_js)?,
         };
 
         let mut velement = VElement {
@@ -149,14 +155,18 @@ impl<TMsg: 'static> RenderContext<'_, TMsg> {
                 .diff_nodes(children, &mut velement.children)?;
         }
 
-        self.parent.append_child(&velement.node)?;
+        self.parent
+            .append_child(&velement.node)
+            .map_err(crate::Error::caught_from_js)?;
 
         Ok(velement)
     }
 
-    fn create_text_node(&self, data: CowStr) -> Result<VText, JsValue> {
+    fn create_text_node(&self, data: CowStr) -> crate::Result<VText> {
         let node = self.document.create_text_node(&*data);
-        self.parent.append_child(&node)?;
+        self.parent
+            .append_child(&node)
+            .map_err(crate::Error::caught_from_js)?;
         Ok(VText { node, data })
     }
 
@@ -167,7 +177,7 @@ impl<TMsg: 'static> RenderContext<'_, TMsg> {
         namespace_uri: Option<CowStr>,
         attrs: A,
         children: C,
-    ) -> Result<(), JsValue>
+    ) -> crate::Result<()>
     where
         A: Attributes<TMsg>,
         C: Nodes<TMsg>,
@@ -206,7 +216,7 @@ impl<TMsg: 'static> RenderContext<'_, TMsg> {
         Ok(())
     }
 
-    fn diff_text_node(&self, vnode: &mut VNode, data: CowStr) -> Result<(), JsValue> {
+    fn diff_text_node(&self, vnode: &mut VNode, data: CowStr) -> crate::Result<()> {
         match vnode {
             VNode::Text(t) => {
                 if t.data != data {
@@ -233,7 +243,7 @@ struct DiffNodes<'a, 'ctx, TMsg> {
 impl<TMsg: 'static> NodesRenderer for DiffNodes<'_, '_, TMsg> {
     type Msg = TMsg;
     type Ok = ();
-    type Error = JsValue;
+    type Error = crate::Error;
 
     fn element<A, C>(
         &mut self,
@@ -274,7 +284,10 @@ impl<TMsg: 'static> NodesRenderer for DiffNodes<'_, '_, TMsg> {
     fn end(self) -> Result<Self::Ok, Self::Error> {
         for vnode in self.vnodes.drain(self.num_children..) {
             if let Some(node) = vnode.as_node() {
-                self.ctx.parent.remove_child(node)?;
+                self.ctx
+                    .parent
+                    .remove_child(node)
+                    .map_err(crate::Error::caught_from_js)?;
             }
         }
 
@@ -293,7 +306,7 @@ struct DiffAttributes<'a, 'ctx, TMsg> {
 impl<TMsg: 'static> AttributesRenderer for DiffAttributes<'_, '_, TMsg> {
     type Msg = TMsg;
     type Ok = ();
-    type Error = JsValue;
+    type Error = crate::Error;
 
     fn attribute(&mut self, name: CowStr, value: AttributeValue) -> Result<(), Self::Error> {
         match self.old_attributes.remove(&*name) {
@@ -308,7 +321,8 @@ impl<TMsg: 'static> AttributesRenderer for DiffAttributes<'_, '_, TMsg> {
     where
         T: Serialize,
     {
-        let js_value = serde_wasm_bindgen::to_value(&value)?;
+        let js_value = serde_wasm_bindgen::to_value(&value)
+            .map_err(|err| crate::Error::caught_from_js(err.into()))?;
 
         match self.old_properties.remove(&*name) {
             Some(old_value) if old_value == js_value => (),
@@ -359,7 +373,10 @@ impl<TMsg: 'static> AttributesRenderer for DiffAttributes<'_, '_, TMsg> {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         for (name, _) in self.old_attributes {
-            self.velement.node.remove_attribute(&*name)?;
+            self.velement
+                .node
+                .remove_attribute(&*name)
+                .map_err(crate::Error::caught_from_js)?;
         }
 
         for (name, _) in self.old_properties {
@@ -383,7 +400,7 @@ struct NewAttributes<'a, 'ctx, TMsg> {
 impl<TMsg: 'static> AttributesRenderer for NewAttributes<'_, '_, TMsg> {
     type Msg = TMsg;
     type Ok = ();
-    type Error = JsValue;
+    type Error = crate::Error;
 
     fn attribute(&mut self, name: CowStr, value: AttributeValue) -> Result<(), Self::Error> {
         set_attribute(&self.velement.node, &*name, &value)?;
@@ -395,7 +412,8 @@ impl<TMsg: 'static> AttributesRenderer for NewAttributes<'_, '_, TMsg> {
     where
         T: Serialize,
     {
-        let js_value = serde_wasm_bindgen::to_value(&value)?;
+        let js_value = serde_wasm_bindgen::to_value(&value) //
+            .map_err(|err| crate::Error::caught_from_js(err.into()))?;
         set_property(&self.velement.node, &*name, &js_value)?;
         self.velement.properties.insert(name, js_value);
         Ok(())
@@ -461,25 +479,29 @@ impl Event for AppEvent<'_> {
 
 // ==== utils ====
 
-fn set_attribute(
-    element: &web::Element,
-    name: &str,
-    value: &AttributeValue,
-) -> Result<(), JsValue> {
+fn set_attribute(element: &web::Element, name: &str, value: &AttributeValue) -> crate::Result<()> {
     match value {
-        AttributeValue::String(value) => element.set_attribute(name, value)?,
-        AttributeValue::Bool(true) => element.set_attribute(name, "")?,
-        AttributeValue::Bool(false) => element.remove_attribute(name)?,
+        AttributeValue::String(value) => element
+            .set_attribute(name, value)
+            .map_err(crate::Error::caught_from_js)?,
+        AttributeValue::Bool(true) => element
+            .set_attribute(name, "")
+            .map_err(crate::Error::caught_from_js)?,
+        AttributeValue::Bool(false) => element
+            .remove_attribute(name)
+            .map_err(crate::Error::caught_from_js)?,
     }
     Ok(())
 }
 
-fn set_property(element: &web::Element, name: &str, value: &JsValue) -> Result<(), JsValue> {
-    js_sys::Reflect::set(element, &JsValue::from_str(name), value)?;
+fn set_property(element: &web::Element, name: &str, value: &JsValue) -> crate::Result<()> {
+    js_sys::Reflect::set(element, &JsValue::from_str(name), value)
+        .map_err(crate::Error::caught_from_js)?;
     Ok(())
 }
 
-fn remove_property(element: &web::Element, name: &str) -> Result<(), JsValue> {
-    js_sys::Reflect::set(element, &JsValue::from_str(name), &JsValue::UNDEFINED)?;
+fn remove_property(element: &web::Element, name: &str) -> crate::Result<()> {
+    js_sys::Reflect::set(element, &JsValue::from_str(name), &JsValue::UNDEFINED)
+        .map_err(crate::Error::caught_from_js)?;
     Ok(())
 }

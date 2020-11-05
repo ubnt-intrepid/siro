@@ -5,7 +5,7 @@ use wee_alloc::WeeAlloc;
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
 #[wasm_bindgen(start)]
-pub fn main() -> Result<(), JsValue> {
+pub fn main() -> siro_web::Result<()> {
     console_error_panic_hook::set_once();
 
     let env = siro_web::Env::new()?;

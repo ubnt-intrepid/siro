@@ -1,6 +1,5 @@
 use crate::app::App;
 use crate::subscription::Subscription;
-use wasm_bindgen::prelude::*;
 
 pub struct Env {
     pub(crate) window: web::Window,
@@ -8,9 +7,12 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn new() -> Result<Self, JsValue> {
-        let window = web::window().ok_or("no global Window exists")?;
-        let document = window.document().ok_or("no Document exists")?;
+    pub fn new() -> crate::Result<Self> {
+        let window =
+            web::window().ok_or_else(|| crate::Error::custom("no global Window exists"))?;
+        let document = window
+            .document()
+            .ok_or_else(|| crate::Error::custom("no Document exists"))?;
         Ok(Self { window, document })
     }
 
@@ -18,26 +20,30 @@ impl Env {
         &self.window
     }
 
-    pub fn mount<TMsg>(&self, selector: &str) -> Result<App<TMsg>, JsValue>
+    pub fn mount<TMsg>(&self, selector: &str) -> crate::Result<App<TMsg>>
     where
         TMsg: 'static,
     {
         let node = self
             .document
-            .query_selector(selector)?
-            .ok_or("missing node")?;
+            .query_selector(selector)
+            .map_err(crate::Error::caught_from_js)?
+            .ok_or_else(|| crate::Error::custom("missing node"))?;
         Ok(App::new(self, node.into()))
     }
 
-    pub fn mount_to_body<TMsg>(&self) -> Result<App<TMsg>, JsValue>
+    pub fn mount_to_body<TMsg>(&self) -> crate::Result<App<TMsg>>
     where
         TMsg: 'static,
     {
-        let body = self.document.body().ok_or("missing body in document")?;
+        let body = self
+            .document
+            .body()
+            .ok_or_else(|| crate::Error::custom("missing body in document"))?;
         Ok(App::new(self, body.into()))
     }
 
-    pub fn subscribe<S>(&self, subscription: S) -> Result<S::Stream, JsValue>
+    pub fn subscribe<S>(&self, subscription: S) -> crate::Result<S::Stream>
     where
         S: Subscription,
     {

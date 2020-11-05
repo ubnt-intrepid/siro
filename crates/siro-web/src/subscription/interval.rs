@@ -23,7 +23,7 @@ impl Subscription for Interval {
     type Msg = ();
     type Stream = IntervalStream;
 
-    fn subscribe(self, env: &Env) -> Result<Self::Stream, JsValue> {
+    fn subscribe(self, env: &Env) -> crate::Result<Self::Stream> {
         let (tx, rx) = mpsc::unbounded();
 
         let cb = Closure::wrap(Box::new(move || {
@@ -35,7 +35,8 @@ impl Subscription for Interval {
             .set_interval_with_callback_and_timeout_and_arguments_0(
                 cb.as_ref().unchecked_ref(),
                 self.timeout,
-            )?;
+            )
+            .map_err(crate::Error::caught_from_js)?;
 
         Ok(IntervalStream {
             rx,

@@ -39,7 +39,7 @@ enum Button {
     Down,
 }
 
-fn update(model: &mut Model, Msg { event, button }: Msg) -> Result<(), JsValue> {
+fn update(model: &mut Model, Msg { event, button }: Msg) {
     model.x = event.client_x;
     model.y = event.client_y;
 
@@ -48,8 +48,6 @@ fn update(model: &mut Model, Msg { event, button }: Msg) -> Result<(), JsValue> 
         Some(Button::Up) => model.clicked = false,
         _ => (),
     }
-
-    Ok(())
 }
 
 // ==== view ====
@@ -87,7 +85,7 @@ fn view(model: &Model) -> impl Nodes<Msg> {
 // ==== runtime ====
 
 #[wasm_bindgen(start)]
-pub async fn main() -> Result<(), JsValue> {
+pub async fn main() -> siro_web::Result<()> {
     console_error_panic_hook::set_once();
 
     let env = siro_web::Env::new()?;
@@ -127,7 +125,7 @@ pub async fn main() -> Result<(), JsValue> {
             msg = mousemove.select_next_some() => msg,
             complete => break,
         };
-        update(&mut model, msg)?;
+        update(&mut model, msg);
         app.render(view(&model))?;
     }
 

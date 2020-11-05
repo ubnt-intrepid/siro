@@ -92,7 +92,7 @@ fn view(model: &Model) -> impl Nodes<Msg> + '_ {
 // ==== runtime ====
 
 #[wasm_bindgen(start)]
-pub async fn main() -> Result<(), JsValue> {
+pub async fn main() -> siro_web::Result<()> {
     console_error_panic_hook::set_once();
 
     let env = siro_web::Env::new()?;

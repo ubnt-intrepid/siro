@@ -33,7 +33,7 @@ where
     type Msg = T;
     type Stream = WindowEventStream<T>;
 
-    fn subscribe(self, env: &Env) -> Result<Self::Stream, JsValue> {
+    fn subscribe(self, env: &Env) -> crate::Result<Self::Stream> {
         let (tx, rx) = mpsc::unbounded();
 
         let listener = EventListener::new(&env.window, self.event_type, move |event| {

@@ -23,7 +23,7 @@ impl Subscription for AnimationFrames {
     type Msg = f64;
     type Stream = AnimationFramesStream;
 
-    fn subscribe(self, env: &Env) -> Result<Self::Stream, JsValue> {
+    fn subscribe(self, env: &Env) -> crate::Result<Self::Stream> {
         let (tx, rx) = mpsc::unbounded();
 
         let scheduler = Rc::new(Scheduler {

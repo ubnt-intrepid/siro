@@ -10,7 +10,6 @@ use futures::{
 };
 use siro::vdom::Nodes;
 use std::pin::Pin;
-use wasm_bindgen::prelude::*;
 
 pub struct App<'env, TMsg: 'static> {
     env: &'env Env,
@@ -40,7 +39,7 @@ impl<'env, TMsg: 'static> App<'env, TMsg> {
         self.next().await
     }
 
-    pub fn render<N>(&mut self, nodes: N) -> Result<(), JsValue>
+    pub fn render<N>(&mut self, nodes: N) -> crate::Result<()>
     where
         N: Nodes<TMsg>,
     {

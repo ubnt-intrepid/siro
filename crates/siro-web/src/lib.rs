@@ -7,8 +7,13 @@ A browser runtime for `siro` using `web-sys`.
 
 mod app;
 mod env;
+mod error;
 mod render;
 
 pub mod subscription;
 
-pub use crate::{app::App, env::Env};
+pub use crate::{
+    app::App,
+    env::Env,
+    error::{Error, Result},
+};
