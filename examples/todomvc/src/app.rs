@@ -70,13 +70,20 @@ pub enum Msg {
     EditingEntry(TodoId, bool),
 }
 
-pub enum Command {
-    SaveModel,
-    FocusElement(String),
-    Nop,
+pub trait Effects {
+    type Ok;
+    type Error;
+
+    fn save_model(&mut self) -> Result<(), Self::Error>;
+    fn focus_element(&mut self, id: &str) -> Result<(), Self::Error>;
+
+    fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-pub fn update(model: &mut Model, msg: Msg) -> Command {
+pub fn update<E>(model: &mut Model, msg: Msg, mut effects: E) -> Result<E::Ok, E::Error>
+where
+    E: Effects,
+{
     match msg {
         Msg::UpdateField(input) => {
             model.input = input;
@@ -95,14 +102,14 @@ pub fn update(model: &mut Model, msg: Msg) -> Command {
                         editing: false,
                     },
                 );
-                return Command::SaveModel;
+                effects.save_model()?;
             }
         }
 
         Msg::Check(id, completed) => {
             if let Some(entry) = model.entries.get_mut(&id) {
                 entry.completed = completed;
-                return Command::SaveModel;
+                effects.save_model()?;
             }
         }
 
@@ -110,18 +117,18 @@ pub fn update(model: &mut Model, msg: Msg) -> Command {
             for entry in model.entries.values_mut() {
                 entry.completed = completed;
             }
-            return Command::SaveModel;
+            effects.save_model()?;
         }
 
         Msg::Delete(id) => {
             if let Some(..) = model.entries.remove(&id) {
-                return Command::SaveModel;
+                effects.save_model()?;
             }
         }
 
         Msg::DeleteCompleted => {
             model.entries.retain(|_, entry| !entry.completed);
-            return Command::SaveModel;
+            effects.save_model()?;
         }
 
         Msg::ChangeVisibility(visibility) => {
@@ -131,7 +138,7 @@ pub fn update(model: &mut Model, msg: Msg) -> Command {
         Msg::UpdateEntry(id, description) => {
             if let Some(entry) = model.entries.get_mut(&id) {
                 entry.description = description;
-                return Command::SaveModel;
+                effects.save_model()?;
             }
         }
 
@@ -141,12 +148,12 @@ pub fn update(model: &mut Model, msg: Msg) -> Command {
             }
 
             if editing {
-                return Command::FocusElement(todo_edit_input_id(id));
+                effects.focus_element(&todo_edit_input_id(id))?;
             }
         }
     }
 
-    Command::Nop
+    effects.end()
 }
 
 // ==== view ====

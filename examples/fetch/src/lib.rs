@@ -63,19 +63,18 @@ enum Msg {
 // tied to the concrete logic.
 enum Cmd {
     Fetch(String),
-    None,
 }
 
-fn update(model: &mut Model, msg: Msg) -> Cmd {
+fn update(model: &mut Model, msg: Msg) -> Option<Cmd> {
     match msg {
         Msg::UpdateRepoSlug(slug) => {
             model.repo_slug = slug;
-            Cmd::None
+            None
         }
 
         Msg::UpdateBranch(branch) => {
             model.branch = branch;
-            Cmd::None
+            None
         }
 
         Msg::RequestFetch => {
@@ -88,12 +87,12 @@ fn update(model: &mut Model, msg: Msg) -> Cmd {
                 "https://api.github.com/repos/{}/branches/{}",
                 repo_slug, branch
             );
-            Cmd::Fetch(url)
+            Some(Cmd::Fetch(url))
         }
 
         Msg::UpdateResponse(response) => {
             model.response.replace(response);
-            Cmd::None
+            None
         }
     }
 }
@@ -175,7 +174,7 @@ pub async fn main() -> siro_web::Result<()> {
         // The dispatch result will be returned to the application side
         // as the value of `Msg`.
         match cmd {
-            Cmd::Fetch(url) => {
+            Some(Cmd::Fetch(url)) => {
                 let send = client
                     .get(&url)
                     .header("Accept", "application/vnd.github.v3+json")
@@ -188,7 +187,7 @@ pub async fn main() -> siro_web::Result<()> {
                 });
             }
 
-            Cmd::None => (),
+            None => (),
         }
     }
 

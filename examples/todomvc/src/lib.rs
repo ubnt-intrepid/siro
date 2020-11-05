@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast as _;
 use web_sys::Storage;
 use wee_alloc::WeeAlloc;
 
-use app::{Command, Model};
+use app::Model;
 
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
@@ -32,21 +32,43 @@ pub async fn main() -> siro_web::Result<()> {
     app.render(app::view(&model))?;
 
     while let Some(msg) = app.next_message().await {
-        let cmd = app::update(&mut model, msg);
+        let cmd = app::update(&mut model, msg, CmdBuilder::default()).expect("infallible");
         app.render(app::view(&model))?;
 
-        match cmd {
-            Command::FocusElement(id) => {
-                let _ = focus_element(id);
-            }
-            Command::SaveModel => {
-                let _ = save_model(&model, &storage);
-            }
-            Command::Nop => (),
+        if cmd.need_save_model {
+            let _ = save_model(&model, &storage);
+        }
+        for id in &cmd.focusing_elements {
+            let _ = focus_element(id);
         }
     }
 
     Ok(())
+}
+
+#[derive(Default)]
+struct CmdBuilder {
+    need_save_model: bool,
+    focusing_elements: std::collections::HashSet<String>,
+}
+
+impl app::Effects for CmdBuilder {
+    type Ok = Self;
+    type Error = std::convert::Infallible;
+
+    fn save_model(&mut self) -> Result<(), Self::Error> {
+        self.need_save_model = true;
+        Ok(())
+    }
+
+    fn focus_element(&mut self, id: &str) -> Result<(), Self::Error> {
+        self.focusing_elements.insert(id.to_owned());
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(self)
+    }
 }
 
 fn save_model(model: &Model, storage: &Storage) {
@@ -66,10 +88,10 @@ fn current_visibility(window: &web_sys::Window) -> Option<app::Visibility> {
     hash.trim_start_matches("#/").parse().ok()
 }
 
-fn focus_element(id: String) -> Option<()> {
+fn focus_element(id: &str) -> Option<()> {
     web_sys::window()?
         .document()?
-        .get_element_by_id(&id)?
+        .get_element_by_id(id)?
         .dyn_into::<web_sys::HtmlElement>()
         .ok()?
         .focus()
