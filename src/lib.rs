@@ -10,6 +10,7 @@ detail of runtime implementation.
 #![doc(html_root_url = "https://docs.rs/siro/0.1.0")]
 #![forbid(unsafe_code, clippy::todo, clippy::unimplemented)]
 
+pub mod effects;
 pub mod html;
 pub mod svg;
 pub mod vdom;

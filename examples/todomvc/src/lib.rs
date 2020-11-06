@@ -1,5 +1,6 @@
 mod app;
 
+use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast as _;
 use web_sys::Storage;
@@ -32,13 +33,17 @@ pub async fn main() -> siro_web::Result<()> {
     app.render(app::view(&model))?;
 
     while let Some(msg) = app.next_message().await {
-        let cmd = app::update(&mut model, msg, CmdBuilder::default()).expect("infallible");
+        let focusing_elements = app::update(
+            &mut model,
+            msg,
+            Effects {
+                storage: &storage,
+                focusing_elements: HashSet::new(),
+            },
+        )?;
         app.render(app::view(&model))?;
 
-        if cmd.need_save_model {
-            let _ = save_model(&model, &storage);
-        }
-        for id in &cmd.focusing_elements {
+        for id in &focusing_elements {
             let _ = focus_element(id);
         }
     }
@@ -46,35 +51,34 @@ pub async fn main() -> siro_web::Result<()> {
     Ok(())
 }
 
-#[derive(Default)]
-struct CmdBuilder {
-    need_save_model: bool,
-    focusing_elements: std::collections::HashSet<String>,
+struct Effects<'a> {
+    storage: &'a Storage,
+    focusing_elements: HashSet<String>,
 }
 
-impl app::Effects for CmdBuilder {
-    type Ok = Self;
-    type Error = std::convert::Infallible;
-
-    fn save_model(&mut self) -> Result<(), Self::Error> {
-        self.need_save_model = true;
-        Ok(())
-    }
-
-    fn focus_element(&mut self, id: &str) -> Result<(), Self::Error> {
-        self.focusing_elements.insert(id.to_owned());
-        Ok(())
-    }
+impl siro::effects::Effects for Effects<'_> {
+    type Ok = HashSet<String>;
+    type Error = siro_web::Error;
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(self)
+        Ok(self.focusing_elements)
     }
 }
 
-fn save_model(model: &Model, storage: &Storage) {
-    // ignore errors
-    if let Ok(encoded) = serde_json::to_string(model) {
-        let _ = storage.set_item(STORAGE_KEY, &encoded);
+impl siro::effects::DomFocus for Effects<'_> {
+    fn focus(&mut self, target_id: &str) -> Result<(), Self::Error> {
+        self.focusing_elements.insert(target_id.to_owned());
+        Ok(())
+    }
+}
+
+impl app::SaveModel for Effects<'_> {
+    fn save_model(&mut self, model: &Model) -> Result<(), Self::Error> {
+        let encoded = serde_json::to_string(model).expect_throw("Model serialize");
+        self.storage
+            .set_item(STORAGE_KEY, &encoded)
+            .map_err(siro_web::Error::caught_from_js)?;
+        Ok(())
     }
 }
 

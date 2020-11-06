@@ -2,6 +2,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use siro::prelude::*;
 use siro::{
+    effects::{DomFocus, Effects},
     html::{
         self, attr,
         event::{on_blur, on_click, on_double_click, on_enter, on_input},
@@ -70,19 +71,13 @@ pub enum Msg {
     EditingEntry(TodoId, bool),
 }
 
-pub trait Effects {
-    type Ok;
-    type Error;
-
-    fn save_model(&mut self) -> Result<(), Self::Error>;
-    fn focus_element(&mut self, id: &str) -> Result<(), Self::Error>;
-
-    fn end(self) -> Result<Self::Ok, Self::Error>;
+pub trait SaveModel: Effects {
+    fn save_model(&mut self, model: &Model) -> Result<(), Self::Error>;
 }
 
 pub fn update<E>(model: &mut Model, msg: Msg, mut effects: E) -> Result<E::Ok, E::Error>
 where
-    E: Effects,
+    E: DomFocus + SaveModel,
 {
     match msg {
         Msg::UpdateField(input) => {
@@ -102,14 +97,14 @@ where
                         editing: false,
                     },
                 );
-                effects.save_model()?;
+                effects.save_model(model)?;
             }
         }
 
         Msg::Check(id, completed) => {
             if let Some(entry) = model.entries.get_mut(&id) {
                 entry.completed = completed;
-                effects.save_model()?;
+                effects.save_model(model)?;
             }
         }
 
@@ -117,18 +112,18 @@ where
             for entry in model.entries.values_mut() {
                 entry.completed = completed;
             }
-            effects.save_model()?;
+            effects.save_model(model)?;
         }
 
         Msg::Delete(id) => {
             if let Some(..) = model.entries.remove(&id) {
-                effects.save_model()?;
+                effects.save_model(model)?;
             }
         }
 
         Msg::DeleteCompleted => {
             model.entries.retain(|_, entry| !entry.completed);
-            effects.save_model()?;
+            effects.save_model(model)?;
         }
 
         Msg::ChangeVisibility(visibility) => {
@@ -138,7 +133,7 @@ where
         Msg::UpdateEntry(id, description) => {
             if let Some(entry) = model.entries.get_mut(&id) {
                 entry.description = description;
-                effects.save_model()?;
+                effects.save_model(model)?;
             }
         }
 
@@ -148,7 +143,7 @@ where
             }
 
             if editing {
-                effects.focus_element(&todo_edit_input_id(id))?;
+                effects.focus(&todo_edit_input_id(id))?;
             }
         }
     }
