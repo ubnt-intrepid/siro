@@ -2,8 +2,6 @@ mod app;
 
 use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast as _;
-use web_sys::Storage;
 use wee_alloc::WeeAlloc;
 
 use app::Model;
@@ -19,17 +17,12 @@ pub async fn main() -> siro_web::Result<()> {
 
     let env = siro_web::Env::new()?;
 
+    let mut model = restore_model(&env).unwrap_or_default();
+    model.visibility = env
+        .current_url_hash()
+        .and_then(|hash| hash.trim_start_matches("#/").parse().ok());
+
     let mut app = env.mount_to_body()?;
-
-    let storage = env
-        .window()
-        .local_storage()
-        .map_err(siro_web::Error::caught_from_js)?
-        .ok_or_else(|| siro_web::Error::custom("cannot access localStorage"))?;
-
-    let mut model = restore_model(&storage).unwrap_or_default();
-    model.visibility = current_visibility(env.window());
-
     app.render(app::view(&model))?;
 
     while let Some(msg) = app.next_message().await {
@@ -37,22 +30,22 @@ pub async fn main() -> siro_web::Result<()> {
             &mut model,
             msg,
             Effects {
-                storage: &storage,
+                env: &env,
                 focusing_elements: HashSet::new(),
             },
         )?;
         app.render(app::view(&model))?;
 
         for id in &focusing_elements {
-            let _ = focus_element(id);
+            app.focus(id)?;
         }
     }
 
     Ok(())
 }
 
-struct Effects<'a> {
-    storage: &'a Storage,
+struct Effects<'env> {
+    env: &'env siro_web::Env,
     focusing_elements: HashSet<String>,
 }
 
@@ -75,29 +68,12 @@ impl siro::effects::DomFocus for Effects<'_> {
 impl app::SaveModel for Effects<'_> {
     fn save_model(&mut self, model: &Model) -> Result<(), Self::Error> {
         let encoded = serde_json::to_string(model).expect_throw("Model serialize");
-        self.storage
-            .set_item(STORAGE_KEY, &encoded)
-            .map_err(siro_web::Error::caught_from_js)?;
+        self.env.set_storage_item(STORAGE_KEY, encoded)?;
         Ok(())
     }
 }
 
-fn restore_model(storage: &Storage) -> Option<app::Model> {
-    let model_raw = storage.get_item(STORAGE_KEY).ok()??;
+fn restore_model(env: &siro_web::Env) -> Option<app::Model> {
+    let model_raw = env.get_storage_item(STORAGE_KEY).ok()??;
     serde_json::from_str(&model_raw).ok()
-}
-
-fn current_visibility(window: &web_sys::Window) -> Option<app::Visibility> {
-    let hash = window.location().hash().ok()?;
-    hash.trim_start_matches("#/").parse().ok()
-}
-
-fn focus_element(id: &str) -> Option<()> {
-    web_sys::window()?
-        .document()?
-        .get_element_by_id(id)?
-        .dyn_into::<web_sys::HtmlElement>()
-        .ok()?
-        .focus()
-        .ok()
 }

@@ -31,7 +31,9 @@ features = [
     "Element",
     "Event",
     "HtmlElement",
+    "Location",
     "Node",
+    "Storage",
     "Text",
     "Window",
 ]

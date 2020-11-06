@@ -10,6 +10,7 @@ use futures::{
 };
 use siro::vdom::Nodes;
 use std::pin::Pin;
+use wasm_bindgen::JsCast as _;
 
 pub struct App<'env, TMsg: 'static> {
     env: &'env Env,
@@ -49,6 +50,24 @@ impl<'env, TMsg: 'static> App<'env, TMsg> {
             tx: &self.tx,
         }
         .diff_nodes(nodes, &mut self.vnodes)?;
+        Ok(())
+    }
+
+    pub fn focus(&self, id: &str) -> crate::Result<()> {
+        if let Some(element) = self.env.document.get_element_by_id(id) {
+            if let Ok(element) = element.dyn_into::<web::HtmlElement>() {
+                element.focus().map_err(crate::Error::caught_from_js)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn blur(&self, id: &str) -> crate::Result<()> {
+        if let Some(element) = self.env.document.get_element_by_id(id) {
+            if let Ok(element) = element.dyn_into::<web::HtmlElement>() {
+                element.blur().map_err(crate::Error::caught_from_js)?;
+            }
+        }
         Ok(())
     }
 }
